@@ -1,0 +1,85 @@
+ok cool lets start wiht python, what is the goal, and what do i need to learn before beginning
+
+Perfect 👌 — let’s anchor this before you start writing code.
+
+⸻
+
+🎯 Goal of the Python phase
+
+Build a toy CPU system in Python that can:
+	1.	Take assembly text (your toy ISA).
+	2.	Assemble it into machine code (binary words).
+	3.	Load that machine code into memory.
+	4.	Run it on an emulator you write (fetch → decode → execute).
+	5.	Print register/memory states so you can see how the CPU is working step by step.
+
+Once that’s working, you’ll be able to write “programs” in your assembly and watch them execute. Example:
+
+; add 3 + 4
+LOADI R0, 3
+LOADI R1, 4
+ADD   R0, R1
+HALT
+
+Should leave R0 = 7 at the end of execution.
+
+That’s the minimum victory condition. 🚩
+
+⸻
+
+📚 What you need to know before coding
+
+Not much — but a few concepts are essential. If you’re already solid on them, we can dive right in.
+
+1. Binary & hex basics
+	•	How to represent numbers in binary and hex.
+	•	How to convert between decimal ↔ binary ↔ hex.
+	•	Two’s complement (negative integers).
+	•	Example: 0xFF = 255, 0xFFFF = -1 in signed 16-bit.
+
+👉 If you can look at 0b1010 and say “that’s 10 decimal,” you’re fine.
+
+⸻
+
+2. CPU model basics
+	•	What registers are (small, fast storage in CPU).
+	•	What the program counter (PC) is (points to the next instruction).
+	•	What memory is (big array of bytes).
+	•	What an instruction is (binary word the CPU interprets).
+	•	Flags: zero flag (result is 0), negative flag, carry flag.
+
+👉 If you can explain “PC fetches next instruction, CPU decodes opcode, executes operation, then PC increments,” you’re good.
+
+⸻
+
+3. Python essentials (for implementation)
+
+You’ll mostly need:
+	•	Lists ([]) for registers and memory.
+	•	Dictionaries ({}) for labels → addresses.
+	•	Bitwise operators: &, |, <<, >>.
+	•	File I/O: open("program.asm").
+	•	Simple classes (to wrap CPU state).
+
+👉 You don’t need advanced Python — just comfort with arrays, loops, and functions.
+
+⸻
+
+🧩 How we’ll break it down
+	1.	Define ISA spec — decide opcodes, registers, instruction format.
+	2.	Write emulator skeleton — a CPU class with registers, memory, PC, and a loop that fetches + decodes + executes.
+	3.	Implement a few instructions — LOADI, ADD, HALT.
+	4.	Write assembler (two-pass) — translates text → binary.
+	5.	Run a real program — like summing numbers or factorial.
+
+At the end, you’ll have a working Python CPU + assembler.
+
+⸻
+
+⚡ Question for you before I draft the first code skeleton:
+Do you want to dive straight into coding the CPU (emulator first), or start with just defining the ISA spec cleanly (instruction encodings, opcodes, registers) so we’re crystal clear on the rules before touching Python?
+
+
+“My CPU will have 8 registers, each 16 bits wide.”
+“Memory will be 64000 bytes (64kb).”
+“The program counter (PC) starts at address 0x000.”

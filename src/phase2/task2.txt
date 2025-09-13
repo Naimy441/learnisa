@@ -1,0 +1,37 @@
+ah so currently this code directly reads from the text file which is technically cheating since its in python. so what i have to do is make the assembler and then rework this code to read a bin file
+
+The main reason is that real CPUs don’t understand text—they only understand binary. Your Python simulator can read text because Python is doing the parsing for you. But if you want to go “closer to the metal,” converting to binary has several purposes:
+
+⸻
+
+1. Accuracy
+	•	Real processors operate on numbers, not strings. Converting to binary makes your simulation closer to how a real CPU works.
+	•	Assembly text is human-readable; machine code is what the CPU actually executes.
+
+⸻
+
+2. Speed
+	•	Parsing strings at runtime is slow. If your program is in binary, the CPU (or simulator) can directly fetch bytes and execute them.
+	•	In real hardware, there’s no string parser—everything is numeric.
+
+⸻
+
+3. Portability
+	•	Once your program is in binary, it can be loaded into memory and executed without needing the assembler present.
+	•	This is how real programs are distributed: compiled/assembled into binaries.
+
+⸻
+
+4. Foundation for more advanced features
+	•	Once you have a binary format:
+	•	You can implement jump tables, function calls, and linking more realistically.
+	•	You can simulate loading programs into arbitrary memory locations, just like real OSes do.
+	•	You can start experimenting with optimizations, pipelining, or even eventually building a real CPU emulator.
+
+⸻
+
+Think of it this way: your current text-based simulator is a learning tool, but converting to binary is the step that turns it into a true CPU simulator.
+
+⸻
+
+If you want, I can show a simple binary encoding scheme for your ISA so you can see exactly how LOADI, ADD, STORE, etc., would be represented in bytes. This is the first step to writing your assembler. Do you want me to do that?
