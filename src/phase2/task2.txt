@@ -35,3 +35,228 @@ Think of it this way: your current text-based simulator is a learning tool, but 
 ⸻
 
 If you want, I can show a simple binary encoding scheme for your ISA so you can see exactly how LOADI, ADD, STORE, etc., would be represented in bytes. This is the first step to writing your assembler. Do you want me to do that?
+
+ok cool what are the things i should know before building the assembler in terms of how to output in a good format
+
+Perfect question to ask before you dive in 🚀
+
+When you build an assembler, your job is to take:
+
+LOADI R0, 13
+LOADI R1, 10
+ADD R0, R1
+STORE R0, 0x0000
+HALT
+
+and turn it into a binary format (the “.bin” file) that your CPU emulator can read and execute.
+
+Here are the key things you should know before you design your assembler’s output format:
+
+⸻
+
+1. Instruction Encoding
+	•	Decide how many bits per instruction.
+	•	Many real ISAs use fixed width (e.g., 16 or 32 bits per instruction).
+	•	You could pick 16 bits per instruction for simplicity.
+	•	Break an instruction into fields:
+	•	Opcode (which instruction to run)
+	•	Registers (which register numbers)
+	•	Immediate values / addresses
+
+Example (16-bit format idea):
+
+[ 4 bits opcode ][ 4 bits reg1 ][ 4 bits reg2 ][ 4 bits immediate OR flags ]
+
+
+⸻
+
+2. Opcodes
+	•	Your current opcodes are an Enum (NOP=0, LOADI=1, …).
+	•	Each opcode should map to a small integer (like 3 bits if you only have ≤8 instructions).
+
+⸻
+
+3. Operands
+	•	Registers: You only have 8 registers, so you need 3 bits to represent them (R0 → 000, R7 → 111).
+	•	Addresses / immediates:
+	•	If you allow full 16-bit addresses, you need 2 bytes after the instruction.
+	•	Some instructions may be multi-word (e.g., LOADI R0, 0x1234 needs an extra 16-bit operand after the opcode word).
+
+⸻
+
+4. Endianness
+	•	When writing multi-byte numbers (like addresses or immediates), decide:
+	•	Big-endian: high byte first (0x1234 → 12 34)
+	•	Little-endian: low byte first (0x1234 → 34 12)
+	•	Consistency is key — your emulator and assembler must agree.
+
+⸻
+
+5. Output File Format
+
+Options:
+	1.	Raw binary (.bin)
+	•	Just a sequence of bytes, nothing fancy. E.g.:
+
+01 00 0D   ; LOADI R0, 13
+01 01 0A   ; LOADI R1, 10
+03 00 01   ; ADD R0, R1
+04 00 00 00 ; STORE R0, 0x0000
+06         ; HALT
+
+
+	•	Easiest for your CPU emulator.
+
+	2.	Hex dump (.hex)
+	•	Human-readable, each instruction shown in hex text form:
+
+01000D
+01010A
+030001
+04000000
+06
+
+
+	3.	ELF/COFF-style executable (what real CPUs use)
+	•	Has headers, metadata, sections… overkill for learning.
+
+For you → start with raw binary, then maybe add a “hex view” for debugging.
+
+⸻
+
+6. Assembler Tasks
+	•	Parse assembly lines (LOADI R0, 13)
+	•	Look up opcode number (LOADI → 1)
+	•	Encode operands into binary fields
+	•	Write bytes to .bin file in correct order
+
+⸻
+
+✅ If you keep these in mind, you’ll avoid major headaches later.
+
+Would you like me to sketch a concrete encoding plan for your 7 instructions (NOP, LOADI, LOAD, ADD, STORE, JMP, HALT) so you know exactly how many bytes each should take in your .bin file?
+
+what is this [ 4 bits opcode ][ 4 bits reg1 ][ 4 bits reg2 ][ 4 bits immediate OR flags ] because imagine im using LOAD, i would only use Reg1, and immediate/flags but not reg2
+
+Exactly 👌 you spotted the problem — that’s the tradeoff between fixed-width encoding and variable-length encoding.
+
+Let me break it down:
+
+⸻
+
+📌 Fixed-width Encoding (like [4][4][4][4])
+	•	Every instruction is the same size (e.g., 16 bits).
+	•	You split the 16 bits into fields (opcode, reg1, reg2, immediate/flags).
+	•	Problem: some instructions don’t need all fields, so part of the bits are wasted.
+
+Example:
+
+LOADI R0, 13
+Opcode = 0001 (LOADI)
+Reg1   = 0000 (R0)
+Reg2   = 0000 (unused)
+Imm    = 1101 (13 in binary, but only 4 bits allowed!)
+
+You see the issue: if you want a full 16-bit immediate, you can’t fit it here.
+
+⸻
+
+📌 Variable-length Encoding
+	•	Some instructions are short, some are longer.
+	•	Example scheme:
+	•	1 byte = [opcode + reg fields]
+	•	If instruction needs an immediate/address, put those bytes right after.
+
+Example encodings for your ISA:
+
+LOADI R0, 13
+[01][00][00 0D]   ; opcode=1, reg=0, immediate=0x000D
+
+LOAD R1, 0x1234
+[02][01][12 34]   ; opcode=2, reg=1, address=0x1234
+
+ADD R0, R1
+[03][00][01]      ; opcode=3, reg1=0, reg2=1
+
+HALT
+[06]              ; just the opcode
+
+So instruction lengths vary:
+	•	HALT → 1 byte
+	•	ADD → 3 bytes
+	•	LOADI/LOAD/STORE → 4 bytes
+
+This is how real ISAs often do it (x86 is variable-length, RISC-V is fixed-length).
+
+⸻
+
+🔑 Your Choice
+	•	If you want simplicity in the CPU → use fixed 16-bit instructions (but limit immediate sizes).
+	•	If you want flexibility → use variable-length encoding (your CPU needs to fetch/decode smarter).
+
+⸻
+
+👉 Since you’re learning, I’d suggest variable-length encoding because it maps more naturally to your current Python emulator and lets you support 16-bit immediates/addresses.
+
+Do you want me to design a table for your 7 instructions showing exactly what bytes each will use in the binary file? That way you can implement the assembler directly.
+
+how does variable length encoding work
+
+Great question 👍 — variable-length encoding sounds fancy, but it’s actually very simple once you see it in action. Let’s walk through it step by step with your ISA.
+
+⸻
+
+🔑 Core Idea
+
+Not all instructions need the same amount of information.
+So instead of forcing every instruction to be the same size, you let some take 1 byte, some 2 bytes, some 4 bytes, etc.
+	•	Short instructions (like NOP, HALT) = 1 byte (just the opcode).
+	•	Register-only instructions (like ADD R0, R1) = 2 or 3 bytes.
+	•	Instructions with immediates/addresses (like LOAD R0, 0x1234) = opcode + register + 2 more bytes for the address.
+
+Your CPU (or in this case, your emulator) then:
+	1.	Reads the opcode byte.
+	2.	Based on the opcode, knows how many more bytes to fetch for that instruction.
+	3.	Decodes and executes.
+
+⸻
+
+⚡ Example With Your ISA
+
+Let’s say we assign 1 byte for the opcode.
+
+Instruction	Encoding format	Example
+NOP	[opcode]	00
+HALT	[opcode]	06
+LOADI	[opcode][reg][imm_hi][imm_lo]	01 00 00 0D → LOADI R0, 13
+LOAD	[opcode][reg][addr_hi][addr_lo]	02 01 12 34 → LOAD R1, 0x1234
+STORE	[opcode][reg][addr_hi][addr_lo]	04 00 00 00 → STORE R0, 0x0000
+ADD	[opcode][reg1][reg2]	03 00 01 → ADD R0, R1
+JMP	[opcode][addr_hi][addr_lo]	05 00 05 → JMP 0x0005
+
+👉 Notice how the number of bytes varies:
+	•	NOP/HALT = 1 byte
+	•	ADD = 3 bytes
+	•	LOADI/LOAD/STORE = 4 bytes
+	•	JMP = 3 bytes
+
+⸻
+
+🧠 How Does Execution Work?
+
+Your emulator does a fetch-decode-execute loop:
+	1.	Fetch: Read 1 byte → opcode.
+	2.	Decode: Check a lookup table:
+	•	If opcode is LOADI, fetch 3 more bytes (reg + 16-bit immediate).
+	•	If opcode is ADD, fetch 2 more bytes (reg1 + reg2).
+	•	If opcode is NOP, nothing else needed.
+	3.	Execute: Call the right Python function with the decoded args.
+	4.	Advance PC: Move PC forward by however many bytes that instruction used.
+
+⸻
+
+✅ This way, your binary program is compact and flexible — and it works just like real CPUs (x86 is variable-length; RISC-V is fixed 32-bit for simplicity).
+
+⸻
+
+Do you want me to actually write out a real binary example for your current test program (LOADI R0, 13; LOADI R1, 10; ADD R0, R1; STORE R0, 0x0000; HALT) so you can see the exact byte layout of the .bin file?

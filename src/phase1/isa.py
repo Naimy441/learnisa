@@ -1,3 +1,7 @@
+# Next steps
+# 1. Build an assembler (converts assembly code into binary)
+# 2. Rework this class to input binary from a .bin file (not text from a .asm file)
+
 import sys
 from enum import Enum
 
