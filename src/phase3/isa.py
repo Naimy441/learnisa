@@ -1,11 +1,3 @@
-# Next Steps
-# 0. Learn about symbol tables, flags, and stack pointers
-# 1. Add more opcodes
-# 2. Add JMP labels
-# 3. Add JZ, JNZ, etc. with flags (Z flag)
-# 3. Add CALL/RET for functional programming
-# 3. Write 2 test programs: fibonacci (loops) and factorial (recursion)
-
 import sys
 from enum import Enum
 
