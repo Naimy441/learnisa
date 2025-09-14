@@ -340,8 +340,24 @@ class ISA:
             case Opcode.HALT:
                 return [opcode.value & 0xFF]
 
+    def create_symbol_map(self):
+        len_bytes = 0
+        for i in range(len(self.instr)):
+            cur_instr = self.instr[i]
+            if cur_instr == '' or cur_instr.strip()[0] == ';':
+                continue
+
+            line = cur_instr.split(';')[0].strip().replace(',', '').split()
+            if line[0][-1] == ':':
+                self.symbols[line[0][:-1]] = len_bytes
+            else:
+                opcode = Opcode[line[0]]
+                len_bytes += opcode.length
+
     def assemble(self, output_fn, debug_mode=False):
         if len(self.instr) > 0:
+            self.create_symbol_map()
+
             buf = bytearray()
             if debug_mode:
                 debug_buf = []
@@ -352,6 +368,13 @@ class ISA:
                     continue
                 
                 line = cur_instr.split(';')[0].strip().replace(',', '').split()
+                if line[0][-1] == ':':
+                    continue
+
+                for i in range(len(line)):
+                    if line[i] in self.symbols:
+                        line[i] = f"0x{self.symbols[line[i]]:04X}"
+
                 opcode = Opcode[line[0]]
                 if len(buf) + opcode.length < self.MEM_SIZE:
                     bytearr = self.get_byte_array(opcode, line)
@@ -521,7 +544,7 @@ class ISA:
         
         changed_mem_str = "\n".join(f"mem[{addr}]={val}" for addr, val in changed_mem.items())
 
-        return f"pc={self.pc}\nreg={self.reg}\nsp={self.sp}\n" + changed_mem_str
+        return f"pc={self.pc}\nreg={self.reg}\nsymbols={self.symbols}\nsp={self.sp}\n" + changed_mem_str
 
     def reset(self):
         self.reg = [0] * 8 # 8 registers, 16 bits per register
