@@ -1,6 +1,3 @@
-# Next steps
-# 1. Rework this class to input binary from a .bin file (not text from a .asm file)
-
 import sys
 from enum import Enum
 
@@ -14,9 +11,11 @@ class Opcode(Enum):
     JMP = (5, 3)     # JMP Addr        - Sets PC to instruction Addr          - 1 + 2 = 3 bytes            - Limits code to 64kb, needs segmentation/paging to fix
     HALT = (6, 1)    # HALT            - Ends program                         - 1 byte
     
-    def __init__(self, code, length):  
-        self.code = code
-        self.length = length
+    def __new__(cls, code, length):
+        obj = object.__new__(cls)
+        obj._value_ = code
+        obj.length = length
+        return obj
         
 # Instruction Set Architecture
 class ISA:
@@ -24,16 +23,20 @@ class ISA:
     KILOBYTE = 1024 # A kilobyte has 1024 bytes
     MEM_SIZE = 64 * KILOBYTE # MEM_SIZE and memory-addressable instruction space are the same
 
-    def __init__(self, instr=None):
+    def __init__(self, input_fn=None):
         self.running = False
         self.reg = [0] * self.MAX_REG # 8 registers, 16 bits per register
         self.mem = bytearray(self.MEM_SIZE) # 64kb memory, 8 bits per address
         self.pc = 0 # ID of instruction to run
-        self.instr = instr # Set of instructions to run
+        if input_fn is not None:
+            self.set_instr(input_fn)
+        else:
+            self.instr = []
+        self.bin_instr = None
 
-    def set_instr(self, instr):
-        self.instr = instr
-        # print(instr)
+    def set_instr(self, input_fn):
+        with open(f"{input_fn}.asm", "r") as a:
+            self.instr = a.read().splitlines()
 
     # Opcode Functions
     def NOP(self):
@@ -62,144 +65,143 @@ class ISA:
 
     # Turn Assembly into Binary Executeable
     def assemble(self, output_fn, debug_mode=False):
-        buf = bytearray()
-        if debug_mode:
-            debug_buf = []
+        if len(self.instr) > 0:
+            buf = bytearray()
+            if debug_mode:
+                debug_buf = []
 
-        for i in range(len(self.instr)):
-            cur_instr = self.instr[i]
-            if cur_instr == '' or cur_instr.strip()[0] == ';':
-                continue
-            
-            line = cur_instr.split(';')[0].strip().replace(',', '').split()
+            for i in range(len(self.instr)):
+                cur_instr = self.instr[i]
+                if cur_instr == '' or cur_instr.strip()[0] == ';':
+                    continue
+                
+                line = cur_instr.split(';')[0].strip().replace(',', '').split()
 
-            opcode = Opcode[line[0]]
-            if len(buf) + opcode.length < self.MEM_SIZE:
-                bytearr = []
-                match opcode:
-                    case Opcode.NOP:
-                            bytearr = [
-                                opcode.code & 0xFF
-                            ]
-                    case Opcode.LOADI:
-                        rx = int(line[1][1])
-                        if rx >= 0 and rx < self.MAX_REG:
-                            val = int(line[2], 0)
-                            bytearr = [
-                                opcode.code & 0xFF,
-                                rx & 0xFF,
-                                (val >> 8) & 0xFF,
-                                val & 0xFF
-                            ]
-                    case Opcode.LOAD:
-                        rx = int(line[1][1])
-                        if rx >= 0 and rx < self.MAX_REG:
-                            addr = int(line[2], 0)
-                            if (addr >= 0 and addr < self.MEM_SIZE - 1):
+                opcode = Opcode[line[0]]
+                if len(buf) + opcode.length < self.MEM_SIZE:
+                    bytearr = []
+                    match opcode:
+                        case Opcode.NOP:
                                 bytearr = [
-                                    opcode.code & 0xFF,
+                                    opcode.value & 0xFF
+                                ]
+                        case Opcode.LOADI:
+                            rx = int(line[1][1])
+                            if rx >= 0 and rx < self.MAX_REG:
+                                val = int(line[2], 0)
+                                bytearr = [
+                                    opcode.value & 0xFF,
                                     rx & 0xFF,
+                                    (val >> 8) & 0xFF,
+                                    val & 0xFF
+                                ]
+                        case Opcode.LOAD:
+                            rx = int(line[1][1])
+                            if rx >= 0 and rx < self.MAX_REG:
+                                addr = int(line[2], 0)
+                                if (addr >= 0 and addr < self.MEM_SIZE - 1):
+                                    bytearr = [
+                                        opcode.value & 0xFF,
+                                        rx & 0xFF,
+                                        (addr >> 8) & 0xFF,
+                                        addr & 0xFF
+                                    ]
+                        case Opcode.ADD:
+                            rx = int(line[1][1])
+                            ry = int(line[2][1])
+                            if rx >= 0 and rx < self.MAX_REG and ry >= 0 and ry < self.MAX_REG:
+                                bytearr = [
+                                    opcode.value & 0xFF,
+                                    rx & 0xFF,
+                                    ry & 0xFF
+                                ]
+                        case Opcode.STORE:
+                            rx = int(line[1][1])
+                            if rx >= 0 and rx < self.MAX_REG:
+                                addr = int(line[2], 0)
+                                if (addr >= 0 and addr < self.MEM_SIZE - 1):
+                                    bytearr = [
+                                        opcode.value & 0xFF,
+                                        rx & 0xFF,
+                                        (addr >> 8) & 0xFF,
+                                        addr & 0xFF
+                                    ]
+                        case Opcode.JMP:
+                            addr = int(line[1], 0)
+                            if (addr >= 0 and addr < self.MEM_SIZE):
+                                bytearr = [
+                                    opcode.value & 0xFF,
                                     (addr >> 8) & 0xFF,
                                     addr & 0xFF
                                 ]
-                    case Opcode.ADD:
-                        rx = int(line[1][1])
-                        ry = int(line[2][1])
-                        if rx >= 0 and rx < self.MAX_REG and ry >= 0 and ry < self.MAX_REG:
+                        case Opcode.HALT:
                             bytearr = [
-                                opcode.code & 0xFF,
-                                rx & 0xFF,
-                                ry & 0xFF
+                                opcode.value & 0xFF
                             ]
-                    case Opcode.STORE:
-                        rx = int(line[1][1])
-                        if rx >= 0 and rx < self.MAX_REG:
-                            addr = int(line[2], 0)
-                            if (addr >= 0 and addr < self.MEM_SIZE - 1):
-                                bytearr = [
-                                    opcode.code & 0xFF,
-                                    rx & 0xFF,
-                                    (addr >> 8) & 0xFF,
-                                    addr & 0xFF
-                                ]
-                    case Opcode.JMP:
-                        addr = int(line[1], 0)
-                        if (addr >= 0 and addr < self.MEM_SIZE):
-                            bytearr = [
-                                opcode.code & 0xFF,
-                                (addr >> 8) & 0xFF,
-                                addr & 0xFF
-                            ]
-                    case Opcode.HALT:
-                        bytearr = [
-                            opcode.code & 0xFF
-                        ]
 
-                buf.extend(bytearr)
-                if debug_mode:
-                    debug_buf.append(bytearr)
+                    buf.extend(bytearr)
+                    if debug_mode:
+                        debug_buf.append(bytearr)
 
-        with open(f"{output_fn}.bin", "wb") as b:
-            b.write(buf)
+            with open(f"{output_fn}.bin", "wb") as b:
+                b.write(buf)
 
-        if debug_mode:
-            with open(f"{output_fn}.hex", "w") as h:
-                for arr in debug_buf:
-                    h.write(" ".join(f"{b:02X}" for b in arr) + "\n") # Formats as 2 digit hexadecimal
+            if debug_mode:
+                with open(f"{output_fn}.hex", "w") as h:
+                    for arr in debug_buf:
+                        h.write(" ".join(f"{b:02X}" for b in arr) + "\n") # Formats as 2 digit hexadecimal
 
     # Fetch-Decode-Execute Cycle
-    def run(self):
+    def run(self, input_fn):
+        with open(f"{input_fn}.bin", "rb") as b:
+            self.bin_instr = b.read()
+        
         self.reset()
         self.running = True
-    
+
         while (self.running):
-            if self.instr[self.pc] == '' or self.instr[self.pc].strip()[0] == ';':
-                self.pc += 1
-                continue
+            opcode = Opcode(self.bin_instr[self.pc])
+            cinstr = self.bin_instr[self.pc : self.pc + opcode.length]
 
-            line = self.instr[self.pc].split(';')[0].strip().replace(',', '').split()
-            print(line)
-
-            opcode = Opcode[line[0]]
             match opcode:
                 case Opcode.NOP:
-                    self.pc += 1
+                    self.pc += opcode.length
                 case Opcode.LOADI:
-                    rx = int(line[1][1])
+                    rx = cinstr[1]
                     if rx >= 0 and rx < self.MAX_REG:
-                        val = int(line[2], 0)
+                        val = (cinstr[2] << 8) | cinstr[3]
                         self.LOADI(rx, val)
-                    self.pc += 1
+                    self.pc += opcode.length
                 case Opcode.LOAD:
-                    rx = int(line[1][1])
+                    rx = cinstr[1]
                     if rx >= 0 and rx < self.MAX_REG:
-                        addr = int(line[2], 0)
+                        addr = (cinstr[2] << 8) | cinstr[3]
                         if (addr >= 0 and addr < self.MEM_SIZE - 1):
                             self.LOAD(rx, addr)
-                    self.pc += 1
+                    self.pc += opcode.length
                 case Opcode.ADD:
-                    rx = int(line[1][1])
-                    ry = int(line[2][1])
+                    rx = cinstr[1]
+                    ry = cinstr[2]
                     if rx >= 0 and rx < self.MAX_REG and ry >= 0 and ry < self.MAX_REG:
                         self.ADD(rx, ry)
-                    self.pc += 1
+                    self.pc += opcode.length
                 case Opcode.STORE:
-                    rx = int(line[1][1])
+                    rx = cinstr[1]
                     if rx >= 0 and rx < self.MAX_REG:
-                        addr = int(line[2], 0)
+                        addr = (cinstr[2] << 8) | cinstr[3]
                         if (addr >= 0 and addr < self.MEM_SIZE - 1):
                             self.STORE(rx, addr)
-                    self.pc += 1
+                    self.pc += opcode.length
                 case Opcode.JMP:
-                    addr = int(line[1], 0)
-                    if (addr >= 0 and addr < len(self.instr)):
+                    addr = (cinstr[1] << 8) | cinstr[2]
+                    if (addr >= 0 and addr < self.MEM_SIZE):
                         self.pc = addr
                 case Opcode.HALT:
                     self.running = False
 
     # Helper methods
     def __str__(self):
-        return f"pc={self.pc}\nreg={self.reg}\nmem[0]={self.mem[0]}\nmem[1]={self.mem[1]}"
+        return f"pc={self.pc}\nreg={self.reg}\nmem[0]={self.mem[0]}\nmem[1]={self.mem[1]}\nmem[2]={self.mem[2]}\nmem[3]={self.mem[3]}"
 
     def reset(self):
         self.reg = [0] * 8 # 8 registers, 16 bits per register
@@ -207,22 +209,10 @@ class ISA:
         self.pc = 0
     
 if __name__ == "__main__":
-    isa = ISA()
-
     if (len(sys.argv) > 1):
         input_fn = sys.argv[1]
-
-        with open(f"{input_fn}.asm", "r") as file_content:
-            program = file_content.read().splitlines()
-
-        isa.set_instr(program)
+        isa = ISA(input_fn)
         isa.assemble(input_fn, True)
-        isa.run()
-        print(isa)
-    else:
-        program = "; This program adds 13 + 10\nNOP\nLOADI R0, 13\nLOADI R1, 10\n\nADD R0, R1\nSTORE R0, 0x0000   ; Store in value in to first mem address\nHALT".splitlines() # Test code
-        isa.set_instr(program)
-        isa.assemble("test", True)
-        isa.run()
+        isa.run(input_fn)
         print(isa)
         
