@@ -1,6 +1,6 @@
 # Next Steps
 # 0. Learn about symbol tables, flags, and stack pointers/frame pointers
-# 1. Add more opcodes (SUB, MUL, DIV, AND, OR, XOR, NOT, SHL, SHR, CMP, MOV, LOAD/STORE indirect addr, PUSH, POP, IN/OUT)
+# 1. Add more opcodes (Note: LOAD/STORE indirect addr and for MOV and other opcodes [use an addressing bit in the instruction encoding])
 # 2. Add JMP labels and add JZ, JNZ, JC, JNC with flags (Z flag, C flag, S flag, O flag)
 # 4. Add CALL/RET for functional programming
 # 5. .data/.code 
@@ -16,10 +16,29 @@ class Opcode(Enum):
     NOP = (0, 1)     # NOP             - Does nothing                         - 1 byte
     LOADI = (1, 4)   # LOADI Rx, Val   - Puts the value, Val, into Rx         - 1 + 1 + 2 = 4 bytes
     LOAD = (2, 4)    # LOAD Rx, Addr   - Puts the value at Addr into Rx       - 1 + 1 + 2 = 4 bytes
-    ADD = (3, 3)     # ADD Rx, Ry      - Puts the value of Rx + Ry into Rx    - 1 + 1 + 1 = 3 bytes
-    STORE = (4, 4)   # STORE Rx, Addr  - Puts the value in Rx into Addr       - 1 + 1 + 2 = 4 bytes
-    JMP = (5, 3)     # JMP Addr        - Sets PC to instruction Addr          - 1 + 2 = 3 bytes            - Limits code to 64kb, needs segmentation/paging to fix
-    HALT = (6, 1)    # HALT            - Ends program                         - 1 byte
+    STORE = (3, 4)   # STORE Rx, Addr  - Puts the value in Rx into Addr       - 1 + 1 + 2 = 4 bytes
+    MOV = (4, 3)     # MOV Rx, Ry      - Puts the value in Ry into Ry         - 1 + 1 = 1 = 3 bytes
+    ADD = (5, 3)     # ADD Rx, Ry      - Puts the value of Rx + Ry into Rx    - 1 + 1 + 1 = 3 bytes
+    SUB = (6, 3)     # SUB Rx, Ry      - Puts the value of Rx - Ry into Rx    - 1 + 1 + 1 = 3 bytes
+    MUL = (7, 3)     # MUL Rx, Ry      - Puts the value of Rx * Ry into Rx    - 1 + 1 + 1 = 3 bytes
+    DIV = (8, 3)     # DIV Rx, Ry      - Puts the value of Rx // Ry into Rx   - 1 + 1 + 1 = 3 bytes
+    AND = (9, 3)     # AND Rx, Ry      - Puts the value of Rx & Ry into Rx    - 1 + 1 + 1 = 3 bytes 
+    OR = (10, 3)     # OR Rx, Ry       - Puts the value of Rx | Ry into Rx    - 1 + 1 + 1 = 3 bytes 
+    XOR = (11, 3)    # XOR Rx, Ry      - Puts the value of Rx ^ Ry into Rx    - 1 + 1 + 1 = 3 bytes 
+    NOT = (12, 2)    # NOT Rx          - Puts the value of ~Rx into Rx        - 1 + 1 = 2 bytes 
+    CMP = (13, 3)    # CMP Rx, Ry      - Computes Rx - Ry, updates flags      - 1 + 1 + 1 = 3 bytes
+    SHL = (14, 2)    # SHL Rx          - Bit shifts Rx to the left            - 1 + 1 = 2 bytes 
+    SHR = (15, 2)    # SHR Rx          - Bit shifts Rx to the right           - 1 + 1 = 2 bytes
+    JMP = (16, 3)    # JMP Addr        - Sets PC to instr Addr                - 1 + 2 = 3 bytes            - Limits code to 64kb, needs segmentation/paging to fix
+    JZ = (17, 3)     # JZ Addr         - Sets PC to instr Addr if Z           - 1 + 2 = 3 bytes
+    JNZ = (18, 3)    # JNZ Addr        - Sets PC to instr Addr if ~Z          - 1 + 2 = 3 bytes
+    JC = (19, 3)     # JC Addr         - Sets PC to instr Addr if C           - 1 + 2 = 3 bytes
+    JNC = (20, 3)    # JNC Addr        - Sets PC to instr Addr if ~C          - 1 + 2 = 3 bytes
+    PUSH = (21, 2)   # PUSH Rx         - Pushes Rx onto the stack             - 1 + 1 = 2 bytes
+    POP = (22, 2)    # POP Rx          - Pops Rx from the stack               - 1 + 1 = 2 bytes
+    IN = (23, 4)     # IN Rx, Port     - Puts input from port into Rx         - 1 + 1 + 2 = 4 bytes
+    OUT = (24, 4)    # OUT Rx, Port    - Puts output from Rx into port        - 1 + 1 + 2 = 4 bytes
+    HALT = (25, 1)   # HALT            - Ends program                         - 1 byte
     
     def __new__(cls, code, length):
         obj = object.__new__(cls)
@@ -32,21 +51,63 @@ class ISA:
     MAX_REG = 8
     KILOBYTE = 1024 # A kilobyte has 1024 bytes
     MEM_SIZE = 64 * KILOBYTE # MEM_SIZE and memory-addressable instruction space are the same
+    
+    # Flags
+    Z = 1 << 5 # Zero
+    S = 1 << 6 # Negative
+    C = 1 << 7 # Carry
+    O = 1 << 8 # Overflow
 
     def __init__(self, input_fn=None):
         self.running = False
         self.reg = [0] * self.MAX_REG # 8 registers, 16 bits per register
         self.mem = bytearray(self.MEM_SIZE) # 64kb memory, 8 bits per address
+        self.sp = self.MEM_SIZE
         self.pc = 0 # ID of instruction to run
         if input_fn is not None:
             self.set_instr(input_fn)
         else:
             self.instr = []
         self.bin_instr = None
+        self.flags = 0b00000000 
+        self.ports = {
+            0x0000: "STDIN",
+            0x0001: "STDOUT"
+        }
 
     def set_instr(self, input_fn):
         with open(f"{input_fn}.asm", "r") as a:
             self.instr = a.read().splitlines()
+    
+    def set_flag(self, flag):
+        self.flags |= flag
+
+    def clear_flag(self, flag):
+        self.flags &= ~flag
+
+    def is_flag_set(self, flag):
+        if self.flags & flag:
+            return True
+        return False
+
+    def update_flags(self, res):
+        # Checks if result was 0
+        if res == 0:
+            self.set_flag(self.Z)
+        else:
+            self.clear_flag(self.Z)
+        
+        # Checks if result was negative
+        if res & 0x8000:
+            self.set_flag(self.S)
+        else:
+            self.clear_flag(self.S)
+
+        # Checks if result is longer than 16 bits
+        if res > 0xFFFF or res < 0:
+            self.set_flag(self.C)
+        else:
+            self.clear_flag(self.C)
 
     # Opcode Functions
     def NOP(self):
@@ -58,9 +119,72 @@ class ISA:
     def LOAD(self, rx, addr):
         # Loads 2 bytes of mem
         self.reg[rx] = self.mem[addr] << 8 | self.mem[addr + 1] 
+
+    def MOV(self, rx, ry):
+        self.reg[rx] = self.reg[ry] & 0xFFFF
     
     def ADD(self, rx, ry):
-        self.reg[rx] = (self.reg[rx] + self.reg[ry]) & 0xFFFF
+        res = (self.reg[rx] + self.reg[ry])
+
+        self.update_flags(res)
+        rx_sign = self.reg[rx] & 0x8000
+        ry_sign = self.reg[ry] & 0x8000 
+        res_sign = res & 0x8000
+        if rx_sign == ry_sign and rx_sign != res_sign:
+            self.set_flag(self.O)
+        else:
+            self.clear_flag(self.O) 
+
+        self.reg[rx] = res & 0xFFFF
+
+    def SUB(self, rx, ry):
+        res = (self.reg[rx] - self.reg[ry])
+        
+        self.update_flags(res)
+        rx_sign = self.reg[rx] & 0x8000
+        ry_sign = self.reg[ry] & 0x8000 
+        res_sign = res & 0x8000
+        if rx_sign != ry_sign and rx_sign != res_sign:
+            self.set_flag(self.O)
+        else:
+            self.clear_flag(self.O) 
+
+        self.reg[rx] = res & 0xFFFF
+
+    def MUL(self, rx, ry):
+        self.reg[rx] = (self.reg[rx] * self.reg[ry]) & 0xFFFF
+        self.update_flags(self.reg[rx])
+     
+    def DIV(self, rx, ry):
+        self.reg[rx] = (self.reg[rx] // self.reg[ry]) & 0xFFFF
+        self.update_flags(self.reg[rx])
+
+    def AND(self, rx, ry):
+        self.reg[rx] = (self.reg[rx] & self.reg[ry]) & 0xFFFF
+        self.update_flags(self.reg[rx])
+
+    def OR(self, rx, ry):
+        self.reg[rx] = (self.reg[rx] | self.reg[ry]) & 0xFFFF
+        self.update_flags(self.reg[rx])
+
+    def XOR(self, rx, ry):
+        self.reg[rx] = (self.reg[rx] ^ self.reg[ry]) & 0xFFFF
+        self.update_flags(self.reg[rx])
+
+    def NOT(self, rx):
+        self.reg[rx] = ~self.reg[rx] & 0xFFFF
+        self.update_flags(self.reg[rx])
+
+    def CMP(self, rx, ry):
+        self.update_flags((self.reg[rx] - self.reg[ry]) & 0xFFFF)
+    
+    def SHL(self, rx):
+        self.reg[rx] = self.reg[rx] << 1 & 0xFFFF
+        self.update_flags(self.reg[rx])
+    
+    def SHR(self, rx):
+        self.reg[rx] = self.reg[rx] >> 1 & 0xFFFF
+        self.update_flags(self.reg[rx])
 
     def STORE(self, rx, addr):
         # Stores 2 bytes of mem
@@ -69,6 +193,39 @@ class ISA:
 
     def JMP(self, addr):
         self.pc = addr
+    
+    def JZ(self, addr):
+        if self.is_set_flag(self.Z):
+            self.pc = addr
+
+    def JNZ(self, addr):
+        if not self.is_set_flag(self.Z):
+            self.pc = addr
+    
+    def JC(self, addr):
+        if self.is_set_flag(self.C):
+            self.pc = addr
+
+    def JNC(self, addr):
+        if not self.is_set_flag(self.C):
+            self.pc = addr  
+
+    def PUSH(self, rx):
+        self.sp -= 2
+        self.mem[self.sp] = self.reg[rx] >> 8 & 0xFF
+        self.mem[self.sp + 1] = self.reg[rx] & 0xFF
+
+    def POP(self, rx):
+        self.reg[rx] = (self.mem[self.sp] << 8 | self.mem[self.sp + 1]) & 0xFFFF
+        self.sp += 2
+
+    def IN(self, rx, port):
+        if self.ports[port] == "STDIN":
+            self.reg[rx] = int(input()) & 0xFFFF
+
+    def OUT(self, rx, port):
+        if self.ports[port] == "STDOUT":
+            print(self.reg[rx])
 
     def HALT(self):
         self.running = False
@@ -116,6 +273,8 @@ class ISA:
                                         (addr >> 8) & 0xFF,
                                         addr & 0xFF
                                     ]
+                        case Opcode.MOV:
+                            pass
                         case Opcode.ADD:
                             rx = int(line[1][1])
                             ry = int(line[2][1])
@@ -125,6 +284,26 @@ class ISA:
                                     rx & 0xFF,
                                     ry & 0xFF
                                 ]
+                        case Opcode.SUB:
+                            pass
+                        case Opcode.MUL:
+                            pass
+                        case Opcode.DIV:
+                            pass
+                        case Opcode.AND:
+                            pass
+                        case Opcode.OR:
+                            pass
+                        case Opcode.XOR:
+                            pass
+                        case Opcode.NOT:
+                            pass
+                        case Opcode.CMP:
+                            pass
+                        case Opcode.SHL:
+                            pass
+                        case Opcode.SHR:
+                            pass
                         case Opcode.STORE:
                             rx = int(line[1][1])
                             if rx >= 0 and rx < self.MAX_REG:
@@ -144,6 +323,22 @@ class ISA:
                                     (addr >> 8) & 0xFF,
                                     addr & 0xFF
                                 ]
+                        case Opcode.JZ:
+                            pass
+                        case Opcode.JNZ:
+                            pass
+                        case Opcode.JC:
+                            pass
+                        case Opcode.JNC:
+                            pass
+                        case Opcode.PUSH:
+                            pass
+                        case Opcode.POP:
+                            pass
+                        case Opcode.IN:
+                            pass
+                        case Opcode.OUT:
+                            pass
                         case Opcode.HALT:
                             bytearr = [
                                 opcode.value & 0xFF
@@ -189,12 +384,34 @@ class ISA:
                         if (addr >= 0 and addr < self.MEM_SIZE - 1):
                             self.LOAD(rx, addr)
                     self.pc += opcode.length
+                case Opcode.MOV:
+                    pass
                 case Opcode.ADD:
                     rx = cinstr[1]
                     ry = cinstr[2]
                     if rx >= 0 and rx < self.MAX_REG and ry >= 0 and ry < self.MAX_REG:
                         self.ADD(rx, ry)
                     self.pc += opcode.length
+                case Opcode.SUB:
+                    pass
+                case Opcode.MUL:
+                    pass
+                case Opcode.DIV:
+                    pass
+                case Opcode.AND:
+                    pass
+                case Opcode.OR:
+                    pass
+                case Opcode.XOR:
+                    pass
+                case Opcode.NOT:
+                    pass
+                case Opcode.CMP:
+                    pass
+                case Opcode.SHL:
+                    pass
+                case Opcode.SHR:
+                    pass
                 case Opcode.STORE:
                     rx = cinstr[1]
                     if rx >= 0 and rx < self.MAX_REG:
@@ -206,17 +423,42 @@ class ISA:
                     addr = (cinstr[1] << 8) | cinstr[2]
                     if (addr >= 0 and addr < self.MEM_SIZE):
                         self.pc = addr
+                case Opcode.JZ:
+                    pass
+                case Opcode.JNZ:
+                    pass
+                case Opcode.JC:
+                    pass
+                case Opcode.JNC:
+                    pass
+                case Opcode.PUSH:
+                    pass
+                case Opcode.POP:
+                    pass
+                case Opcode.IN:
+                    pass
+                case Opcode.OUT:
+                    pass
                 case Opcode.HALT:
                     self.running = False
 
     # Helper methods
     def __str__(self):
-        return f"pc={self.pc}\nreg={self.reg}\nmem[0]={self.mem[0]}\nmem[1]={self.mem[1]}\nmem[2]={self.mem[2]}\nmem[3]={self.mem[3]}"
+        changed_mem = {}
+        for i in range(self.MEM_SIZE):
+            if self.mem[i] != 0:
+                changed_mem[i] = self.mem[i]
+        
+        changed_mem_str = "\n".join(f"mem[{addr}]={val}" for addr, val in changed_mem.items())
+
+        return f"pc={self.pc}\nreg={self.reg}\nsp={self.sp}\n" + changed_mem_str
 
     def reset(self):
         self.reg = [0] * 8 # 8 registers, 16 bits per register
         self.mem = bytearray(64 * self.KILOBYTE) # 64kb memory
         self.pc = 0
+        self.sp = self.MEM_SIZE
+        self.flags = 0b00000000 
     
 if __name__ == "__main__":
     if (len(sys.argv) > 1):

@@ -373,3 +373,192 @@ Write a simple compiler for a small language (e.g., arithmetic expressions, if/w
 If you want, I can make a single “master checklist” for bootstrapping your CPU → assembler → compiler, with all the ISA, assembler, simulator, and compiler requirements clearly laid out so nothing is missing. This would serve as a roadmap for your entire project.
 
 Do you want me to do that?
+
+can you tell me how each of these opcodes work (SUB, MUL, DIV, AND, OR, XOR, NOT, SHL, SHR, CMP, MOV, LOAD/STORE indirect addr, PUSH, POP, IN/OUT)
+
+Absolutely — let’s go through each opcode and explain how it would work in your CPU simulator, including what it does, its operands, and how it interacts with memory, registers, or flags.
+
+⸻
+
+1. Arithmetic Opcodes
+
+Opcode	Meaning	Operands	Behavior
+SUB	Subtract	SUB Rx, Ry	Rx = Rx - Ry; updates flags (Zero, Sign, Carry, Overflow)
+MUL	Multiply	MUL Rx, Ry	Rx = Rx * Ry; may update flags depending on your CPU
+DIV	Divide	DIV Rx, Ry	Rx = Rx / Ry; optional remainder in another register; handle division by 0
+
+
+⸻
+
+2. Logic Opcodes
+
+Opcode	Meaning	Operands	Behavior
+AND	Bitwise AND	AND Rx, Ry	Rx = Rx & Ry; sets Zero flag if result = 0
+OR	Bitwise OR	OR Rx, Ry	`Rx = Rx
+XOR	Bitwise XOR	XOR Rx, Ry	Rx = Rx ^ Ry; sets flags
+NOT	Bitwise NOT	NOT Rx	Rx = ~Rx; flips all bits in the register
+
+
+⸻
+
+3. Shift Opcodes
+
+Opcode	Meaning	Operands	Behavior
+SHL	Shift Left	SHL Rx, n	Rx = Rx << n; shifts bits left, optional carry out
+SHR	Shift Right	SHR Rx, n	Rx = Rx >> n; logical shift, optional flags
+
+
+⸻
+
+4. Comparison Opcode
+
+Opcode	Meaning	Operands	Behavior
+CMP	Compare	CMP Rx, Ry	Subtracts Ry from Rx without storing result, sets flags: Zero, Sign, Carry, Overflow
+
+	•	Used before conditional jumps like JZ, JNZ, JC, JNC.
+
+⸻
+
+5. Data Movement Opcodes
+
+Opcode	Meaning	Operands	Behavior
+MOV	Move	MOV Rx, Ry	Copies value of Ry into Rx
+LOAD	Load from memory	LOAD Rx, [Addr]	Loads value at memory address Addr into Rx
+STORE	Store to memory	STORE Rx, [Addr]	Stores value from Rx into memory address Addr
+LOAD / STORE indirect	Load/store via register pointer	LOAD Rx, [Ry] / STORE Rx, [Ry]	Uses value in Ry as memory address; allows array access or dynamic memory addressing
+
+
+⸻
+
+6. Stack Opcodes
+
+Opcode	Meaning	Operands	Behavior
+PUSH	Push onto stack	PUSH Rx	Decrements SP, stores Rx at SP location
+POP	Pop from stack	POP Rx	Loads value from SP into Rx, increments SP
+
+	•	Required for CALL/RET and function argument passing.
+
+⸻
+
+7. I/O / System Opcodes
+
+Opcode	Meaning	Operands	Behavior
+IN	Input	IN Rx	Reads a value from console (or input device) into Rx
+OUT	Output	OUT Rx	Prints value of Rx to console (or output device)
+
+
+⸻
+
+⚡ Notes on Flags
+
+Many arithmetic and logic instructions update CPU flags:
+	•	Zero (Z): Result = 0
+	•	Sign (S): Result negative (high bit set)
+	•	Carry (C): Unsigned overflow (e.g., SUB, ADD)
+	•	Overflow (O): Signed overflow
+
+These flags are critical for conditional jumps like JZ, JNZ, JC, etc.
+
+⸻
+
+If you want, I can make a table showing each opcode with a 2–3 byte example of machine code, operands, and what the CPU simulator would do step-by-step. That makes it very concrete for your simulator and compiler work.
+
+Do you want me to do that?
+
+teach me about flags
+
+Absolutely! Flags are a fundamental part of how CPUs make decisions, especially for conditional jumps, arithmetic, and logic operations. Let’s go step by step.
+
+⸻
+
+1. What are flags?
+	•	A flag is a single bit in a special CPU register (often called the status register or flags register).
+	•	Each flag represents some property about the result of the last operation.
+	•	Flags do not store data, they just indicate conditions (like “was the result zero?”).
+
+⸻
+
+2. Common CPU flags
+
+Flag	Meaning	Example Use
+Zero (Z)	Set if the result of an operation is 0	CMP R0, R1 followed by JZ jumps if R0 = R1
+Sign (S)	Set if the result is negative (highest bit = 1 in 2’s complement)	Conditional jump if result < 0
+Carry (C)	Set if an unsigned arithmetic operation overflows	Useful for multi-byte addition/subtraction
+Overflow (O)	Set if a signed arithmetic operation overflows	Detects signed integer overflow, e.g., 127 + 1 in 8-bit signed
+
+
+⸻
+
+3. How flags work in arithmetic / logic
+
+Example: ADD
+
+LOADI R0, 10
+LOADI R1, 5
+ADD R0, R1
+
+	•	Result: R0 = 15
+	•	Flags set:
+	•	Z = 0 (15 ≠ 0)
+	•	S = 0 (15 positive)
+	•	C = 0 (no unsigned overflow)
+	•	O = 0 (no signed overflow)
+
+⸻
+
+Example: SUB
+
+LOADI R0, 5
+LOADI R1, 10
+SUB R0, R1   ; R0 = 5 - 10 = -5
+
+	•	Result: R0 = -5 (in 2’s complement)
+	•	Flags set:
+	•	Z = 0 (result ≠ 0)
+	•	S = 1 (result negative)
+	•	C = 0 (no unsigned borrow if your CPU sets carry this way)
+	•	O = 0 (no signed overflow)
+
+⸻
+
+Example: CMP (Compare)
+
+CMP R0, R1
+
+	•	Subtracts R1 from R0 without storing result.
+	•	Sets flags like SUB.
+	•	Then you can do conditional jumps:
+	•	JZ → jump if Z = 1 (equal)
+	•	JNZ → jump if Z = 0 (not equal)
+	•	JC → jump if carry (unsigned overflow)
+	•	JNC → jump if not carry
+
+⸻
+
+4. Flags and conditional jumps
+
+Instruction	Condition
+JZ label	Jump if last result = 0 (Z=1)
+JNZ label	Jump if last result ≠ 0 (Z=0)
+JC label	Jump if unsigned carry occurred (C=1)
+JNC label	Jump if no carry (C=0)
+JS label	Jump if negative result (S=1)
+JO label	Jump if signed overflow (O=1)
+
+
+⸻
+
+5. How this fits in your CPU
+	•	Every arithmetic/logical instruction (ADD, SUB, AND, OR, CMP) should update flags.
+	•	Conditional jumps then read flags to decide whether to jump.
+	•	This is critical for loops, if/else, and comparisons in your compiler output.
+
+⸻
+
+💡 Analogy: Flags are like “traffic lights” for the CPU — they don’t store the data itself, but they tell the CPU what to do next depending on what happened.
+
+⸻
+
+If you want, I can make a diagram showing a sample operation, the flags it sets, and which jumps each flag would trigger — it’s super helpful for your CPU simulator and compiler logic.
+
+Do you want me to do that?
