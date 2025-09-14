@@ -1,7 +1,8 @@
 # Next Steps
 # 0. Learn about symbol tables, flags, and stack pointers/frame pointers
-# 1. Add more opcodes (SUB, MUL, DIV, AND, OR, XOR, NOT, SHL, SHR, CMP, MOV, LOAD/STORE indirect addr, PUSH, POP, IN/OUT)
-# 2. Add JMP labels and add JZ, JNZ, JC, JNC with flags (Z flag, C flag, S flag, O flag)
+# 1. Add more opcodes (SUB, MUL, DIV, AND, OR, XOR, NOT, SHL, SHR, CMP, MOV, LOAD, STORE, PUSH, POP, IN/OUT)
+# 2. LOAD, STORE, PUSH, POP, and MOV should all have an addressing bit for indirect addresses (e.g. [Rx])
+# 3. Add JMP labels and add JZ, JNZ, JC, JNC with flags (Z flag, C flag, S flag, O flag)
 # 4. Add CALL/RET for functional programming
 # 5. .data/.code 
 # 6. Constants and immediate values

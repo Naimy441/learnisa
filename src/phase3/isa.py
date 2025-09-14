@@ -1,7 +1,8 @@
 # Next Steps
 # 0. Learn about symbol tables, flags, and stack pointers/frame pointers
-# 1. Add more opcodes (Note: LOAD/STORE indirect addr and for MOV and other opcodes [use an addressing bit in the instruction encoding])
-# 2. Add JMP labels and add JZ, JNZ, JC, JNC with flags (Z flag, C flag, S flag, O flag)
+# 1. Test all opcodes (SUB, MUL, DIV, AND, OR, XOR, NOT, SHL, SHR, CMP, MOV, LOAD, STORE, PUSH, POP, IN/OUT)
+# 2. LOAD, STORE, PUSH, POP, and MOV should all have an addressing bit for indirect addresses (e.g. [Rx])
+# 3. Add JMP labels and add JZ, JNZ, JC, JNC with flags (Z flag, C flag, S flag, O flag)
 # 4. Add CALL/RET for functional programming
 # 5. .data/.code 
 # 6. Constants and immediate values
@@ -12,33 +13,33 @@ import sys
 from enum import Enum
 
 class Opcode(Enum):
-                     # Opcode          - Instruction                          - Variable Length Encoding
-    NOP = (0, 1)     # NOP             - Does nothing                         - 1 byte
-    LOADI = (1, 4)   # LOADI Rx, Val   - Puts the value, Val, into Rx         - 1 + 1 + 2 = 4 bytes
-    LOAD = (2, 4)    # LOAD Rx, Addr   - Puts the value at Addr into Rx       - 1 + 1 + 2 = 4 bytes
-    STORE = (3, 4)   # STORE Rx, Addr  - Puts the value in Rx into Addr       - 1 + 1 + 2 = 4 bytes
-    MOV = (4, 3)     # MOV Rx, Ry      - Puts the value in Ry into Ry         - 1 + 1 = 1 = 3 bytes
-    ADD = (5, 3)     # ADD Rx, Ry      - Puts the value of Rx + Ry into Rx    - 1 + 1 + 1 = 3 bytes
-    SUB = (6, 3)     # SUB Rx, Ry      - Puts the value of Rx - Ry into Rx    - 1 + 1 + 1 = 3 bytes
-    MUL = (7, 3)     # MUL Rx, Ry      - Puts the value of Rx * Ry into Rx    - 1 + 1 + 1 = 3 bytes
-    DIV = (8, 3)     # DIV Rx, Ry      - Puts the value of Rx // Ry into Rx   - 1 + 1 + 1 = 3 bytes
-    AND = (9, 3)     # AND Rx, Ry      - Puts the value of Rx & Ry into Rx    - 1 + 1 + 1 = 3 bytes 
-    OR = (10, 3)     # OR Rx, Ry       - Puts the value of Rx | Ry into Rx    - 1 + 1 + 1 = 3 bytes 
-    XOR = (11, 3)    # XOR Rx, Ry      - Puts the value of Rx ^ Ry into Rx    - 1 + 1 + 1 = 3 bytes 
-    NOT = (12, 2)    # NOT Rx          - Puts the value of ~Rx into Rx        - 1 + 1 = 2 bytes 
-    CMP = (13, 3)    # CMP Rx, Ry      - Computes Rx - Ry, updates flags      - 1 + 1 + 1 = 3 bytes
-    SHL = (14, 2)    # SHL Rx          - Bit shifts Rx to the left            - 1 + 1 = 2 bytes 
-    SHR = (15, 2)    # SHR Rx          - Bit shifts Rx to the right           - 1 + 1 = 2 bytes
-    JMP = (16, 3)    # JMP Addr        - Sets PC to instr Addr                - 1 + 2 = 3 bytes            - Limits code to 64kb, needs segmentation/paging to fix
-    JZ = (17, 3)     # JZ Addr         - Sets PC to instr Addr if Z           - 1 + 2 = 3 bytes
-    JNZ = (18, 3)    # JNZ Addr        - Sets PC to instr Addr if ~Z          - 1 + 2 = 3 bytes
-    JC = (19, 3)     # JC Addr         - Sets PC to instr Addr if C           - 1 + 2 = 3 bytes
-    JNC = (20, 3)    # JNC Addr        - Sets PC to instr Addr if ~C          - 1 + 2 = 3 bytes
-    PUSH = (21, 2)   # PUSH Rx         - Pushes Rx onto the stack             - 1 + 1 = 2 bytes
-    POP = (22, 2)    # POP Rx          - Pops Rx from the stack               - 1 + 1 = 2 bytes
-    IN = (23, 4)     # IN Rx, Port     - Puts input from port into Rx         - 1 + 1 + 2 = 4 bytes
-    OUT = (24, 4)    # OUT Rx, Port    - Puts output from Rx into port        - 1 + 1 + 2 = 4 bytes
-    HALT = (25, 1)   # HALT            - Ends program                         - 1 byte
+                    # Opcode          - Instruction                          - Variable Length Encoding
+    NOP   = (0, 1)  # NOP             - Does nothing                         - 1 byte
+    LOADI = (1, 4)  # LOADI Rx, Val   - Puts the value, Val, into Rx         - 1 + 1 + 2 = 4 bytes
+    LOAD  = (2, 4)  # LOAD Rx, Addr   - Puts the value at Addr into Rx       - 1 + 1 + 2 = 4 bytes
+    STORE = (3, 4)  # STORE Rx, Addr  - Puts the value in Rx into Addr       - 1 + 1 + 2 = 4 bytes
+    MOV   = (4, 3)  # MOV Rx, Ry      - Puts the value in Ry into Rx         - 1 + 1 = 1 = 3 bytes
+    ADD   = (5, 3)  # ADD Rx, Ry      - Puts the value of Rx + Ry into Rx    - 1 + 1 + 1 = 3 bytes
+    SUB   = (6, 3)  # SUB Rx, Ry      - Puts the value of Rx - Ry into Rx    - 1 + 1 + 1 = 3 bytes
+    MUL   = (7, 3)  # MUL Rx, Ry      - Puts the value of Rx * Ry into Rx    - 1 + 1 + 1 = 3 bytes
+    DIV   = (8, 3)  # DIV Rx, Ry      - Puts the value of Rx // Ry into Rx   - 1 + 1 + 1 = 3 bytes
+    AND   = (9, 3)  # AND Rx, Ry      - Puts the value of Rx & Ry into Rx    - 1 + 1 + 1 = 3 bytes 
+    OR    = (10, 3) # OR Rx, Ry       - Puts the value of Rx | Ry into Rx    - 1 + 1 + 1 = 3 bytes 
+    XOR   = (11, 3) # XOR Rx, Ry      - Puts the value of Rx ^ Ry into Rx    - 1 + 1 + 1 = 3 bytes 
+    NOT   = (12, 2) # NOT Rx          - Puts the value of ~Rx into Rx        - 1 + 1 = 2 bytes 
+    CMP   = (13, 3) # CMP Rx, Ry      - Computes Rx - Ry, updates flags      - 1 + 1 + 1 = 3 bytes
+    SHL   = (14, 2) # SHL Rx          - Bit shifts Rx to the left            - 1 + 1 = 2 bytes 
+    SHR   = (15, 2) # SHR Rx          - Bit shifts Rx to the right           - 1 + 1 = 2 bytes
+    JMP   = (16, 3) # JMP Addr        - Sets PC to instr Addr                - 1 + 2 = 3 bytes            - Limits code to 64kb, needs segmentation/paging to fix
+    JZ    = (17, 3) # JZ Addr         - Sets PC to instr Addr if Z           - 1 + 2 = 3 bytes
+    JNZ   = (18, 3) # JNZ Addr        - Sets PC to instr Addr if ~Z          - 1 + 2 = 3 bytes
+    JC    = (19, 3) # JC Addr         - Sets PC to instr Addr if C           - 1 + 2 = 3 bytes
+    JNC   = (20, 3) # JNC Addr        - Sets PC to instr Addr if ~C          - 1 + 2 = 3 bytes
+    PUSH  = (21, 2) # PUSH Rx         - Pushes Rx onto the stack             - 1 + 1 = 2 bytes
+    POP   = (22, 2) # POP Rx          - Pops Rx from the stack               - 1 + 1 = 2 bytes
+    IN    = (23, 4) # IN Rx, Port     - Puts input from port into Rx         - 1 + 1 + 2 = 4 bytes
+    OUT   = (24, 4) # OUT Rx, Port    - Puts output from Rx into port        - 1 + 1 + 2 = 4 bytes
+    HALT  = (25, 1) # HALT            - Ends program                         - 1 byte
     
     def __new__(cls, code, length):
         obj = object.__new__(cls)
@@ -68,11 +69,12 @@ class ISA:
             self.set_instr(input_fn)
         else:
             self.instr = []
+        self.symbols = {}
         self.bin_instr = None
         self.flags = 0b00000000 
         self.ports = {
-            0x0000: "STDIN",
-            0x0001: "STDOUT"
+            0x00: "STDIN",
+            0x01: "STDOUT"
         }
 
     def set_instr(self, input_fn):
@@ -156,8 +158,11 @@ class ISA:
         self.update_flags(self.reg[rx])
      
     def DIV(self, rx, ry):
-        self.reg[rx] = (self.reg[rx] // self.reg[ry]) & 0xFFFF
-        self.update_flags(self.reg[rx])
+        if self.reg[ry] != 0:
+            self.reg[rx] = (self.reg[rx] // self.reg[ry]) & 0xFFFF
+            self.update_flags(self.reg[rx])
+        else:
+            raise ZeroDivisionError(f"Division by zero error: R{ry} = 0")
 
     def AND(self, rx, ry):
         self.reg[rx] = (self.reg[rx] & self.reg[ry]) & 0xFFFF
@@ -195,29 +200,31 @@ class ISA:
         self.pc = addr
     
     def JZ(self, addr):
-        if self.is_set_flag(self.Z):
+        if self.is_flag_set(self.Z):
             self.pc = addr
 
     def JNZ(self, addr):
-        if not self.is_set_flag(self.Z):
+        if not self.is_flag_set(self.Z):
             self.pc = addr
     
     def JC(self, addr):
-        if self.is_set_flag(self.C):
+        if self.is_flag_set(self.C):
             self.pc = addr
 
     def JNC(self, addr):
-        if not self.is_set_flag(self.C):
+        if not self.is_flag_set(self.C):
             self.pc = addr  
 
     def PUSH(self, rx):
-        self.sp -= 2
-        self.mem[self.sp] = self.reg[rx] >> 8 & 0xFF
-        self.mem[self.sp + 1] = self.reg[rx] & 0xFF
+        if self.sp - 2 > 0:
+            self.sp -= 2
+            self.mem[self.sp] = self.reg[rx] >> 8 & 0xFF
+            self.mem[self.sp + 1] = self.reg[rx] & 0xFF
 
     def POP(self, rx):
-        self.reg[rx] = (self.mem[self.sp] << 8 | self.mem[self.sp + 1]) & 0xFFFF
-        self.sp += 2
+        if self.sp + 2 < self.MEM_SIZE:
+            self.reg[rx] = (self.mem[self.sp] << 8 | self.mem[self.sp + 1]) & 0xFFFF
+            self.sp += 2
 
     def IN(self, rx, port):
         if self.ports[port] == "STDIN":
@@ -231,6 +238,108 @@ class ISA:
         self.running = False
 
     # Turn Assembly into Binary Executeable
+    def validate_rx_ry(self, opcode, line):
+        rx = int(line[1][1])
+        ry = int(line[2][1])
+        if rx >= 0 and rx < self.MAX_REG and ry >= 0 and ry < self.MAX_REG:
+            return [
+                opcode.value & 0xFF,
+                rx & 0xFF,
+                ry & 0xFF
+            ]
+
+    def validate_rx_addr(self, opcode, line):
+        rx = int(line[1][1])
+        if rx >= 0 and rx < self.MAX_REG:
+            addr = int(line[2], 0)
+            if (addr >= 0 and addr < self.MEM_SIZE - 1):
+                return [
+                    opcode.value & 0xFF,
+                    rx & 0xFF,
+                    (addr >> 8) & 0xFF,
+                    addr & 0xFF
+                ]
+
+    def validate_rx(self, opcode, line):
+        rx = int(line[1][1])
+        if rx >= 0 and rx < self.MAX_REG:
+            return [
+                opcode.value & 0xFF,
+                rx & 0xFF
+            ]
+
+    def validate_addr(self, opcode, line):
+        addr = int(line[1], 0)
+        if (addr >= 0 and addr < self.MEM_SIZE):
+            return [
+                opcode.value & 0xFF,
+                (addr >> 8) & 0xFF,
+                addr & 0xFF
+            ]
+
+    def get_byte_array(self, opcode, line):
+        match opcode:
+            case Opcode.NOP:
+                return [opcode.value & 0xFF]
+            case Opcode.LOADI:
+                rx = int(line[1][1])
+                if rx >= 0 and rx < self.MAX_REG:
+                    val = int(line[2], 0)
+                    return [
+                        opcode.value & 0xFF,
+                        rx & 0xFF,
+                        (val >> 8) & 0xFF,
+                        val & 0xFF
+                    ]
+            case Opcode.LOAD:
+                return self.validate_rx_addr(opcode, line)
+            case Opcode.MOV:
+                return self.validate_rx_ry(opcode, line)
+            case Opcode.ADD:
+                return self.validate_rx_ry(opcode, line)
+            case Opcode.SUB:
+                return self.validate_rx_ry(opcode, line)
+            case Opcode.MUL:
+                return self.validate_rx_ry(opcode, line)
+            case Opcode.DIV:
+                return self.validate_rx_ry(opcode, line)
+            case Opcode.AND:
+                return self.validate_rx_ry(opcode, line)
+            case Opcode.OR:
+                return self.validate_rx_ry(opcode, line)
+            case Opcode.XOR:
+                return self.validate_rx_ry(opcode, line)
+            case Opcode.NOT:
+                return self.validate_rx(opcode, line)
+            case Opcode.CMP:
+                return self.validate_rx_ry(opcode, line)
+            case Opcode.SHL:
+                return self.validate_rx(opcode, line)
+            case Opcode.SHR:
+                return self.validate_rx(opcode, line)
+            case Opcode.STORE:
+                return self.validate_rx_addr(opcode, line)
+            case Opcode.JMP:
+                return self.validate_addr(opcode, line)
+            case Opcode.JZ:
+                return self.validate_addr(opcode, line)
+            case Opcode.JNZ:
+                return self.validate_addr(opcode, line)
+            case Opcode.JC:
+                return self.validate_addr(opcode, line)
+            case Opcode.JNC:
+                return self.validate_addr(opcode, line)
+            case Opcode.PUSH:
+                return self.validate_rx(opcode, line)
+            case Opcode.POP:
+                return self.validate_rx(opcode, line)
+            case Opcode.IN:
+                return self.validate_rx_addr(opcode, line)
+            case Opcode.OUT:
+                return self.validate_rx_addr(opcode, line)
+            case Opcode.HALT:
+                return [opcode.value & 0xFF]
+
     def assemble(self, output_fn, debug_mode=False):
         if len(self.instr) > 0:
             buf = bytearray()
@@ -243,106 +352,9 @@ class ISA:
                     continue
                 
                 line = cur_instr.split(';')[0].strip().replace(',', '').split()
-
                 opcode = Opcode[line[0]]
                 if len(buf) + opcode.length < self.MEM_SIZE:
-                    bytearr = []
-                    match opcode:
-                        case Opcode.NOP:
-                                bytearr = [
-                                    opcode.value & 0xFF
-                                ]
-                        case Opcode.LOADI:
-                            rx = int(line[1][1])
-                            if rx >= 0 and rx < self.MAX_REG:
-                                val = int(line[2], 0)
-                                bytearr = [
-                                    opcode.value & 0xFF,
-                                    rx & 0xFF,
-                                    (val >> 8) & 0xFF,
-                                    val & 0xFF
-                                ]
-                        case Opcode.LOAD:
-                            rx = int(line[1][1])
-                            if rx >= 0 and rx < self.MAX_REG:
-                                addr = int(line[2], 0)
-                                if (addr >= 0 and addr < self.MEM_SIZE - 1):
-                                    bytearr = [
-                                        opcode.value & 0xFF,
-                                        rx & 0xFF,
-                                        (addr >> 8) & 0xFF,
-                                        addr & 0xFF
-                                    ]
-                        case Opcode.MOV:
-                            pass
-                        case Opcode.ADD:
-                            rx = int(line[1][1])
-                            ry = int(line[2][1])
-                            if rx >= 0 and rx < self.MAX_REG and ry >= 0 and ry < self.MAX_REG:
-                                bytearr = [
-                                    opcode.value & 0xFF,
-                                    rx & 0xFF,
-                                    ry & 0xFF
-                                ]
-                        case Opcode.SUB:
-                            pass
-                        case Opcode.MUL:
-                            pass
-                        case Opcode.DIV:
-                            pass
-                        case Opcode.AND:
-                            pass
-                        case Opcode.OR:
-                            pass
-                        case Opcode.XOR:
-                            pass
-                        case Opcode.NOT:
-                            pass
-                        case Opcode.CMP:
-                            pass
-                        case Opcode.SHL:
-                            pass
-                        case Opcode.SHR:
-                            pass
-                        case Opcode.STORE:
-                            rx = int(line[1][1])
-                            if rx >= 0 and rx < self.MAX_REG:
-                                addr = int(line[2], 0)
-                                if (addr >= 0 and addr < self.MEM_SIZE - 1):
-                                    bytearr = [
-                                        opcode.value & 0xFF,
-                                        rx & 0xFF,
-                                        (addr >> 8) & 0xFF,
-                                        addr & 0xFF
-                                    ]
-                        case Opcode.JMP:
-                            addr = int(line[1], 0)
-                            if (addr >= 0 and addr < self.MEM_SIZE):
-                                bytearr = [
-                                    opcode.value & 0xFF,
-                                    (addr >> 8) & 0xFF,
-                                    addr & 0xFF
-                                ]
-                        case Opcode.JZ:
-                            pass
-                        case Opcode.JNZ:
-                            pass
-                        case Opcode.JC:
-                            pass
-                        case Opcode.JNC:
-                            pass
-                        case Opcode.PUSH:
-                            pass
-                        case Opcode.POP:
-                            pass
-                        case Opcode.IN:
-                            pass
-                        case Opcode.OUT:
-                            pass
-                        case Opcode.HALT:
-                            bytearr = [
-                                opcode.value & 0xFF
-                            ]
+                    bytearr = self.get_byte_array(opcode, line)
 
                     buf.extend(bytearr)
                     if debug_mode:
@@ -357,6 +369,33 @@ class ISA:
                         h.write(" ".join(f"{b:02X}" for b in arr) + "\n") # Formats as 2 digit hexadecimal
 
     # Fetch-Decode-Execute Cycle
+    def decode_rx_ry(self, cinstr):
+        rx = cinstr[1]
+        ry = cinstr[2]
+        if rx >= 0 and rx < self.MAX_REG and ry >= 0 and ry < self.MAX_REG:
+            return rx, ry
+        raise ValueError(f"Invalid register ({rx}) or ({ry})")
+
+    def decode_rx_addr(self, cinstr):
+        rx = cinstr[1]
+        addr = (cinstr[2] << 8) | cinstr[3]
+        if rx >= 0 and rx < self.MAX_REG:
+            if (addr >= 0 and addr < self.MEM_SIZE - 1):
+                return rx, addr
+        raise ValueError(f"Invalid register ({rx}) or address ({addr})")
+
+    def decode_rx(self, cinstr):
+        rx = cinstr[1]
+        if rx >= 0 and rx < self.MAX_REG:
+            return rx
+        raise ValueError(f"Invalid register ({rx})")
+
+    def decode_addr(self, cinstr):
+        addr = (cinstr[1] << 8) | cinstr[2]
+        if (addr >= 0 and addr < self.MEM_SIZE):
+            return addr
+        raise ValueError(f"Invalid address ({addr})")
+
     def run(self, input_fn):
         with open(f"{input_fn}.bin", "rb") as b:
             self.bin_instr = b.read()
@@ -378,67 +417,98 @@ class ISA:
                         self.LOADI(rx, val)
                     self.pc += opcode.length
                 case Opcode.LOAD:
-                    rx = cinstr[1]
-                    if rx >= 0 and rx < self.MAX_REG:
-                        addr = (cinstr[2] << 8) | cinstr[3]
-                        if (addr >= 0 and addr < self.MEM_SIZE - 1):
-                            self.LOAD(rx, addr)
+                    rx, addr = self.decode_rx_addr(cinstr)
+                    self.LOAD(rx, addr)
                     self.pc += opcode.length
                 case Opcode.MOV:
-                    pass
+                    rx, ry = self.decode_rx_ry(cinstr)
+                    self.MOV(rx, ry)
+                    self.pc += opcode.length
                 case Opcode.ADD:
-                    rx = cinstr[1]
-                    ry = cinstr[2]
-                    if rx >= 0 and rx < self.MAX_REG and ry >= 0 and ry < self.MAX_REG:
-                        self.ADD(rx, ry)
+                    rx, ry = self.decode_rx_ry(cinstr)
+                    self.ADD(rx, ry)
                     self.pc += opcode.length
                 case Opcode.SUB:
-                    pass
+                    rx, ry = self.decode_rx_ry(cinstr)
+                    self.SUB(rx, ry)
+                    self.pc += opcode.length
                 case Opcode.MUL:
-                    pass
+                    rx, ry = self.decode_rx_ry(cinstr)
+                    self.MUL(rx, ry)
+                    self.pc += opcode.length
                 case Opcode.DIV:
-                    pass
+                    rx, ry = self.decode_rx_ry(cinstr)
+                    self.DIV(rx, ry)
+                    self.pc += opcode.length
                 case Opcode.AND:
-                    pass
+                    rx, ry = self.decode_rx_ry(cinstr)
+                    self.AND(rx, ry)
+                    self.pc += opcode.length
                 case Opcode.OR:
-                    pass
+                    rx, ry = self.decode_rx_ry(cinstr)
+                    self.OR(rx, ry)
+                    self.pc += opcode.length
                 case Opcode.XOR:
-                    pass
+                    rx, ry = self.decode_rx_ry(cinstr)
+                    self.XOR(rx, ry)
+                    self.pc += opcode.length
                 case Opcode.NOT:
-                    pass
+                    rx = self.decode_rx(cinstr)
+                    self.NOT(rx)
+                    self.pc += opcode.length
                 case Opcode.CMP:
-                    pass
+                    rx, ry = self.decode_rx_ry(cinstr)
+                    self.CMP(rx, ry)
+                    self.pc += opcode.length
                 case Opcode.SHL:
-                    pass
+                    rx = self.decode_rx(cinstr)
+                    self.SHL(rx)
+                    self.pc += opcode.length
                 case Opcode.SHR:
-                    pass
+                    rx = self.decode_rx(cinstr)
+                    self.SHR(rx)
+                    self.pc += opcode.length
                 case Opcode.STORE:
-                    rx = cinstr[1]
-                    if rx >= 0 and rx < self.MAX_REG:
-                        addr = (cinstr[2] << 8) | cinstr[3]
-                        if (addr >= 0 and addr < self.MEM_SIZE - 1):
-                            self.STORE(rx, addr)
+                    rx, addr = self.decode_rx_addr(cinstr)
+                    self.STORE(rx, addr)
                     self.pc += opcode.length
                 case Opcode.JMP:
-                    addr = (cinstr[1] << 8) | cinstr[2]
-                    if (addr >= 0 and addr < self.MEM_SIZE):
-                        self.pc = addr
+                    addr = self.decode_addr(cinstr)
+                    self.JMP(addr)
                 case Opcode.JZ:
-                    pass
+                    addr = self.decode_addr(cinstr)
+                    self.JZ(addr)
                 case Opcode.JNZ:
-                    pass
+                    addr = self.decode_addr(cinstr)
+                    self.JNZ(addr)
                 case Opcode.JC:
-                    pass
+                    addr = self.decode_addr(cinstr)
+                    self.JC(addr)
                 case Opcode.JNC:
-                    pass
+                    addr = self.decode_addr(cinstr)
+                    self.JNC(addr)
                 case Opcode.PUSH:
-                    pass
+                    rx = self.decode_rx(cinstr)
+                    self.PUSH(rx)
+                    self.pc += opcode.length
                 case Opcode.POP:
-                    pass
+                    rx = self.decode_rx(cinstr)
+                    self.POP(rx)
+                    self.pc += opcode.length
                 case Opcode.IN:
-                    pass
+                    rx = cinstr[1]
+                    port = cinstr[2]
+                    if rx >= 0 and rx < self.MAX_REG:
+                        if (port in self.ports):
+                            self.IN(rx, port)
+                    self.pc += opcode.length
                 case Opcode.OUT:
-                    pass
+                    rx = cinstr[1]
+                    port = cinstr[2]
+                    if rx >= 0 and rx < self.MAX_REG:
+                        if (port in self.ports):
+                            self.OUT(rx, port)
+                    self.pc += opcode.length
                 case Opcode.HALT:
                     self.running = False
 
