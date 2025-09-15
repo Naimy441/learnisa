@@ -1,8 +1,7 @@
 # Next Steps
-# 0. Learn stack pointers/frame pointers
-# 1. Constants and immediate values
-# 2. Macros and psuedo instructions
-# 3. Write 2 test programs: fibonacci (loops) and factorial (recursion)
+# 0. Implement frame pointers
+# 1. Macros and psuedo instructions
+# 2. Write 2 test programs: fibonacci (loops) and factorial (recursion)
 
 import sys
 from enum import Enum
@@ -647,7 +646,7 @@ class ISA:
                     self.NOP(opcode)
                 case Opcode.LOAD:
                     mode = cinstr.pop(1)
-                    
+
                     if mode == 0x01:  # Immediate
                         rx = cinstr[1]
                         if rx >= 0 and rx < self.MAX_REG:
