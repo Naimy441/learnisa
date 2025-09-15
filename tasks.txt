@@ -1,0 +1,18 @@
+Write a compiler for the C language in your version of assembly
+Compile using isa.py
+Keep as c_compiler.bin
+
+Rewrite the compiler for the C language in your version of C
+Compile using c_compiler.bin
+Keep as new_c_compiler.bin
+Improve and recompile as needed
+
+Seperate the CPU and Compiler code
+Rewrite the CPU in your version of C
+Compile using new_c_compiler.bin
+Improve and recompile as needed
+
+Write a compiler for an AI native language in your version of C
+Compile using new_c_compiler.bin
+Keep as ai_native_compiler.bin
+Improve and recompile as needed
