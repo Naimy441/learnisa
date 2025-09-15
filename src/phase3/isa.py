@@ -1,11 +1,10 @@
 # Next Steps
-# 0. Learn about symbol tables, flags, and stack pointers/frame pointers
+# 0. Learn stack pointers/frame pointers
 # 1. LOAD, STORE, PUSH, POP, and MOV should all have an addressing bit for indirect addresses (e.g. [Rx])
-# 2. Add CALL/RET for functional programming
-# 3. .data/.code 
-# 4. Constants and immediate values
-# 5. Macros and psuedo instructions
-# 6. Write 2 test programs: fibonacci (loops) and factorial (recursion)
+# 2. .data/.code 
+# 3. Constants and immediate values
+# 4. Macros and psuedo instructions
+# 5. Write 2 test programs: fibonacci (loops) and factorial (recursion)
 
 import sys
 from enum import Enum
@@ -37,7 +36,9 @@ class Opcode(Enum):
     POP   = (22, 2) # POP Rx          - Pops from the stack, stores in Rx    - 1 + 1 = 2 bytes
     IN    = (23, 4) # IN Rx, Port     - Puts input from port into Rx         - 1 + 1 + 2 = 4 bytes
     OUT   = (24, 4) # OUT Rx, Port    - Puts output from Rx into port        - 1 + 1 + 2 = 4 bytes
-    HALT  = (25, 1) # HALT            - Ends program                         - 1 byte
+    CALL  = (25, 3) # CALL Addr       - Jumps to Addr, saves Addr to stack   - 1 + 2 = 3 bytes
+    RET   = (26, 1) # RET             - Pops Addr in stack, jumps after Addr - 1 byte
+    HALT  = (27, 1) # HALT            - Ends program                         - 1 byte
     
     def __new__(cls, code, length):
         obj = object.__new__(cls)
@@ -110,8 +111,8 @@ class ISA:
             self.clear_flag(self.C)
 
     # Opcode Functions
-    def NOP(self):
-        pass
+    def NOP(self, opcode):
+        self.pc += opcode.length
 
     def LOADI(self, rx, val):
         self.reg[rx] = val & 0xFFFF
@@ -242,6 +243,26 @@ class ISA:
         if self.ports[port] == "STDOUT":
             print(self.reg[rx])
 
+    def CALL(self, addr, opcode):
+        if self.sp - 2 >= 0:
+            self.sp -= 2
+            ret_addr = self.pc + opcode.length
+            self.mem[self.sp] = ret_addr >> 8 & 0xFF
+            self.mem[self.sp + 1] = ret_addr & 0xFF
+            self.pc = addr
+        else:
+            self.pc += opcode.length
+
+    def RET(self, opcode):
+        if self.sp + 2 <= self.MEM_SIZE:
+            addr = (self.mem[self.sp] << 8 | self.mem[self.sp + 1]) & 0xFFFF
+            self.mem[self.sp] = 0
+            self.mem[self.sp + 1] = 0
+            self.sp += 2
+            self.pc = addr
+        else:
+            self.pc += opcode.length
+
     def HALT(self):
         self.running = False
 
@@ -345,6 +366,10 @@ class ISA:
                 return self.validate_rx_addr(opcode, line)
             case Opcode.OUT:
                 return self.validate_rx_addr(opcode, line)
+            case Opcode.CALL:
+                return self.validate_addr(opcode, line)
+            case Opcode.RET:
+                return [opcode.value & 0xFF]
             case Opcode.HALT:
                 return [opcode.value & 0xFF]
 
@@ -443,7 +468,7 @@ class ISA:
 
             match opcode:
                 case Opcode.NOP:
-                    self.pc += opcode.length
+                    self.NOP(opcode)
                 case Opcode.LOADI:
                     rx = cinstr[1]
                     if rx >= 0 and rx < self.MAX_REG:
@@ -539,8 +564,13 @@ class ISA:
                     if (port in self.ports):
                         self.OUT(rx, port)
                     self.pc += opcode.length
+                case Opcode.CALL:
+                    addr = self.decode_addr(cinstr)
+                    self.CALL(addr, opcode)
+                case Opcode.RET:
+                    self.RET(opcode)
                 case Opcode.HALT:
-                    self.running = False
+                    self.HALT()
             
             if debug_mode:
                 print(self)

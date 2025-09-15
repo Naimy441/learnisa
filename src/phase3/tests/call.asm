@@ -1,0 +1,11 @@
+START:
+    CALL INPUT
+    OUT R0, 0x0001
+    JMP END
+
+INPUT:
+    IN R0, 0x0000
+    RET
+
+END:
+    HALT
