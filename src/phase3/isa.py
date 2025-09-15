@@ -1,7 +1,7 @@
 # Next Steps
 # 0. Learn stack pointers/frame pointers
 # 1. LOAD, STORE, PUSH, POP, and MOV should all have an addressing bit for indirect addresses (e.g. [Rx])
-# 2. .data/.code 
+# 2. .data/.code and the header
 # 3. Constants and immediate values
 # 4. Macros and psuedo instructions
 # 5. Write 2 test programs: fibonacci (loops) and factorial (recursion)
@@ -48,6 +48,9 @@ class Opcode(Enum):
         
 # Instruction Set Architecture
 class ISA:
+    HEADER_LENGTH = 16
+    MAGIC_NUM = (0x41, 0x4E)
+    
     MAX_REG = 8
     KILOBYTE = 1024 # A kilobyte has 1024 bytes
     MEM_SIZE = 64 * KILOBYTE # MEM_SIZE and memory-addressable instruction space are the same
@@ -59,22 +62,24 @@ class ISA:
     O = 1 << 8 # Overflow
 
     def __init__(self, input_fn=None):
+        # CPU
         self.running = False
         self.reg = [0] * self.MAX_REG # 8 registers, 16 bits per register
         self.mem = bytearray(self.MEM_SIZE) # 64kb memory, 8 bits per address
         self.sp = self.MEM_SIZE
         self.pc = 0 # ID of instruction to run
-        if input_fn is not None:
-            self.set_instr(input_fn)
-        else:
-            self.instr = []
         self.symbols = {}
-        self.bin_instr = None
         self.flags = 0b00000000 
         self.ports = {
             0x0000: "STDIN",
             0x0001: "STDOUT"
         }
+
+        # Assembler
+        if input_fn is not None:
+            self.set_instr(input_fn)
+        else:
+            self.instr = []
 
     def set_instr(self, input_fn):
         with open(f"{input_fn}.asm", "r") as a:
@@ -375,32 +380,98 @@ class ISA:
 
     def create_symbol_map(self):
         len_bytes = 0
+        is_reading_data = False
+        memory_addr = 0x0000
         for i in range(len(self.instr)):
             cur_instr = self.instr[i]
             if cur_instr == '' or cur_instr.strip()[0] == ';':
                 continue
 
-            line = cur_instr.split(';')[0].strip().replace(',', '').split()
+            line = cur_instr.split(';')[0].strip().replace(',', '').replace('=', '').split()
+
+            if line[0] == '.data':
+                is_reading_data = True
+                continue
+
+            if is_reading_data:
+                if line[0] == '.code':
+                    is_reading_data = False
+                    continue
+                elif line[0] in self.symbols:
+                    raise ValueError(f"Data '{line[0]}' already defined")
+                else:
+                    self.symbols[line[0]] = memory_addr
+                    memory_addr += 1
+                    continue
+
             if line[0][-1] == ':':
+                if line[0] in self.symbols:
+                    raise ValueError(f"Data or label '{line[0]}' already defined")
                 self.symbols[line[0][:-1]] = len_bytes
             else:
                 opcode = Opcode[line[0]]
                 len_bytes += opcode.length
+
+    def getHeaderBuf(self, data_buf_len, code_buf_len):
+        header_buf = bytearray(self.HEADER_LENGTH)
+
+        DATA_OFFSET = self.HEADER_LENGTH
+        DATA_LENGTH = data_buf_len
+        CODE_OFFSET = self.HEADER_LENGTH + DATA_LENGTH
+        CODE_LENGTH = code_buf_len
+        ENTRY_POINT = CODE_OFFSET
+        RESERVED = [0x00, 0x00, 0x00, 0x00]
+
+        header_buf[0:2] = [self.MAGIC_NUM[0], self.MAGIC_NUM[1]]
+        header_buf[2:4] = [DATA_OFFSET >> 8 & 0xFF, DATA_OFFSET & 0xFF]
+        header_buf[4:6] = [DATA_LENGTH >> 8 & 0xFF, DATA_LENGTH & 0xFF]
+        header_buf[6:8] = [CODE_OFFSET >> 8 & 0xFF, CODE_OFFSET & 0xFF]
+        header_buf[8:10] = [CODE_LENGTH >> 8 & 0xFF, CODE_LENGTH & 0xFF]
+        header_buf[10:12] = [ENTRY_POINT >> 8 & 0xFF, ENTRY_POINT & 0xFF]
+        header_buf[12:16] = RESERVED
+
+        return header_buf
 
     def assemble(self, output_fn, debug_mode=False):
         if len(self.instr) > 0:
             self.create_symbol_map()
 
             buf = bytearray()
+            data_buf = bytearray()
+            code_buf = bytearray()
+
             if debug_mode:
                 debug_buf = []
 
+            is_reading_data = False
             for i in range(len(self.instr)):
                 cur_instr = self.instr[i]
                 if cur_instr == '' or cur_instr.strip()[0] == ';':
                     continue
                 
-                line = cur_instr.split(';')[0].strip().replace(',', '').split()
+                line = cur_instr.split(';')[0].strip().replace(',', '').replace('=', '').split()
+
+                print(line)
+
+                if line[0] == '.data':
+                    is_reading_data = True
+                    continue
+
+                if is_reading_data:
+                    if line[0] == '.code':
+                        is_reading_data = False
+                    else:
+                        val = int(line[1], 0)
+                        if (val >= 0 and val < self.MEM_SIZE):
+                            bytearr = [
+                                (val >> 8) & 0xFF,
+                                val & 0xFF
+                            ]
+                            data_buf.extend(bytearr)
+                            if debug_mode:
+                                debug_buf.append(bytearr)
+                    continue
+
                 if line[0][-1] == ':':
                     continue
 
@@ -409,17 +480,23 @@ class ISA:
                         line[i] = f"0x{self.symbols[line[i]]:04X}"
 
                 opcode = Opcode[line[0]]
-                if len(buf) + opcode.length < self.MEM_SIZE:
+                if len(code_buf) + len(data_buf) + opcode.length < self.MEM_SIZE:
                     bytearr = self.get_byte_array(opcode, line)
 
-                    buf.extend(bytearr)
+                    code_buf.extend(bytearr)
                     if debug_mode:
                         debug_buf.append(bytearr)
+            
+            header_buf = self.getHeaderBuf(len(data_buf), len(code_buf))
+            buf.extend(header_buf)
+            buf.extend(data_buf)
+            buf.extend(code_buf)
 
             with open(f"{output_fn}.bin", "wb") as b:
                 b.write(buf)
 
             if debug_mode:
+                debug_buf[:0] = [header_buf]
                 with open(f"{output_fn}.hex", "w") as h:
                     for arr in debug_buf:
                         h.write(" ".join(f"{b:02X}" for b in arr) + "\n") # Formats as 2 digit hexadecimal
@@ -453,18 +530,25 @@ class ISA:
         raise ValueError(f"Invalid address ({addr})")
 
     def run(self, input_fn, debug_mode=False):
-        with open(f"{input_fn}.bin", "rb") as b:
-            self.bin_instr = b.read()
-        
         self.reset()
+
+        with open(f"{input_fn}.bin", "rb") as b:
+            code = b.read()
+            code_len = len(code)
+            if code_len <= self.MEM_SIZE: 
+                self.mem[0:code_len] = code
+                print(self)
+            else:
+                raise OverflowError(f"Binary instructions exceed memory size: {code_len} bytes >= {self.MEM_SIZE} bytes")
+
         self.running = True
 
         if debug_mode:
             print(self)
 
         while (self.running):
-            opcode = Opcode(self.bin_instr[self.pc])
-            cinstr = self.bin_instr[self.pc : self.pc + opcode.length]
+            opcode = Opcode(self.mem[self.pc])
+            cinstr = self.mem[self.pc : self.pc + opcode.length]
 
             match opcode:
                 case Opcode.NOP:
@@ -584,7 +668,7 @@ class ISA:
         
         changed_mem_str = "\n".join(f"mem[{addr}]={val}" for addr, val in changed_mem.items())
 
-        return f"pc={self.pc}\nreg={self.reg}\nsymbols={self.symbols}\nZ={self.is_flag_set(self.Z)}, S={self.is_flag_set(self.S)}, C={self.is_flag_set(self.C)}, O={self.is_flag_set(self.O)}\nsp={self.sp}\n" + changed_mem_str
+        return f"pc={self.pc}\nreg={self.reg}\nsymbols={self.symbols}\nZ={self.is_flag_set(self.Z)}, S={self.is_flag_set(self.S)}, C={self.is_flag_set(self.C)}, O={self.is_flag_set(self.O)}\nsp={self.sp}\n" + changed_mem_str + '\n'
 
     def reset(self):
         self.reg = [0] * 8 # 8 registers, 16 bits per register
@@ -597,7 +681,7 @@ if __name__ == "__main__":
     if (len(sys.argv) > 1):
         input_fn = sys.argv[1]
         isa = ISA(input_fn)
-        isa.assemble(input_fn)
-        isa.run(input_fn, True)
+        isa.assemble(input_fn, True)
+        # isa.run(input_fn, True)
         print(isa)
         

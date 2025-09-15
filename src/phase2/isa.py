@@ -4,7 +4,7 @@
 # 2. LOAD, STORE, PUSH, POP, and MOV should all have an addressing bit for indirect addresses (e.g. [Rx])
 # 3. Add JMP labels and add JZ, JNZ, JC, JNC with flags (Z flag, C flag, S flag, O flag)
 # 4. Add CALL/RET for functional programming
-# 5. .data/.code 
+# 5. .data/.code and the header
 # 6. Constants and immediate values
 # 7. Macros and psuedo instructions
 # 8. Write 2 test programs: fibonacci (loops) and factorial (recursion)
