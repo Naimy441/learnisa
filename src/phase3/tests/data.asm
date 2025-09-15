@@ -1,5 +1,5 @@
 .data
-x = 5
+x = 25000
 
 .code
 LOAD R0, x

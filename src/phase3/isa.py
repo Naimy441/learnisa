@@ -1,10 +1,9 @@
 # Next Steps
 # 0. Learn stack pointers/frame pointers
 # 1. LOAD, STORE, PUSH, POP, and MOV should all have an addressing bit for indirect addresses (e.g. [Rx])
-# 2. .data/.code and the header
-# 3. Constants and immediate values
-# 4. Macros and psuedo instructions
-# 5. Write 2 test programs: fibonacci (loops) and factorial (recursion)
+# 2. Constants and immediate values
+# 3. Macros and psuedo instructions
+# 4. Write 2 test programs: fibonacci (loops) and factorial (recursion)
 
 import sys
 from enum import Enum
@@ -68,7 +67,6 @@ class ISA:
         self.mem = bytearray(self.MEM_SIZE) # 64kb memory, 8 bits per address
         self.sp = self.MEM_SIZE
         self.pc = 0 # ID of instruction to run
-        self.symbols = {}
         self.flags = 0b00000000 
         self.ports = {
             0x0000: "STDIN",
@@ -76,6 +74,8 @@ class ISA:
         }
 
         # Assembler
+        self.DATA_LENGTH = 0
+        self.symbols = {}
         if input_fn is not None:
             self.set_instr(input_fn)
         else:
@@ -281,18 +281,26 @@ class ISA:
                 rx & 0xFF,
                 ry & 0xFF
             ]
+        else:
+            raise ValueError(f"Invalid register (0 <= rx,ry < {self.MAX_REG}): rx={rx}, ry={ry}")
 
-    def validate_rx_addr(self, opcode, line):
+    def validate_rx_addr(self, opcode, line, is_symbol):
         rx = int(line[1][1])
         if rx >= 0 and rx < self.MAX_REG:
             addr = int(line[2], 0)
-            if (addr >= 0 and addr < self.MEM_SIZE - 1):
+            lower_bound = 0 if is_symbol else self.DATA_LENGTH
+            if (addr >= lower_bound and addr < self.MEM_SIZE - 1):
                 return [
                     opcode.value & 0xFF,
                     rx & 0xFF,
                     (addr >> 8) & 0xFF,
                     addr & 0xFF
                 ]
+            else:
+                raise ValueError(f"Invalid address ({self.DATA_LENGTH} <= addr < {self.MEM_SIZE - 1}): {addr}")
+        else:
+            raise ValueError(f"Invalid register (0 <= rx < {self.MAX_REG}): rx={rx}")
+
 
     def validate_rx(self, opcode, line):
         rx = int(line[1][1])
@@ -301,17 +309,28 @@ class ISA:
                 opcode.value & 0xFF,
                 rx & 0xFF
             ]
+        else:
+            raise ValueError(f"Invalid register (0 <= rx < {self.MAX_REG}): rx={rx}")
 
-    def validate_addr(self, opcode, line):
+    def validate_addr(self, opcode, line, is_symbol):
         addr = int(line[1], 0)
-        if (addr >= 0 and addr < self.MEM_SIZE):
+        lower_bound = 0 if is_symbol else self.DATA_LENGTH
+        if (addr >= lower_bound and addr < self.MEM_SIZE - 1):
             return [
                 opcode.value & 0xFF,
                 (addr >> 8) & 0xFF,
                 addr & 0xFF
             ]
+        else:
+            raise ValueError(f"Invalid address ({self.DATA_LENGTH} <= addr < {self.MEM_SIZE - 1}): {addr}")
 
     def get_byte_array(self, opcode, line):
+        is_symbol = False
+        for i in range(len(line)):
+            if line[i] in self.symbols:
+                line[i] = f"0x{self.symbols[line[i]]:04X}"
+                is_symbol = True
+
         match opcode:
             case Opcode.NOP:
                 return [opcode.value & 0xFF]
@@ -326,7 +345,7 @@ class ISA:
                         val & 0xFF
                     ]
             case Opcode.LOAD:
-                return self.validate_rx_addr(opcode, line)
+                return self.validate_rx_addr(opcode, line, is_symbol)
             case Opcode.MOV:
                 return self.validate_rx_ry(opcode, line)
             case Opcode.ADD:
@@ -352,31 +371,33 @@ class ISA:
             case Opcode.SHR:
                 return self.validate_rx(opcode, line)
             case Opcode.STORE:
-                return self.validate_rx_addr(opcode, line)
+                return self.validate_rx_addr(opcode, line, is_symbol)
             case Opcode.JMP:
-                return self.validate_addr(opcode, line)
+                return self.validate_addr(opcode, line, is_symbol)
             case Opcode.JZ:
-                return self.validate_addr(opcode, line)
+                return self.validate_addr(opcode, line, is_symbol)
             case Opcode.JNZ:
-                return self.validate_addr(opcode, line)
+                return self.validate_addr(opcode, line, is_symbol)
             case Opcode.JC:
-                return self.validate_addr(opcode, line)
+                return self.validate_addr(opcode, line, is_symbol)
             case Opcode.JNC:
-                return self.validate_addr(opcode, line)
+                return self.validate_addr(opcode, line, is_symbol)
             case Opcode.PUSH:
                 return self.validate_rx(opcode, line)
             case Opcode.POP:
                 return self.validate_rx(opcode, line)
             case Opcode.IN:
-                return self.validate_rx_addr(opcode, line)
+                return self.validate_rx_addr(opcode, line, is_symbol)
             case Opcode.OUT:
-                return self.validate_rx_addr(opcode, line)
+                return self.validate_rx_addr(opcode, line, is_symbol)
             case Opcode.CALL:
-                return self.validate_addr(opcode, line)
+                return self.validate_addr(opcode, line, is_symbol)
             case Opcode.RET:
                 return [opcode.value & 0xFF]
             case Opcode.HALT:
                 return [opcode.value & 0xFF]
+            case _:
+                raise ValueError(f"Unknown opcode: {opcode}")
 
     def create_symbol_map(self):
         len_bytes = 0
@@ -401,16 +422,19 @@ class ISA:
                     raise ValueError(f"Data '{line[0]}' already defined")
                 else:
                     self.symbols[line[0]] = memory_addr
-                    memory_addr += 1
+                    memory_addr += 2
                     continue
 
             if line[0][-1] == ':':
                 if line[0] in self.symbols:
                     raise ValueError(f"Data or label '{line[0]}' already defined")
-                self.symbols[line[0][:-1]] = len_bytes
+                self.symbols[line[0][:-1]] = len_bytes + memory_addr * 2
+
             else:
                 opcode = Opcode[line[0]]
                 len_bytes += opcode.length
+
+        self.DATA_LENGTH = memory_addr * 2
 
     def getHeaderBuf(self, data_buf_len, code_buf_len):
         header_buf = bytearray(self.HEADER_LENGTH)
@@ -451,8 +475,6 @@ class ISA:
                 
                 line = cur_instr.split(';')[0].strip().replace(',', '').replace('=', '').split()
 
-                print(line)
-
                 if line[0] == '.data':
                     is_reading_data = True
                     continue
@@ -475,14 +497,10 @@ class ISA:
                 if line[0][-1] == ':':
                     continue
 
-                for i in range(len(line)):
-                    if line[i] in self.symbols:
-                        line[i] = f"0x{self.symbols[line[i]]:04X}"
-
                 opcode = Opcode[line[0]]
                 if len(code_buf) + len(data_buf) + opcode.length < self.MEM_SIZE:
                     bytearr = self.get_byte_array(opcode, line)
-
+                    print(bytearr)
                     code_buf.extend(bytearr)
                     if debug_mode:
                         debug_buf.append(bytearr)
@@ -529,26 +547,42 @@ class ISA:
             return addr
         raise ValueError(f"Invalid address ({addr})")
 
-    def run(self, input_fn, debug_mode=False):
+
+    def load_bin_into_mem(self, input_fn):
         self.reset()
 
         with open(f"{input_fn}.bin", "rb") as b:
-            code = b.read()
-            code_len = len(code)
-            if code_len <= self.MEM_SIZE: 
-                self.mem[0:code_len] = code
-                print(self)
+            mgcn = b.read(len(self.MAGIC_NUM))
+            if mgcn[0] == self.MAGIC_NUM[0] and mgcn[1] == self.MAGIC_NUM[1]:
+                bytearr = b.read(self.HEADER_LENGTH - len(self.MAGIC_NUM))
+                DATA_OFFSET = (bytearr[0] << 8 | bytearr[1]) & 0xFFFF
+                DATA_LENGTH = (bytearr[2] << 8 | bytearr[3]) & 0xFFFF
+                CODE_OFFSET = (bytearr[4] << 8 | bytearr[5]) & 0xFFFF
+                CODE_LENGTH = (bytearr[6] << 8 | bytearr[7]) & 0xFFFF
+                ENTRY_POINT = (bytearr[8] << 8 | bytearr[9]) & 0xFFFF
+
+                TOTAL_LENGTH = DATA_LENGTH + CODE_LENGTH
+                if  TOTAL_LENGTH <= self.MEM_SIZE: 
+                    b.seek(DATA_OFFSET)
+                    self.mem[0:TOTAL_LENGTH] = b.read(TOTAL_LENGTH)
+                    self.pc = ENTRY_POINT - self.HEADER_LENGTH
+                else:
+                    raise OverflowError(f"Binary instructions exceed memory size: {TOTAL_LENGTH} bytes >= {self.MEM_SIZE} bytes")
             else:
-                raise OverflowError(f"Binary instructions exceed memory size: {code_len} bytes >= {self.MEM_SIZE} bytes")
+                raise ValueError(f"Magic number ({mgcn[0]} {mgcn[1]}) does not match expected signature: {MAGIC_NUM[0]} {MAGIC_NUM[1]}")
 
-        self.running = True
-
+    def run(self, input_fn, debug_mode=False):
+        self.load_bin_into_mem(input_fn)
         if debug_mode:
             print(self)
 
+        self.running = True
         while (self.running):
             opcode = Opcode(self.mem[self.pc])
             cinstr = self.mem[self.pc : self.pc + opcode.length]
+
+            if debug_mode:
+                print(opcode)
 
             match opcode:
                 case Opcode.NOP:
@@ -668,7 +702,7 @@ class ISA:
         
         changed_mem_str = "\n".join(f"mem[{addr}]={val}" for addr, val in changed_mem.items())
 
-        return f"pc={self.pc}\nreg={self.reg}\nsymbols={self.symbols}\nZ={self.is_flag_set(self.Z)}, S={self.is_flag_set(self.S)}, C={self.is_flag_set(self.C)}, O={self.is_flag_set(self.O)}\nsp={self.sp}\n" + changed_mem_str + '\n'
+        return f"running={self.running}\npc={self.pc}\nreg={self.reg}\nsymbols={self.symbols}\nZ={self.is_flag_set(self.Z)}, S={self.is_flag_set(self.S)}, C={self.is_flag_set(self.C)}, O={self.is_flag_set(self.O)}\nsp={self.sp}\n" + changed_mem_str + '\n'
 
     def reset(self):
         self.reg = [0] * 8 # 8 registers, 16 bits per register
@@ -682,6 +716,6 @@ if __name__ == "__main__":
         input_fn = sys.argv[1]
         isa = ISA(input_fn)
         isa.assemble(input_fn, True)
-        # isa.run(input_fn, True)
+        isa.run(input_fn, True)
         print(isa)
         
