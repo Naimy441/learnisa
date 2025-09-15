@@ -1,13 +1,11 @@
 # Next Steps
 # 0. Learn about symbol tables, flags, and stack pointers/frame pointers
-# 1. Test all opcodes (SUB, MUL, DIV, AND, OR, XOR, NOT, SHL, SHR, CMP, MOV, LOAD, STORE, PUSH, POP, IN/OUT)
-# 2. LOAD, STORE, PUSH, POP, and MOV should all have an addressing bit for indirect addresses (e.g. [Rx])
-# 3. Add JMP labels and add JZ, JNZ, JC, JNC with flags (Z flag, C flag, S flag, O flag)
-# 4. Add CALL/RET for functional programming
-# 5. .data/.code 
-# 6. Constants and immediate values
-# 7. Macros and psuedo instructions
-# 8. Write 2 test programs: fibonacci (loops) and factorial (recursion)
+# 1. LOAD, STORE, PUSH, POP, and MOV should all have an addressing bit for indirect addresses (e.g. [Rx])
+# 2. Add CALL/RET for functional programming
+# 3. .data/.code 
+# 4. Constants and immediate values
+# 5. Macros and psuedo instructions
+# 6. Write 2 test programs: fibonacci (loops) and factorial (recursion)
 
 import sys
 from enum import Enum
@@ -36,7 +34,7 @@ class Opcode(Enum):
     JC    = (19, 3) # JC Addr         - Sets PC to instr Addr if C           - 1 + 2 = 3 bytes
     JNC   = (20, 3) # JNC Addr        - Sets PC to instr Addr if ~C          - 1 + 2 = 3 bytes
     PUSH  = (21, 2) # PUSH Rx         - Pushes Rx onto the stack             - 1 + 1 = 2 bytes
-    POP   = (22, 2) # POP Rx          - Pops Rx from the stack               - 1 + 1 = 2 bytes
+    POP   = (22, 2) # POP Rx          - Pops from the stack, stores in Rx    - 1 + 1 = 2 bytes
     IN    = (23, 4) # IN Rx, Port     - Puts input from port into Rx         - 1 + 1 + 2 = 4 bytes
     OUT   = (24, 4) # OUT Rx, Port    - Puts output from Rx into port        - 1 + 1 + 2 = 4 bytes
     HALT  = (25, 1) # HALT            - Ends program                         - 1 byte
@@ -73,8 +71,8 @@ class ISA:
         self.bin_instr = None
         self.flags = 0b00000000 
         self.ports = {
-            0x00: "STDIN",
-            0x01: "STDOUT"
+            0x0000: "STDIN",
+            0x0001: "STDOUT"
         }
 
     def set_instr(self, input_fn):
@@ -199,31 +197,41 @@ class ISA:
     def JMP(self, addr):
         self.pc = addr
     
-    def JZ(self, addr):
+    def JZ(self, addr, opcode):
         if self.is_flag_set(self.Z):
             self.pc = addr
+        else:
+            self.pc += opcode.length
 
-    def JNZ(self, addr):
+    def JNZ(self, addr, opcode):
         if not self.is_flag_set(self.Z):
             self.pc = addr
+        else:
+            self.pc += opcode.length
     
-    def JC(self, addr):
+    def JC(self, addr, opcode):
         if self.is_flag_set(self.C):
             self.pc = addr
+        else:
+            self.pc += opcode.length
 
-    def JNC(self, addr):
+    def JNC(self, addr, opcode):
         if not self.is_flag_set(self.C):
             self.pc = addr  
+        else:
+            self.pc += opcode.length
 
     def PUSH(self, rx):
-        if self.sp - 2 > 0:
+        if self.sp - 2 >= 0:
             self.sp -= 2
             self.mem[self.sp] = self.reg[rx] >> 8 & 0xFF
             self.mem[self.sp + 1] = self.reg[rx] & 0xFF
 
     def POP(self, rx):
-        if self.sp + 2 < self.MEM_SIZE:
+        if self.sp + 2 <= self.MEM_SIZE:
             self.reg[rx] = (self.mem[self.sp] << 8 | self.mem[self.sp + 1]) & 0xFFFF
+            self.mem[self.sp] = 0
+            self.mem[self.sp + 1] = 0
             self.sp += 2
 
     def IN(self, rx, port):
@@ -419,12 +427,15 @@ class ISA:
             return addr
         raise ValueError(f"Invalid address ({addr})")
 
-    def run(self, input_fn):
+    def run(self, input_fn, debug_mode=False):
         with open(f"{input_fn}.bin", "rb") as b:
             self.bin_instr = b.read()
         
         self.reset()
         self.running = True
+
+        if debug_mode:
+            print(self)
 
         while (self.running):
             opcode = Opcode(self.bin_instr[self.pc])
@@ -500,16 +511,16 @@ class ISA:
                     self.JMP(addr)
                 case Opcode.JZ:
                     addr = self.decode_addr(cinstr)
-                    self.JZ(addr)
+                    self.JZ(addr, opcode)
                 case Opcode.JNZ:
                     addr = self.decode_addr(cinstr)
-                    self.JNZ(addr)
+                    self.JNZ(addr, opcode)
                 case Opcode.JC:
                     addr = self.decode_addr(cinstr)
-                    self.JC(addr)
+                    self.JC(addr, opcode)
                 case Opcode.JNC:
                     addr = self.decode_addr(cinstr)
-                    self.JNC(addr)
+                    self.JNC(addr, opcode)
                 case Opcode.PUSH:
                     rx = self.decode_rx(cinstr)
                     self.PUSH(rx)
@@ -519,21 +530,20 @@ class ISA:
                     self.POP(rx)
                     self.pc += opcode.length
                 case Opcode.IN:
-                    rx = cinstr[1]
-                    port = cinstr[2]
-                    if rx >= 0 and rx < self.MAX_REG:
-                        if (port in self.ports):
-                            self.IN(rx, port)
+                    rx, port = self.decode_rx_addr(cinstr)
+                    if (port in self.ports):
+                        self.IN(rx, port)
                     self.pc += opcode.length
                 case Opcode.OUT:
-                    rx = cinstr[1]
-                    port = cinstr[2]
-                    if rx >= 0 and rx < self.MAX_REG:
-                        if (port in self.ports):
-                            self.OUT(rx, port)
+                    rx, port = self.decode_rx_addr(cinstr)
+                    if (port in self.ports):
+                        self.OUT(rx, port)
                     self.pc += opcode.length
                 case Opcode.HALT:
                     self.running = False
+            
+            if debug_mode:
+                print(self)
 
     # Helper methods
     def __str__(self):
@@ -544,7 +554,7 @@ class ISA:
         
         changed_mem_str = "\n".join(f"mem[{addr}]={val}" for addr, val in changed_mem.items())
 
-        return f"pc={self.pc}\nreg={self.reg}\nsymbols={self.symbols}\nsp={self.sp}\n" + changed_mem_str
+        return f"pc={self.pc}\nreg={self.reg}\nsymbols={self.symbols}\nZ={self.is_flag_set(self.Z)}, S={self.is_flag_set(self.S)}, C={self.is_flag_set(self.C)}, O={self.is_flag_set(self.O)}\nsp={self.sp}\n" + changed_mem_str
 
     def reset(self):
         self.reg = [0] * 8 # 8 registers, 16 bits per register
@@ -557,7 +567,7 @@ if __name__ == "__main__":
     if (len(sys.argv) > 1):
         input_fn = sys.argv[1]
         isa = ISA(input_fn)
-        isa.assemble(input_fn, True)
-        isa.run(input_fn)
+        isa.assemble(input_fn)
+        isa.run(input_fn, True)
         print(isa)
         
