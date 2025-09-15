@@ -1,9 +1,8 @@
 # Next Steps
 # 0. Learn stack pointers/frame pointers
-# 1. LOAD, STORE, PUSH, POP, and MOV should all have an addressing bit for indirect addresses (e.g. [Rx])
-# 2. Constants and immediate values
-# 3. Macros and psuedo instructions
-# 4. Write 2 test programs: fibonacci (loops) and factorial (recursion)
+# 1. Constants and immediate values
+# 2. Macros and psuedo instructions
+# 3. Write 2 test programs: fibonacci (loops) and factorial (recursion)
 
 import sys
 from enum import Enum
@@ -11,33 +10,32 @@ from enum import Enum
 class Opcode(Enum):
                     # Opcode          - Instruction                          - Variable Length Encoding
     NOP   = (0, 1)  # NOP             - Does nothing                         - 1 byte
-    LOADI = (1, 4)  # LOADI Rx, Val   - Puts the value, Val, into Rx         - 1 + 1 + 2 = 4 bytes
-    LOAD  = (2, 4)  # LOAD Rx, Addr   - Puts the value at Addr into Rx       - 1 + 1 + 2 = 4 bytes
-    STORE = (3, 4)  # STORE Rx, Addr  - Puts the value in Rx into Addr       - 1 + 1 + 2 = 4 bytes
-    MOV   = (4, 3)  # MOV Rx, Ry      - Puts the value in Ry into Rx         - 1 + 1 = 1 = 3 bytes
-    ADD   = (5, 3)  # ADD Rx, Ry      - Puts the value of Rx + Ry into Rx    - 1 + 1 + 1 = 3 bytes
-    SUB   = (6, 3)  # SUB Rx, Ry      - Puts the value of Rx - Ry into Rx    - 1 + 1 + 1 = 3 bytes
-    MUL   = (7, 3)  # MUL Rx, Ry      - Puts the value of Rx * Ry into Rx    - 1 + 1 + 1 = 3 bytes
-    DIV   = (8, 3)  # DIV Rx, Ry      - Puts the value of Rx // Ry into Rx   - 1 + 1 + 1 = 3 bytes
-    AND   = (9, 3)  # AND Rx, Ry      - Puts the value of Rx & Ry into Rx    - 1 + 1 + 1 = 3 bytes 
-    OR    = (10, 3) # OR Rx, Ry       - Puts the value of Rx | Ry into Rx    - 1 + 1 + 1 = 3 bytes 
-    XOR   = (11, 3) # XOR Rx, Ry      - Puts the value of Rx ^ Ry into Rx    - 1 + 1 + 1 = 3 bytes 
-    NOT   = (12, 2) # NOT Rx          - Puts the value of ~Rx into Rx        - 1 + 1 = 2 bytes 
-    CMP   = (13, 3) # CMP Rx, Ry      - Computes Rx - Ry, updates flags      - 1 + 1 + 1 = 3 bytes
-    SHL   = (14, 2) # SHL Rx          - Bit shifts Rx to the left            - 1 + 1 = 2 bytes 
-    SHR   = (15, 2) # SHR Rx          - Bit shifts Rx to the right           - 1 + 1 = 2 bytes
-    JMP   = (16, 3) # JMP Addr        - Sets PC to instr Addr                - 1 + 2 = 3 bytes            - Limits code to 64kb, needs segmentation/paging to fix
-    JZ    = (17, 3) # JZ Addr         - Sets PC to instr Addr if Z           - 1 + 2 = 3 bytes
-    JNZ   = (18, 3) # JNZ Addr        - Sets PC to instr Addr if ~Z          - 1 + 2 = 3 bytes
-    JC    = (19, 3) # JC Addr         - Sets PC to instr Addr if C           - 1 + 2 = 3 bytes
-    JNC   = (20, 3) # JNC Addr        - Sets PC to instr Addr if ~C          - 1 + 2 = 3 bytes
-    PUSH  = (21, 2) # PUSH Rx         - Pushes Rx onto the stack             - 1 + 1 = 2 bytes
-    POP   = (22, 2) # POP Rx          - Pops from the stack, stores in Rx    - 1 + 1 = 2 bytes
-    IN    = (23, 4) # IN Rx, Port     - Puts input from port into Rx         - 1 + 1 + 2 = 4 bytes
-    OUT   = (24, 4) # OUT Rx, Port    - Puts output from Rx into port        - 1 + 1 + 2 = 4 bytes
-    CALL  = (25, 3) # CALL Addr       - Jumps to Addr, saves Addr to stack   - 1 + 2 = 3 bytes
-    RET   = (26, 1) # RET             - Pops Addr in stack, jumps after Addr - 1 byte
-    HALT  = (27, 1) # HALT            - Ends program                         - 1 byte
+    LOAD  = (1, 4)  # LOAD Rx, Oper   - Puts Oper into Rx                    - 3 or 4 bytes
+    STORE = (2, 4)  # STORE Rx, Oper  - Puts the value in Rx into Oper       - 3 or 4 bytes
+    MOV   = (3, 3)  # MOV Rx, Ry      - Puts the value in Ry into Rx         - 1 + 1 + 1 = 3 bytes
+    ADD   = (4, 3)  # ADD Rx, Ry      - Puts the value of Rx + Ry into Rx    - 1 + 1 + 1 = 3 bytes
+    SUB   = (5, 3)  # SUB Rx, Ry      - Puts the value of Rx - Ry into Rx    - 1 + 1 + 1 = 3 bytes
+    MUL   = (6, 3)  # MUL Rx, Ry      - Puts the value of Rx * Ry into Rx    - 1 + 1 + 1 = 3 bytes
+    DIV   = (7, 3)  # DIV Rx, Ry      - Puts the value of Rx // Ry into Rx   - 1 + 1 + 1 = 3 bytes
+    AND   = (8, 3)  # AND Rx, Ry      - Puts the value of Rx & Ry into Rx    - 1 + 1 + 1 = 3 bytes 
+    OR    = (9, 3)  # OR Rx, Ry       - Puts the value of Rx | Ry into Rx    - 1 + 1 + 1 = 3 bytes 
+    XOR   = (10, 3) # XOR Rx, Ry      - Puts the value of Rx ^ Ry into Rx    - 1 + 1 + 1 = 3 bytes 
+    NOT   = (11, 2) # NOT Rx          - Puts the value of ~Rx into Rx        - 1 + 1 = 2 bytes 
+    CMP   = (12, 3) # CMP Rx, Ry      - Computes Rx - Ry, updates flags      - 1 + 1 + 1 = 3 bytes
+    SHL   = (13, 2) # SHL Rx          - Bit shifts Rx to the left            - 1 + 1 = 2 bytes 
+    SHR   = (14, 2) # SHR Rx          - Bit shifts Rx to the right           - 1 + 1 = 2 bytes
+    JMP   = (15, 3) # JMP Addr        - Sets PC to instr Addr                - 1 + 2 = 3 bytes            - Limits code to 64kb, needs segmentation/paging to fix
+    JZ    = (16, 3) # JZ Addr         - Sets PC to instr Addr if Z           - 1 + 2 = 3 bytes
+    JNZ   = (17, 3) # JNZ Addr        - Sets PC to instr Addr if ~Z          - 1 + 2 = 3 bytes
+    JC    = (18, 3) # JC Addr         - Sets PC to instr Addr if C           - 1 + 2 = 3 bytes
+    JNC   = (19, 3) # JNC Addr        - Sets PC to instr Addr if ~C          - 1 + 2 = 3 bytes
+    PUSH  = (20, 2) # PUSH Rx         - Pushes Rx onto the stack             - 1 + 1 = 2 bytes
+    POP   = (21, 2) # POP Rx          - Pops from the stack, stores in Rx    - 1 + 1 = 2 bytes
+    IN    = (22, 4) # IN Rx, Port     - Puts input from port into Rx         - 1 + 1 + 2 = 4 bytes
+    OUT   = (23, 4) # OUT Rx, Port    - Puts output from Rx into port        - 1 + 1 + 2 = 4 bytes
+    CALL  = (24, 3) # CALL Addr       - Jumps to Addr, saves Addr to stack   - 1 + 2 = 3 bytes
+    RET   = (25, 1) # RET             - Pops Addr in stack, jumps after Addr - 1 byte
+    HALT  = (26, 1) # HALT            - Ends program                         - 1 byte
     
     def __new__(cls, code, length):
         obj = object.__new__(cls)
@@ -119,12 +117,33 @@ class ISA:
     def NOP(self, opcode):
         self.pc += opcode.length
 
-    def LOADI(self, rx, val):
-        self.reg[rx] = val & 0xFFFF
-
-    def LOAD(self, rx, addr):
-        # Loads 2 bytes of mem
-        self.reg[rx] = self.mem[addr] << 8 | self.mem[addr + 1] 
+    def LOAD(self, rx, operand, mode):
+        # Mode = Operand                    - Opcode         - Variable Length Encoding
+        # 0    = register-to-register       - LOAD Rx, Ry    - 1 + 1 + 1 = 3 bytes
+        # 1    = immediate                  - LOAD Rx, Val   - 1 + 1 + 2 = 4 bytes
+        # 2    = absolute memory address    - LOAD Rx, Addr  - 1 + 1 + 2 = 4 bytes
+        # 3    = indirect through register  - LOAD Rx, [Ry]  - 1 + 1 + 1 = 3 bytes
+        if mode == 0:
+            self.reg[rx] = self.reg[operand]
+        elif mode == 1:
+            self.reg[rx] = operand & 0xFFFF
+        elif mode == 2:
+            self.reg[rx] = self.mem[operand] << 8 | self.mem[operand + 1]
+        elif mode == 3:
+            addr = self.reg[operand]
+            self.reg[rx] = self.mem[addr] << 8 | self.mem[addr + 1]
+            
+    def STORE(self, rx, operand, mode):
+        # Mode = Operand                    - Opcode         - Variable Length Encoding
+        # 2    = absolute memory address    - STORE Rx, Addr  - 1 + 1 + 2 = 4 bytes
+        # 3    = indirect through register  - STORE Rx, [Ry]  - 1 + 1 + 1 = 3 bytes
+        if mode == 2:
+            self.mem[operand] = (self.reg[rx] >> 8) & 0xFF
+            self.mem[operand + 1] = self.reg[rx] & 0xFF
+        elif mode == 3:
+            addr = self.reg[operand]
+            self.mem[addr] = (self.reg[rx] >> 8) & 0xFF
+            self.mem[addr + 1] = self.reg[rx] & 0xFF
 
     def MOV(self, rx, ry):
         self.reg[rx] = self.reg[ry] & 0xFFFF
@@ -194,11 +213,6 @@ class ISA:
     def SHR(self, rx):
         self.reg[rx] = self.reg[rx] >> 1 & 0xFFFF
         self.update_flags(self.reg[rx])
-
-    def STORE(self, rx, addr):
-        # Stores 2 bytes of mem
-        self.mem[addr] = (self.reg[rx] >> 8) & 0xFF
-        self.mem[addr + 1] = self.reg[rx] & 0xFF
 
     def JMP(self, addr):
         self.pc = addr
@@ -297,10 +311,38 @@ class ISA:
                     addr & 0xFF
                 ]
             else:
-                raise ValueError(f"Invalid address ({self.DATA_LENGTH} <= addr < {self.MEM_SIZE - 1}): {addr}")
+                raise ValueError(f"Invalid address ({lower_bound} <= addr < {self.MEM_SIZE - 1}): {addr}")
         else:
             raise ValueError(f"Invalid register (0 <= rx < {self.MAX_REG}): rx={rx}")
 
+    def validate_rx_val(self, opcode, line, is_symbol):
+        rx = int(line[1][1])
+        if rx >= 0 and rx < self.MAX_REG:
+            val = int(line[2], 0)
+            lower_bound = 0 if is_symbol else self.DATA_LENGTH
+            if (val >= lower_bound and val < self.MEM_SIZE - 1):
+                return [
+                    opcode.value & 0xFF,
+                    rx & 0xFF,
+                    (val >> 8) & 0xFF,
+                    val & 0xFF
+                ]
+            else:
+                raise ValueError(f"Invalid value ({lower_bound} <= val < {self.MEM_SIZE - 1}): {val}")
+        else:
+            raise ValueError(f"Invalid register (0 <= rx < {self.MAX_REG}): rx={rx}")
+
+    def validate_rx_indr(self, opcode, line):
+        rx = int(line[1][1])
+        ry = int(line[2][2:-1])
+        if rx >= 0 and rx < self.MAX_REG and ry >= 0 and ry < self.MAX_REG:
+            return [
+                opcode.value & 0xFF,
+                rx & 0xFF,
+                ry & 0xFF
+            ]
+        else:
+            raise ValueError(f"Invalid register ({self.DATA_LENGTH} <= rx, ry < {self.MAX_REG}): rx={rx}, ry={ry}")
 
     def validate_rx(self, opcode, line):
         rx = int(line[1][1])
@@ -322,7 +364,7 @@ class ISA:
                 addr & 0xFF
             ]
         else:
-            raise ValueError(f"Invalid address ({self.DATA_LENGTH} <= addr < {self.MEM_SIZE - 1}): {addr}")
+            raise ValueError(f"Invalid address ({lower_bound} <= addr < {self.MEM_SIZE - 1}): {addr}")
 
     def get_byte_array(self, opcode, line):
         is_symbol = False
@@ -334,18 +376,32 @@ class ISA:
         match opcode:
             case Opcode.NOP:
                 return [opcode.value & 0xFF]
-            case Opcode.LOADI:
-                rx = int(line[1][1])
-                if rx >= 0 and rx < self.MAX_REG:
-                    val = int(line[2], 0)
-                    return [
-                        opcode.value & 0xFF,
-                        rx & 0xFF,
-                        (val >> 8) & 0xFF,
-                        val & 0xFF
-                    ]
             case Opcode.LOAD:
-                return self.validate_rx_addr(opcode, line, is_symbol)
+                if line[2].startswith('R'):
+                    bytearr = self.validate_rx_ry(opcode, line)
+                    bytearr.insert(1, 0x02) # Register
+                    return bytearr
+                elif line[2].lower().startswith('0x'):
+                    bytearr = self.validate_rx_addr(opcode, line, is_symbol)
+                    bytearr.insert(1, 0x03) # Absolute addr
+                    return bytearr
+                elif line[2].startswith('[R') and line[2].endswith(']'):
+                    bytearr = self.validate_rx_indr(opcode, line)
+                    bytearr.insert(1, 0x04) # Indirect
+                    return bytearr
+                else:
+                    bytearr = self.validate_rx_val(opcode, line, is_symbol)
+                    bytearr.insert(1, 0x01) # Immediate
+                    return bytearr
+            case Opcode.STORE:
+                if line[2].lower().startswith('0x'):
+                    bytearr = self.validate_rx_addr(opcode, line, is_symbol)
+                    bytearr.insert(1, 0x03) # Absolute addr
+                    return bytearr 
+                else:
+                    bytearr = self.validate_rx_indr(opcode, line)
+                    bytearr.insert(1, 0x04) # Indirect
+                    return bytearr
             case Opcode.MOV:
                 return self.validate_rx_ry(opcode, line)
             case Opcode.ADD:
@@ -370,8 +426,6 @@ class ISA:
                 return self.validate_rx(opcode, line)
             case Opcode.SHR:
                 return self.validate_rx(opcode, line)
-            case Opcode.STORE:
-                return self.validate_rx_addr(opcode, line, is_symbol)
             case Opcode.JMP:
                 return self.validate_addr(opcode, line, is_symbol)
             case Opcode.JZ:
@@ -500,7 +554,6 @@ class ISA:
                 opcode = Opcode[line[0]]
                 if len(code_buf) + len(data_buf) + opcode.length < self.MEM_SIZE:
                     bytearr = self.get_byte_array(opcode, line)
-                    print(bytearr)
                     code_buf.extend(bytearr)
                     if debug_mode:
                         debug_buf.append(bytearr)
@@ -579,7 +632,12 @@ class ISA:
         self.running = True
         while (self.running):
             opcode = Opcode(self.mem[self.pc])
-            cinstr = self.mem[self.pc : self.pc + opcode.length]
+
+            # Calculate how long this instruction is based on addressing byte for Opcode.LOAD and Opcode.STORE
+            end = self.pc + opcode.length
+            if opcode in (Opcode.LOAD, Opcode.STORE) and self.mem[self.pc + 1] in (0x01, 0x03):
+                end += 1
+            cinstr = self.mem[self.pc : end]
 
             if debug_mode:
                 print(opcode)
@@ -587,16 +645,42 @@ class ISA:
             match opcode:
                 case Opcode.NOP:
                     self.NOP(opcode)
-                case Opcode.LOADI:
-                    rx = cinstr[1]
-                    if rx >= 0 and rx < self.MAX_REG:
-                        val = (cinstr[2] << 8) | cinstr[3]
-                        self.LOADI(rx, val)
-                    self.pc += opcode.length
                 case Opcode.LOAD:
-                    rx, addr = self.decode_rx_addr(cinstr)
-                    self.LOAD(rx, addr)
-                    self.pc += opcode.length
+                    mode = cinstr.pop(1)
+                    
+                    if mode == 0x01:  # Immediate
+                        rx = cinstr[1]
+                        if rx >= 0 and rx < self.MAX_REG:
+                            val = (cinstr[2] << 8) | cinstr[3]
+                            self.LOAD(rx, val, 1)
+                    elif mode == 0x02:  # Register-to-register
+                        rx = cinstr[1]
+                        ry = cinstr[2]
+                        if rx >= 0 and rx < self.MAX_REG and ry >= 0 and ry < self.MAX_REG:
+                            self.LOAD(rx, ry, 0)
+                    elif mode == 0x03:  # Absolute address
+                        rx, addr = self.decode_rx_addr(cinstr)
+                        self.LOAD(rx, addr, 2)
+                    elif mode == 0x04:  # Indirect
+                        rx = cinstr[1]
+                        ry = cinstr[2]
+                        if rx >= 0 and rx < self.MAX_REG and ry >= 0 and ry < self.MAX_REG:
+                            self.LOAD(rx, ry, 3)
+
+                    self.pc += (end - self.pc)
+                case Opcode.STORE:
+                    mode = cinstr.pop(1)
+
+                    if mode == 0x03:  # Absolute address
+                        rx, addr = self.decode_rx_addr(cinstr)
+                        self.STORE(rx, addr, 2)
+                    elif mode == 0x04:  # Indirect
+                        rx = cinstr[1]
+                        ry = cinstr[2]
+                        if rx >= 0 and rx < self.MAX_REG and ry >= 0 and ry < self.MAX_REG:
+                            self.STORE(rx, ry, 3)
+
+                    self.pc += (end - self.pc)
                 case Opcode.MOV:
                     rx, ry = self.decode_rx_ry(cinstr)
                     self.MOV(rx, ry)
@@ -644,10 +728,6 @@ class ISA:
                 case Opcode.SHR:
                     rx = self.decode_rx(cinstr)
                     self.SHR(rx)
-                    self.pc += opcode.length
-                case Opcode.STORE:
-                    rx, addr = self.decode_rx_addr(cinstr)
-                    self.STORE(rx, addr)
                     self.pc += opcode.length
                 case Opcode.JMP:
                     addr = self.decode_addr(cinstr)
