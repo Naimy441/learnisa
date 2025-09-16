@@ -1,6 +1,5 @@
 # Next Steps
-# 2. Strings in .data and runtime strings, LB, and SB
-# 3. Write 2 test programs: fibonacci (loops) and factorial (recursion)
+# 1. Write 2 test programs: fibonacci (loops) and factorial (recursion)
 
 import sys
 from enum import Enum
@@ -8,8 +7,8 @@ from enum import Enum
 class Opcode(Enum):
                     # Opcode          - Instruction                          - Variable Length Encoding
     NOP   = (0, 1)  # NOP             - Does nothing                         - 1 byte
-    LOAD  = (1, 4)  # LOAD Rx, Oper   - Puts Oper into Rx                    - 3 or 4 bytes
-    STORE = (2, 4)  # STORE Rx, Oper  - Puts the value in Rx into Oper       - 3 or 4 bytes
+    LOAD  = (1, 4)  # LOAD Rx, Oper   - Puts Oper into Rx                    - 4 or 5 bytes (incld. addr byte)
+    STORE = (2, 4)  # STORE Rx, Oper  - Puts the value in Rx into Oper       - 4 or 5 bytes (incld. addr byte)
     LB    = (3, 3)  # LB Rx, [Ry]     - Loads 1 byte at [Ry] into Rx         - 1 + 1 + 1 = 3 bytes
     SB    = (4, 3)  # SB Rx, [Ry]     - Stores 1 bytes at [Ry] into Rx       - 1 + 1 + 1 = 3 bytes
     MOV   = (5, 3)  # MOV Rx, Ry      - Puts the value in Ry into Rx         - 1 + 1 + 1 = 3 bytes
@@ -121,10 +120,10 @@ class ISA:
 
     def LOAD(self, rx, operand, mode):
         # Mode = Operand                    - Opcode         - Variable Length Encoding
-        # 0    = register-to-register       - LOAD Rx, Ry    - 1 + 1 + 1 = 3 bytes
-        # 1    = immediate                  - LOAD Rx, Val   - 1 + 1 + 2 = 4 bytes
-        # 2    = absolute memory address    - LOAD Rx, Addr  - 1 + 1 + 2 = 4 bytes
-        # 3    = indirect through register  - LOAD Rx, [Ry]  - 1 + 1 + 1 = 3 bytes
+        # 0    = register-to-register       - LOAD Rx, Ry    - 1 + 1 (Addr Byte) + 1 + 1 = 4 bytes
+        # 1    = immediate                  - LOAD Rx, Val   - 1 + 1 (Addr Byte) + 1 + 2 = 5 bytes
+        # 2    = absolute memory address    - LOAD Rx, Addr  - 1 + 1 (Addr Byte) + 1 + 2 = 5 bytes
+        # 3    = indirect through register  - LOAD Rx, [Ry]  - 1 + 1 (Addr Byte) + 1 + 1 = 4 bytes
         if mode == 0:
             self.reg[rx] = self.reg[operand]
         elif mode == 1:
@@ -137,8 +136,8 @@ class ISA:
             
     def STORE(self, rx, operand, mode):
         # Mode = Operand                    - Opcode         - Variable Length Encoding
-        # 2    = absolute memory address    - STORE Rx, Addr  - 1 + 1 + 2 = 4 bytes
-        # 3    = indirect through register  - STORE Rx, [Ry]  - 1 + 1 + 1 = 3 bytes
+        # 2    = absolute memory address    - STORE Rx, Addr  - 1 + 1 (Addr Byte) + 1 + 2 = 5 bytes
+        # 3    = indirect through register  - STORE Rx, [Ry]  - 1 + 1 (Addr Byte) + 1 + 1 = 4 bytes
         if mode == 2:
             self.mem[operand] = (self.reg[rx] >> 8) & 0xFF
             self.mem[operand + 1] = self.reg[rx] & 0xFF
@@ -150,6 +149,7 @@ class ISA:
     def LB(self, rx, ry):
         addr = self.reg[ry]
         self.reg[rx] = self.mem[addr] & 0xFF
+        self.update_flags(self.reg[rx])
 
     def SB(self, rx, ry):
         addr = self.reg[ry]
@@ -405,6 +405,10 @@ class ISA:
                     bytearr = self.validate_rx_ry(opcode, line)
                     bytearr.insert(1, 0x02) # Register
                     return bytearr
+                elif is_symbol:
+                    bytearr = self.validate_rx_val(opcode, line, is_symbol)
+                    bytearr.insert(1, 0x01) # Immediate
+                    return bytearr
                 elif line[2].lower().startswith('0x'):
                     bytearr = self.validate_rx_addr(opcode, line, is_symbol)
                     bytearr.insert(1, 0x03) # Absolute addr
@@ -471,7 +475,7 @@ class ISA:
             case Opcode.POP:
                 return self.validate_rx(opcode, line)
             case Opcode.SYS:
-                return self.validate_rx_addr(opcode, line, is_symbol)
+                return self.validate_rx_addr(opcode, line, True)
             case Opcode.CALL:
                 return self.validate_addr(opcode, line, is_symbol)
             case Opcode.RET:
@@ -487,11 +491,14 @@ class ISA:
         memory_addr = 0x0000
         for i in range(len(self.instr)):
             cur_instr = self.instr[i]
-            if cur_instr == '' or cur_instr.strip()[0] == ';':
+
+            _cur_instr = cur_instr.strip()
+            if not _cur_instr or _cur_instr[0] == ';':
                 continue
 
             line = cur_instr.split(';')[0].strip().replace(',', '').replace('=', '').split()
 
+            # .data
             if line[0] == '.data':
                 is_reading_data = True
                 continue
@@ -504,19 +511,41 @@ class ISA:
                     raise ValueError(f"Data '{line[0]}' already defined")
                 else:
                     self.symbols[line[0]] = memory_addr
-                    memory_addr += 2
+                    if line[1] == '.byte':
+                        memory_addr += len(line[2:]) 
+                    elif line[1] == '.word':
+                        memory_addr += (len(line[2:]) * 2)
+                    else:
+                        memory_addr += 2
                     continue
 
+            # .code
             if line[0][-1] == ':':
                 if line[0] in self.symbols:
                     raise ValueError(f"Data or label '{line[0]}' already defined")
-                self.symbols[line[0][:-1]] = len_bytes + memory_addr * 2
+                self.symbols[line[0][:-1]] = len_bytes + memory_addr
 
             else:
-                opcode = Opcode[line[0]]
-                len_bytes += opcode.length
+                opcode_name = line[0]
+                opcode = Opcode[opcode_name]
 
-        self.DATA_LENGTH = memory_addr * 2
+                # Check for variable-length instructions including ADDRESSING BYTE
+                if opcode_name in ('LOAD', 'STORE'):
+                    operand = line[2]
+                    if operand.startswith('R'):
+                        len_bytes += 4
+                    elif operand in self.symbols:
+                        len_bytes += 5               
+                    elif operand.lower().startswith('0x'): 
+                        len_bytes += 5
+                    elif loperand.startswith('[R') and operand.endswith(']'):
+                        len_bytes += 4
+                    else:
+                        raise ValueError(f"Impossible instruction {opcode_name} {line[1]}")
+                else:
+                    len_bytes += opcode.length
+
+        self.DATA_LENGTH = memory_addr
 
     def getHeaderBuf(self, data_buf_len, code_buf_len):
         header_buf = bytearray(self.HEADER_LENGTH)
@@ -552,7 +581,9 @@ class ISA:
             is_reading_data = False
             for i in range(len(self.instr)):
                 cur_instr = self.instr[i]
-                if cur_instr == '' or cur_instr.strip()[0] == ';':
+                
+                _cur_instr = cur_instr.strip()
+                if not _cur_instr or _cur_instr[0] == ';':
                     continue
                 
                 line = cur_instr.split(';')[0].strip().replace(',', '').replace('=', '').split()
@@ -565,21 +596,52 @@ class ISA:
                     if line[0] == '.code':
                         is_reading_data = False
                     else:
-                        val = int(line[1], 0)
-                        if (val >= 0 and val < self.MEM_SIZE):
-                            bytearr = [
-                                (val >> 8) & 0xFF,
-                                val & 0xFF
-                            ]
+                        if line[1] == '.byte':
+                            bytearr = []
+                            for e in line[2:]:
+                                if len(e) == 3 and e.startswith("'") and e.endswith("'"):
+                                    bytearr.append(ord(e[1:-1]) & 0xFF)
+                                else:
+                                    try:
+                                        bytearr.append(int(e, 0) & 0xFF)
+                                    except ValueError():
+                                        print(f"Invalid element in .byte directive: {e}")
                             data_buf.extend(bytearr)
                             if debug_mode:
                                 debug_buf.append(bytearr)
+                        elif line[1] == '.word':
+                            bytearr = []
+                            for e in line[2:]:
+                                try:
+                                    val = int(e, 0)
+                                    bytearr.extend([
+                                        (val >> 8) & 0xFF,
+                                        val & 0xFF
+                                    ])
+                                except ValueError():
+                                    print(f"Invalid element in .byte directive: {e}")
+                            data_buf.extend(bytearr)
+                            if debug_mode:
+                                debug_buf.append(bytearr)
+                        else:
+                            val = int(line[1], 0)
+                            if (val >= 0 and val < self.MEM_SIZE):
+                                bytearr = [
+                                    (val >> 8) & 0xFF,
+                                    val & 0xFF
+                                ]
+                                data_buf.extend(bytearr)
+                                if debug_mode:
+                                    debug_buf.append(bytearr)
                     continue
 
                 if line[0][-1] == ':':
                     continue
 
                 opcode = Opcode[line[0]]
+                if debug_mode:
+                    print(opcode)
+
                 if len(code_buf) + len(data_buf) + opcode.length < self.MEM_SIZE:
                     bytearr = self.get_byte_array(opcode, line)
                     code_buf.extend(bytearr)
@@ -830,6 +892,6 @@ if __name__ == "__main__":
     if (len(sys.argv) > 1):
         input_fn = sys.argv[1]
         isa = ISA(input_fn)
-        isa.assemble(input_fn, True)
-        isa.run(input_fn, True)
+        isa.assemble(input_fn, False)
+        isa.run(input_fn, False)
         print(isa)

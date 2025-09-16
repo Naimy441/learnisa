@@ -6,7 +6,8 @@
 # 4. Add CALL/RET for functional programming
 # 5. .data/.code and the header
 # 6. Constants and immediate values
-# 7. Write 2 test programs: fibonacci (loops) and factorial (recursion)
+# 7. Strings in .data, LB, and SB
+# 8. Write 2 test programs: fibonacci (loops) and factorial (recursion)
 
 import sys
 from enum import Enum
