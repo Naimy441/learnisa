@@ -30,13 +30,13 @@ class Opcode(Enum):
     JZ    = (19, 3) # JZ Addr         - Sets PC to instr Addr if Z           - 1 + 2 = 3 bytes
     JNZ   = (20, 3) # JNZ Addr        - Sets PC to instr Addr if ~Z          - 1 + 2 = 3 bytes
     JC    = (21, 3) # JC Addr         - Sets PC to instr Addr if C           - 1 + 2 = 3 bytes
-    JNC   = (21, 3) # JNC Addr        - Sets PC to instr Addr if ~C          - 1 + 2 = 3 bytes
-    PUSH  = (22, 2) # PUSH Rx         - Pushes Rx onto the stack             - 1 + 1 = 2 bytes
-    POP   = (23, 2) # POP Rx          - Pops from the stack, stores in Rx    - 1 + 1 = 2 bytes
-    SYS   = (24, 4) # SYS Rx, Port    - Takes input or prints int or char    - 1 + 1 + 2 = 4 bytes
-    CALL  = (25, 3) # CALL Addr       - Jumps to Addr, saves Addr to stack   - 1 + 2 = 3 bytes
-    RET   = (26, 1) # RET             - Pops Addr in stack, jumps after Addr - 1 byte
-    HALT  = (27, 1) # HALT            - Ends program                         - 1 byte
+    JNC   = (22, 3) # JNC Addr        - Sets PC to instr Addr if ~C          - 1 + 2 = 3 bytes
+    PUSH  = (23, 2) # PUSH Rx         - Pushes Rx onto the stack             - 1 + 1 = 2 bytes
+    POP   = (24, 2) # POP Rx          - Pops from the stack, stores in Rx    - 1 + 1 = 2 bytes
+    SYS   = (25, 4) # SYS Rx, Port    - Takes input or prints int or char    - 1 + 1 + 2 = 4 bytes
+    CALL  = (26, 3) # CALL Addr       - Jumps to Addr, saves Addr to stack   - 1 + 2 = 3 bytes
+    RET   = (27, 1) # RET             - Pops Addr in stack, jumps after Addr - 1 byte
+    HALT  = (28, 1) # HALT            - Ends program                         - 1 byte
     
     def __new__(cls, code, length):
         obj = object.__new__(cls)
@@ -71,7 +71,9 @@ class ISA:
             0x0000: "STDIN_INT",
             0x0001: "STDIN_CHAR",
             0x0002: "STDOUT_INT",
-            0x0003: "STDOUT_CHAR"
+            0x0003: "STDOUT_CHAR",
+            0x0004: "STDOUT_INT_NR",
+            0x0005: "STDOUT_CHAR_NR"
         }
 
         # Assembler
@@ -161,7 +163,7 @@ class ISA:
         self.reg[rx] = self.reg[ry] & 0xFFFF
     
     def INC(self, rx):
-        res = (self.reg[rx] + 1) & 0xFFFF
+        res = self.reg[rx] + 1
         self.update_flags(res)
         
         # Overflow occurs if adding 1 to 0x7FFF
@@ -170,7 +172,7 @@ class ISA:
         else:
             self.clear_flag(self.O)
         
-        self.reg[rx] = res
+        self.reg[rx] = res & 0xFFFF
 
     def ADD(self, rx, ry):
         res = (self.reg[rx] + self.reg[ry])
@@ -279,14 +281,19 @@ class ISA:
             self.sp += 2
 
     def SYS(self, rx, port):
-        if self.ports[port] == "STDIN_INT":
+        call = self.ports[port]
+        if call == "STDIN_INT":
             self.reg[rx] = int(input().strip()) & 0xFFFF
-        elif self.ports[port] == "STDIN_CHAR":
+        elif call == "STDIN_CHAR":
             paself.reg[rx] = ord(input().strip()[0]) & 0xFFFF
-        elif self.ports[port] == "STDOUT_INT":
+        elif call == "STDOUT_INT":
             print(self.reg[rx])
-        elif self.ports[port] == "STDOUT_CHAR":
+        elif call == "STDOUT_CHAR":
             print(chr(self.reg[rx]))
+        elif call == "STDOUT_INT_NR":
+            print(self.reg[rx], end='')
+        elif call == "STDOUT_CHAR_NR":
+            print(chr(self.reg[rx]), end='')
 
     def CALL(self, addr, opcode):
         if self.sp - 2 >= 0:
@@ -345,8 +352,8 @@ class ISA:
         rx = int(line[1][1])
         if rx >= 0 and rx < self.MAX_REG:
             val = int(line[2], 0)
-            lower_bound = 0 if is_symbol else self.DATA_LENGTH
-            if (val >= lower_bound and val < self.MEM_SIZE - 1):
+            # For immediate values, allow full 16-bit range (0-65535)
+            if (val >= 0 and val <= 0xFFFF):
                 return [
                     opcode.value & 0xFF,
                     rx & 0xFF,
@@ -354,7 +361,7 @@ class ISA:
                     val & 0xFF
                 ]
             else:
-                raise ValueError(f"Invalid value ({lower_bound} <= val < {self.MEM_SIZE - 1}): {val}")
+                raise ValueError(f"Invalid value (0 <= val <= 65535): {val}")
         else:
             raise ValueError(f"Invalid register (0 <= rx < {self.MAX_REG}): rx={rx}")
 
@@ -540,10 +547,14 @@ class ISA:
                         len_bytes += 5               
                     elif operand.lower().startswith('0x'): 
                         len_bytes += 5
-                    elif loperand.startswith('[R') and operand.endswith(']'):
+                    elif operand.startswith('[R') and operand.endswith(']'):
                         len_bytes += 4
                     else:
-                        raise ValueError(f"Impossible instruction {opcode_name} {line[1]}")
+                        try:
+                            int(operand, 0) 
+                            len_bytes += 5   # Immediate
+                        except ValueError:
+                            raise ValueError(f"Impossible instruction {opcode_name} {operand}")
                 else:
                     len_bytes += opcode.length
 

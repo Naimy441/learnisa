@@ -1,3 +1,4 @@
-LOAD R0, 5
-MOV R1, R0
+LOAD R1, 123
+MOV R0, R1
 HALT
+; Expected: R1 = 123, R0 = 123

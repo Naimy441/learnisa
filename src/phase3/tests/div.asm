@@ -1,4 +1,5 @@
-LOAD R0, 2
-LOAD R1, 9
-DIV R1, R0
+LOAD R0, 20
+LOAD R1, 4
+DIV R0, R1
 HALT
+; Expected: R0 = 5, R1 = 4

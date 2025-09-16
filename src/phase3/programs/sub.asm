@@ -1,0 +1,3 @@
+LOAD R0, 5
+SUB R1, R0
+HALT

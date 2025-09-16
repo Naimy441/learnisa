@@ -1,0 +1,11 @@
+START:
+    CALL INPUT
+    SYS R0, 0x0002
+    JMP END
+
+INPUT:
+    SYS R0, 0x0000
+    RET
+
+END:
+    HALT
