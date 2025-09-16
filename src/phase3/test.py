@@ -1,3 +1,8 @@
+#!/usr/bin/env python3
+"""
+Script to automatically run and grade test suite
+"""
+
 import sys
 import os
 import io

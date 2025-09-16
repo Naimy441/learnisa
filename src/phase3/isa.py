@@ -1,7 +1,7 @@
+#!/usr/bin/env python3
+
 # Next Steps
 # 1. Write 2 test programs: fibonacci (loops) and factorial (recursion)
-# 2. Add auto-runner for tests
-# 3. Create better debugging stuff in regards to tracking bytes and instructions, etc.
 
 import sys
 from enum import Enum
@@ -590,6 +590,7 @@ class ISA:
 
             if debug_mode:
                 debug_buf = []
+                debug_info = []
 
             is_reading_data = False
             for i in range(len(self.instr)):
@@ -622,6 +623,11 @@ class ISA:
                             data_buf.extend(bytearr)
                             if debug_mode:
                                 debug_buf.append(bytearr)
+                                debug_info.append({
+                                    'instr': ' '.join(line),
+                                    'hex': ' '.join(f'{b:02X}' for b in bytearr),
+                                    'addr': len(data_buf) - len(bytearr)
+                                })
                         elif line[1] == '.word':
                             bytearr = []
                             for e in line[2:]:
@@ -636,6 +642,11 @@ class ISA:
                             data_buf.extend(bytearr)
                             if debug_mode:
                                 debug_buf.append(bytearr)
+                                debug_info.append({
+                                    'instr': ' '.join(line),
+                                    'hex': ' '.join(f'{b:02X}' for b in bytearr),
+                                    'addr': len(data_buf) - len(bytearr)
+                                })
                         else:
                             val = int(line[1], 0)
                             if (val >= 0 and val < self.MEM_SIZE):
@@ -644,8 +655,13 @@ class ISA:
                                     val & 0xFF
                                 ]
                                 data_buf.extend(bytearr)
-                                if debug_mode:
-                                    debug_buf.append(bytearr)
+                            if debug_mode:
+                                debug_buf.append(bytearr)
+                                debug_info.append({
+                                    'instr': ' '.join(line),
+                                    'hex': ' '.join(f'{b:02X}' for b in bytearr),
+                                    'addr': len(data_buf) - len(bytearr)
+                                })
                     continue
 
                 if line[0][-1] == ':':
@@ -657,9 +673,15 @@ class ISA:
 
                 if len(code_buf) + len(data_buf) + opcode.length < self.MEM_SIZE:
                     bytearr = self.get_byte_array(opcode, line)
+                    code_address = len(data_buf) + len(code_buf)  # Calculate address before extending
                     code_buf.extend(bytearr)
                     if debug_mode:
                         debug_buf.append(bytearr)
+                        debug_info.append({
+                            'instr': ' '.join(line),
+                            'hex': ' '.join(f'{b:02X}' for b in bytearr),
+                            'addr': code_address
+                        })
             
             header_buf = self.getHeaderBuf(len(data_buf), len(code_buf))
             buf.extend(header_buf)
@@ -674,6 +696,12 @@ class ISA:
                 with open(f"{output_fn}.hex", "w") as h:
                     for arr in debug_buf:
                         h.write(" ".join(f"{b:02X}" for b in arr) + "\n") # Formats as 2 digit hexadecimal
+                
+                with open(f"{output_fn}.dbg", "w") as t:
+                    t.write(f"{'INSTRUCTION':<25}{'HEX':<20}{'ADDRESS'}\n")
+                    t.write("=" * 60 + "\n")
+                    for info in debug_info:
+                        t.write(f"{info['instr']:<25}{info['hex']:<20}{info['addr']}\n")
 
     # Fetch-Decode-Execute Cycle
     def decode_rx_ry(self, cinstr):
