@@ -654,3 +654,36 @@ ELF Header:
 
 **You never write headers manually** - the build tools (assembler/compiler/linker) generate them based on your `.data` and `.code` directives!
 
+Got it — your ISA currently only handles 16-bit integers in registers and memory. You want strings. To support them, think about it in terms of what your CPU can already do:
+
+⸻
+
+What you need to implement strings
+	1.	Memory layout for strings
+	•	Strings are sequences of bytes. You already have bytearray memory, so you can store strings as consecutive bytes.
+	•	Decide on a terminator (like 0x00) or store the length separately.
+	2.	New instructions (or use existing ones differently)
+	•	Load/Store byte (LB/SB) — right now LOAD/STORE handles 16-bit values. You need a version that works one byte at a time.
+	•	Optional: Load string from memory into registers (could be just repeated byte loads).
+	3.	Pointers (frame/stack registers)
+	•	Strings need a base address register + optional offset.
+	•	You can reuse a general-purpose register as a pointer.
+	4.	String operations
+	•	Comparison, copy, length, concatenation — initially you can just loop with LB/SB and arithmetic.
+	•	Your current arithmetic and branching (ADD, SUB, CMP, JMP/JZ) already give you loops.
+	5.	Assembler changes
+	•	Add .ascii or .string directive in your .data section to define strings.
+	•	Translate each char into bytes in memory.
+
+⸻
+
+💡 Essentially, you don’t need new hardware — just:
+	•	Treat strings as bytes in memory.
+	•	Add byte-level load/store instructions.
+	•	Optionally, add assembly directives for string constants.
+
+⸻
+
+If you want, I can sketch a minimal plan for byte instructions and data directives for your current ISA — it’ll fit your CPU without huge changes.
+
+Do you want me to do that?

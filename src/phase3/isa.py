@@ -1,7 +1,6 @@
 # Next Steps
-# 0. Implement frame pointers
-# 1. Macros and psuedo instructions
-# 2. Write 2 test programs: fibonacci (loops) and factorial (recursion)
+# 2. Strings in .data and runtime strings, LB, and SB
+# 3. Write 2 test programs: fibonacci (loops) and factorial (recursion)
 
 import sys
 from enum import Enum
@@ -11,30 +10,32 @@ class Opcode(Enum):
     NOP   = (0, 1)  # NOP             - Does nothing                         - 1 byte
     LOAD  = (1, 4)  # LOAD Rx, Oper   - Puts Oper into Rx                    - 3 or 4 bytes
     STORE = (2, 4)  # STORE Rx, Oper  - Puts the value in Rx into Oper       - 3 or 4 bytes
-    MOV   = (3, 3)  # MOV Rx, Ry      - Puts the value in Ry into Rx         - 1 + 1 + 1 = 3 bytes
-    ADD   = (4, 3)  # ADD Rx, Ry      - Puts the value of Rx + Ry into Rx    - 1 + 1 + 1 = 3 bytes
-    SUB   = (5, 3)  # SUB Rx, Ry      - Puts the value of Rx - Ry into Rx    - 1 + 1 + 1 = 3 bytes
-    MUL   = (6, 3)  # MUL Rx, Ry      - Puts the value of Rx * Ry into Rx    - 1 + 1 + 1 = 3 bytes
-    DIV   = (7, 3)  # DIV Rx, Ry      - Puts the value of Rx // Ry into Rx   - 1 + 1 + 1 = 3 bytes
-    AND   = (8, 3)  # AND Rx, Ry      - Puts the value of Rx & Ry into Rx    - 1 + 1 + 1 = 3 bytes 
-    OR    = (9, 3)  # OR Rx, Ry       - Puts the value of Rx | Ry into Rx    - 1 + 1 + 1 = 3 bytes 
-    XOR   = (10, 3) # XOR Rx, Ry      - Puts the value of Rx ^ Ry into Rx    - 1 + 1 + 1 = 3 bytes 
-    NOT   = (11, 2) # NOT Rx          - Puts the value of ~Rx into Rx        - 1 + 1 = 2 bytes 
-    CMP   = (12, 3) # CMP Rx, Ry      - Computes Rx - Ry, updates flags      - 1 + 1 + 1 = 3 bytes
-    SHL   = (13, 2) # SHL Rx          - Bit shifts Rx to the left            - 1 + 1 = 2 bytes 
-    SHR   = (14, 2) # SHR Rx          - Bit shifts Rx to the right           - 1 + 1 = 2 bytes
-    JMP   = (15, 3) # JMP Addr        - Sets PC to instr Addr                - 1 + 2 = 3 bytes            - Limits code to 64kb, needs segmentation/paging to fix
-    JZ    = (16, 3) # JZ Addr         - Sets PC to instr Addr if Z           - 1 + 2 = 3 bytes
-    JNZ   = (17, 3) # JNZ Addr        - Sets PC to instr Addr if ~Z          - 1 + 2 = 3 bytes
-    JC    = (18, 3) # JC Addr         - Sets PC to instr Addr if C           - 1 + 2 = 3 bytes
-    JNC   = (19, 3) # JNC Addr        - Sets PC to instr Addr if ~C          - 1 + 2 = 3 bytes
-    PUSH  = (20, 2) # PUSH Rx         - Pushes Rx onto the stack             - 1 + 1 = 2 bytes
-    POP   = (21, 2) # POP Rx          - Pops from the stack, stores in Rx    - 1 + 1 = 2 bytes
-    IN    = (22, 4) # IN Rx, Port     - Puts input from port into Rx         - 1 + 1 + 2 = 4 bytes
-    OUT   = (23, 4) # OUT Rx, Port    - Puts output from Rx into port        - 1 + 1 + 2 = 4 bytes
-    CALL  = (24, 3) # CALL Addr       - Jumps to Addr, saves Addr to stack   - 1 + 2 = 3 bytes
-    RET   = (25, 1) # RET             - Pops Addr in stack, jumps after Addr - 1 byte
-    HALT  = (26, 1) # HALT            - Ends program                         - 1 byte
+    LB    = (3, 3)  # LB Rx, [Ry]     - Loads 1 byte at [Ry] into Rx         - 1 + 1 + 1 = 3 bytes
+    SB    = (4, 3)  # SB Rx, [Ry]     - Stores 1 bytes at [Ry] into Rx       - 1 + 1 + 1 = 3 bytes
+    MOV   = (5, 3)  # MOV Rx, Ry      - Puts the value in Ry into Rx         - 1 + 1 + 1 = 3 bytes
+    ADD   = (6, 3)  # ADD Rx, Ry      - Puts the value of Rx + Ry into Rx    - 1 + 1 + 1 = 3 bytes
+    SUB   = (7, 3)  # SUB Rx, Ry      - Puts the value of Rx - Ry into Rx    - 1 + 1 + 1 = 3 bytes
+    MUL   = (8, 3)  # MUL Rx, Ry      - Puts the value of Rx * Ry into Rx    - 1 + 1 + 1 = 3 bytes
+    DIV   = (9, 3)  # DIV Rx, Ry      - Puts the value of Rx // Ry into Rx   - 1 + 1 + 1 = 3 bytes
+    AND   = (10, 3)  # AND Rx, Ry      - Puts the value of Rx & Ry into Rx    - 1 + 1 + 1 = 3 bytes 
+    OR    = (11, 3)  # OR Rx, Ry       - Puts the value of Rx | Ry into Rx    - 1 + 1 + 1 = 3 bytes 
+    XOR   = (12, 3) # XOR Rx, Ry      - Puts the value of Rx ^ Ry into Rx    - 1 + 1 + 1 = 3 bytes 
+    NOT   = (13, 2) # NOT Rx          - Puts the value of ~Rx into Rx        - 1 + 1 = 2 bytes 
+    CMP   = (14, 3) # CMP Rx, Ry      - Computes Rx - Ry, updates flags      - 1 + 1 + 1 = 3 bytes
+    SHL   = (15, 2) # SHL Rx          - Bit shifts Rx to the left            - 1 + 1 = 2 bytes 
+    SHR   = (16, 2) # SHR Rx          - Bit shifts Rx to the right           - 1 + 1 = 2 bytes
+    JMP   = (17, 3) # JMP Addr        - Sets PC to instr Addr                - 1 + 2 = 3 bytes            - Limits code to 64kb, needs segmentation/paging to fix
+    JZ    = (18, 3) # JZ Addr         - Sets PC to instr Addr if Z           - 1 + 2 = 3 bytes
+    JNZ   = (19, 3) # JNZ Addr        - Sets PC to instr Addr if ~Z          - 1 + 2 = 3 bytes
+    JC    = (20, 3) # JC Addr         - Sets PC to instr Addr if C           - 1 + 2 = 3 bytes
+    JNC   = (21, 3) # JNC Addr        - Sets PC to instr Addr if ~C          - 1 + 2 = 3 bytes
+    PUSH  = (22, 2) # PUSH Rx         - Pushes Rx onto the stack             - 1 + 1 = 2 bytes
+    POP   = (23, 2) # POP Rx          - Pops from the stack, stores in Rx    - 1 + 1 = 2 bytes
+    IN    = (24, 4) # IN Rx, Port     - Puts input from port into Rx         - 1 + 1 + 2 = 4 bytes
+    OUT   = (25, 4) # OUT Rx, Port    - Puts output from Rx into port        - 1 + 1 + 2 = 4 bytes
+    CALL  = (26, 3) # CALL Addr       - Jumps to Addr, saves Addr to stack   - 1 + 2 = 3 bytes
+    RET   = (27, 1) # RET             - Pops Addr in stack, jumps after Addr - 1 byte
+    HALT  = (28, 1) # HALT            - Ends program                         - 1 byte
     
     def __new__(cls, code, length):
         obj = object.__new__(cls)
@@ -143,6 +144,14 @@ class ISA:
             addr = self.reg[operand]
             self.mem[addr] = (self.reg[rx] >> 8) & 0xFF
             self.mem[addr + 1] = self.reg[rx] & 0xFF
+
+    def LB(self, rx, ry):
+        addr = self.reg[ry]
+        self.reg[rx] = self.mem[addr] & 0xFF
+
+    def SB(self, rx, ry):
+        addr = self.reg[ry]
+        self.mem[addr] = self.reg[rx] & 0xFF
 
     def MOV(self, rx, ry):
         self.reg[rx] = self.reg[ry] & 0xFFFF
@@ -401,6 +410,10 @@ class ISA:
                     bytearr = self.validate_rx_indr(opcode, line)
                     bytearr.insert(1, 0x04) # Indirect
                     return bytearr
+            case Opcode.LB:
+                return self.validate_rx_indr(opcode, line)
+            case Opcode.SB:
+                return self.validate_rx_indr(opcode, line)
             case Opcode.MOV:
                 return self.validate_rx_ry(opcode, line)
             case Opcode.ADD:
@@ -680,6 +693,14 @@ class ISA:
                             self.STORE(rx, ry, 3)
 
                     self.pc += (end - self.pc)
+                case Opcode.LB:
+                    rx, ry = self.decode_rx_ry(cinstr)
+                    self.LB(rx, ry)
+                    self.pc += opcode.length
+                case Opcode.SB:
+                    rx, ry = self.decode_rx_ry(cinstr)
+                    self.SB(rx, ry)
+                    self.pc += opcode.length
                 case Opcode.MOV:
                     rx, ry = self.decode_rx_ry(cinstr)
                     self.MOV(rx, ry)
@@ -797,4 +818,3 @@ if __name__ == "__main__":
         isa.assemble(input_fn, True)
         isa.run(input_fn, True)
         print(isa)
-        

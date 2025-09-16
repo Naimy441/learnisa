@@ -1,13 +1,12 @@
 # Next Steps
-# 0. Learn about symbol tables, flags, and stack pointers/frame pointers
+# 0. Learn about symbol tables, flags, and stack pointers pointers
 # 1. Add more opcodes (SUB, MUL, DIV, AND, OR, XOR, NOT, SHL, SHR, CMP, MOV, LOAD, STORE, PUSH, POP, IN/OUT)
 # 2. LOAD and STORE should have 1 addressing byte for register, immediate, absolute, and indirect operands
 # 3. Add JMP labels and add JZ, JNZ, JC, JNC with flags (Z flag, C flag, S flag, O flag)
 # 4. Add CALL/RET for functional programming
 # 5. .data/.code and the header
 # 6. Constants and immediate values
-# 7. Macros and psuedo instructions
-# 8. Write 2 test programs: fibonacci (loops) and factorial (recursion)
+# 7. Write 2 test programs: fibonacci (loops) and factorial (recursion)
 
 import sys
 from enum import Enum
