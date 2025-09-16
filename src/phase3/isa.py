@@ -15,28 +15,29 @@ class Opcode(Enum):
     SB    = (4, 3)  # SB Rx, [Ry]     - Stores 1 bytes at [Ry] into Rx       - 1 + 1 + 1 = 3 bytes
     MOV   = (5, 3)  # MOV Rx, Ry      - Puts the value in Ry into Rx         - 1 + 1 + 1 = 3 bytes
     INC   = (6, 2)  # INC Rx          - Puts the valie in Rx + 1 into Rx     - 1 + 1 = 2 bytes
-    ADD   = (7, 3)  # ADD Rx, Ry      - Puts the value of Rx + Ry into Rx    - 1 + 1 + 1 = 3 bytes
-    SUB   = (8, 3)  # SUB Rx, Ry      - Puts the value of Rx - Ry into Rx    - 1 + 1 + 1 = 3 bytes
-    MUL   = (9, 3)  # MUL Rx, Ry      - Puts the value of Rx * Ry into Rx    - 1 + 1 + 1 = 3 bytes
-    DIV   = (10, 3)  # DIV Rx, Ry     - Puts the value of Rx // Ry into Rx   - 1 + 1 + 1 = 3 bytes
-    AND   = (11, 3) # AND Rx, Ry      - Puts the value of Rx & Ry into Rx    - 1 + 1 + 1 = 3 bytes 
-    OR    = (12, 3) # OR Rx, Ry       - Puts the value of Rx | Ry into Rx    - 1 + 1 + 1 = 3 bytes 
-    XOR   = (13, 3) # XOR Rx, Ry      - Puts the value of Rx ^ Ry into Rx    - 1 + 1 + 1 = 3 bytes 
-    NOT   = (14, 2) # NOT Rx          - Puts the value of ~Rx into Rx        - 1 + 1 = 2 bytes 
-    CMP   = (15, 3) # CMP Rx, Ry      - Computes Rx - Ry, updates flags      - 1 + 1 + 1 = 3 bytes
-    SHL   = (16, 2) # SHL Rx          - Bit shifts Rx to the left            - 1 + 1 = 2 bytes 
-    SHR   = (17, 2) # SHR Rx          - Bit shifts Rx to the right           - 1 + 1 = 2 bytes
-    JMP   = (18, 3) # JMP Addr        - Sets PC to instr Addr                - 1 + 2 = 3 bytes            - Limits code to 64kb, needs segmentation/paging to fix
-    JZ    = (19, 3) # JZ Addr         - Sets PC to instr Addr if Z           - 1 + 2 = 3 bytes
-    JNZ   = (20, 3) # JNZ Addr        - Sets PC to instr Addr if ~Z          - 1 + 2 = 3 bytes
-    JC    = (21, 3) # JC Addr         - Sets PC to instr Addr if C           - 1 + 2 = 3 bytes
-    JNC   = (22, 3) # JNC Addr        - Sets PC to instr Addr if ~C          - 1 + 2 = 3 bytes
-    PUSH  = (23, 2) # PUSH Rx         - Pushes Rx onto the stack             - 1 + 1 = 2 bytes
-    POP   = (24, 2) # POP Rx          - Pops from the stack, stores in Rx    - 1 + 1 = 2 bytes
-    SYS   = (25, 4) # SYS Rx, Port    - Takes input or prints int or char    - 1 + 1 + 2 = 4 bytes
-    CALL  = (26, 3) # CALL Addr       - Jumps to Addr, saves Addr to stack   - 1 + 2 = 3 bytes
-    RET   = (27, 1) # RET             - Pops Addr in stack, jumps after Addr - 1 byte
-    HALT  = (28, 1) # HALT            - Ends program                         - 1 byte
+    DEC   = (7, 2)  # DEC Rx          - Puts the valie in Rx - 1 into Rx     - 1 + 1 = 2 bytes
+    ADD   = (8, 3)  # ADD Rx, Ry      - Puts the value of Rx + Ry into Rx    - 1 + 1 + 1 = 3 bytes
+    SUB   = (9, 3)  # SUB Rx, Ry      - Puts the value of Rx - Ry into Rx    - 1 + 1 + 1 = 3 bytes
+    MUL   = (10, 3)  # MUL Rx, Ry     - Puts the value of Rx * Ry into Rx    - 1 + 1 + 1 = 3 bytes
+    DIV   = (11, 3) # DIV Rx, Ry      - Puts the value of Rx // Ry into Rx   - 1 + 1 + 1 = 3 bytes
+    AND   = (12, 3) # AND Rx, Ry      - Puts the value of Rx & Ry into Rx    - 1 + 1 + 1 = 3 bytes 
+    OR    = (13, 3) # OR Rx, Ry       - Puts the value of Rx | Ry into Rx    - 1 + 1 + 1 = 3 bytes 
+    XOR   = (14, 3) # XOR Rx, Ry      - Puts the value of Rx ^ Ry into Rx    - 1 + 1 + 1 = 3 bytes 
+    NOT   = (15, 2) # NOT Rx          - Puts the value of ~Rx into Rx        - 1 + 1 = 2 bytes 
+    CMP   = (16, 3) # CMP Rx, Ry      - Computes Rx - Ry, updates flags      - 1 + 1 + 1 = 3 bytes
+    SHL   = (17, 2) # SHL Rx          - Bit shifts Rx to the left            - 1 + 1 = 2 bytes 
+    SHR   = (18, 2) # SHR Rx          - Bit shifts Rx to the right           - 1 + 1 = 2 bytes
+    JMP   = (19, 3) # JMP Addr        - Sets PC to instr Addr                - 1 + 2 = 3 bytes            - Limits code to 64kb, needs segmentation/paging to fix
+    JZ    = (20, 3) # JZ Addr         - Sets PC to instr Addr if Z           - 1 + 2 = 3 bytes
+    JNZ   = (21, 3) # JNZ Addr        - Sets PC to instr Addr if ~Z          - 1 + 2 = 3 bytes
+    JC    = (22, 3) # JC Addr         - Sets PC to instr Addr if C           - 1 + 2 = 3 bytes
+    JNC   = (23, 3) # JNC Addr        - Sets PC to instr Addr if ~C          - 1 + 2 = 3 bytes
+    PUSH  = (24, 2) # PUSH Rx         - Pushes Rx onto the stack             - 1 + 1 = 2 bytes
+    POP   = (25, 2) # POP Rx          - Pops from the stack, stores in Rx    - 1 + 1 = 2 bytes
+    SYS   = (26, 4) # SYS Rx, Port    - Takes input or prints int or char    - 1 + 1 + 2 = 4 bytes
+    CALL  = (27, 3) # CALL Addr       - Jumps to Addr, saves Addr to stack   - 1 + 2 = 3 bytes
+    RET   = (28, 1) # RET             - Pops Addr in stack, jumps after Addr - 1 byte
+    HALT  = (29, 1) # HALT            - Ends program                         - 1 byte
     
     def __new__(cls, code, length):
         obj = object.__new__(cls)
@@ -174,6 +175,18 @@ class ISA:
         
         self.reg[rx] = res & 0xFFFF
 
+    def DEC(self, rx):
+        res = self.reg[rx] - 1
+        self.update_flags(res)
+        
+        # Overflow occurs if subtracting 1 from 0x8000
+        if self.reg[rx] == 0x8000:
+            self.set_flag(self.O)
+        else:
+            self.clear_flag(self.O)
+        
+        self.reg[rx] = res & 0xFFFF
+
     def ADD(self, rx, ry):
         res = (self.reg[rx] + self.reg[ry])
 
@@ -285,7 +298,7 @@ class ISA:
         if call == "STDIN_INT":
             self.reg[rx] = int(input().strip()) & 0xFFFF
         elif call == "STDIN_CHAR":
-            paself.reg[rx] = ord(input().strip()[0]) & 0xFFFF
+            self.reg[rx] = ord(input().strip()[0]) & 0xFFFF
         elif call == "STDOUT_INT":
             print(self.reg[rx])
         elif call == "STDOUT_CHAR":
@@ -446,6 +459,8 @@ class ISA:
             case Opcode.MOV:
                 return self.validate_rx_ry(opcode, line)
             case Opcode.INC:
+                return self.validate_rx(opcode, line)
+            case Opcode.DEC:
                 return self.validate_rx(opcode, line)
             case Opcode.ADD:
                 return self.validate_rx_ry(opcode, line)
@@ -827,6 +842,10 @@ class ISA:
                 case opcode.INC:
                     rx = self.decode_rx(cinstr)
                     self.INC(rx)
+                    self.pc += opcode.length
+                case opcode.DEC:
+                    rx = self.decode_rx(cinstr)
+                    self.DEC(rx)
                     self.pc += opcode.length
                 case Opcode.ADD:
                     rx, ry = self.decode_rx_ry(cinstr)
