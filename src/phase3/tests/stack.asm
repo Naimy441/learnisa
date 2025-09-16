@@ -1,7 +1,7 @@
 loop:
-    IN R0, 0x0000
+    SYS R0, 0x0000
     PUSH R0
-    IN R1, 0x0000
+    SYS R1, 0x0000
     CMP R0, R1
     JZ if_same
     JNZ loop

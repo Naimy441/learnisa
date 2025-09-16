@@ -1,10 +1,10 @@
 START:
     CALL INPUT
-    OUT R0, 0x0001
+    SYS R0, 0x0002
     JMP END
 
 INPUT:
-    IN R0, 0x0000
+    SYS R0, 0x0000
     RET
 
 END:

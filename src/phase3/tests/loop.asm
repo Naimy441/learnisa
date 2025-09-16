@@ -1,7 +1,7 @@
 start:
-    IN R0, 0x0000
+    SYS R0, 0x0000
     CMP R0, R1
-    OUT R0, 0x0001
+    SYS R0, 0x0002
     JZ end
     JMP start
 

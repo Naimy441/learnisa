@@ -32,11 +32,10 @@ class Opcode(Enum):
     JNC   = (21, 3) # JNC Addr        - Sets PC to instr Addr if ~C          - 1 + 2 = 3 bytes
     PUSH  = (22, 2) # PUSH Rx         - Pushes Rx onto the stack             - 1 + 1 = 2 bytes
     POP   = (23, 2) # POP Rx          - Pops from the stack, stores in Rx    - 1 + 1 = 2 bytes
-    IN    = (24, 4) # IN Rx, Port     - Puts input from port into Rx         - 1 + 1 + 2 = 4 bytes
-    OUT   = (26, 4) # OUT Rx, Port    - Puts output from Rx into port        - 1 + 1 + 2 = 4 bytes
-    CALL  = (27, 3) # CALL Addr       - Jumps to Addr, saves Addr to stack   - 1 + 2 = 3 bytes
-    RET   = (28, 1) # RET             - Pops Addr in stack, jumps after Addr - 1 byte
-    HALT  = (29, 1) # HALT            - Ends program                         - 1 byte
+    SYS   = (24, 4) # SYS Rx, Port    - Takes input or prints int or char    - 1 + 1 + 2 = 4 bytes
+    CALL  = (25, 3) # CALL Addr       - Jumps to Addr, saves Addr to stack   - 1 + 2 = 3 bytes
+    RET   = (26, 1) # RET             - Pops Addr in stack, jumps after Addr - 1 byte
+    HALT  = (27, 1) # HALT            - Ends program                         - 1 byte
     
     def __new__(cls, code, length):
         obj = object.__new__(cls)
@@ -68,8 +67,10 @@ class ISA:
         self.pc = 0 # ID of instruction to run
         self.flags = 0b00000000 
         self.ports = {
-            0x0000: "STDIN",
-            0x0001: "STDOUT"
+            0x0000: "STDIN_INT",
+            0x0001: "STDIN_CHAR",
+            0x0002: "STDOUT_INT",
+            0x0003: "STDOUT_CHAR"
         }
 
         # Assembler
@@ -275,13 +276,15 @@ class ISA:
             self.mem[self.sp + 1] = 0
             self.sp += 2
 
-    def IN(self, rx, port):
-        if self.ports[port] == "STDIN":
-            self.reg[rx] = int(input()) & 0xFFFF
-
-    def OUT(self, rx, port):
-        if self.ports[port] == "STDOUT":
+    def SYS(self, rx, port):
+        if self.ports[port] == "STDIN_INT":
+            self.reg[rx] = int(input().strip()) & 0xFFFF
+        elif self.ports[port] == "STDIN_CHAR":
+            paself.reg[rx] = ord(input().strip()[0]) & 0xFFFF
+        elif self.ports[port] == "STDOUT_INT":
             print(self.reg[rx])
+        elif self.ports[port] == "STDOUT_CHAR":
+            print(chr(self.reg[rx]))
 
     def CALL(self, addr, opcode):
         if self.sp - 2 >= 0:
@@ -467,9 +470,7 @@ class ISA:
                 return self.validate_rx(opcode, line)
             case Opcode.POP:
                 return self.validate_rx(opcode, line)
-            case Opcode.IN:
-                return self.validate_rx_addr(opcode, line, is_symbol)
-            case Opcode.OUT:
+            case Opcode.SYS:
                 return self.validate_rx_addr(opcode, line, is_symbol)
             case Opcode.CALL:
                 return self.validate_addr(opcode, line, is_symbol)
@@ -791,15 +792,10 @@ class ISA:
                     rx = self.decode_rx(cinstr)
                     self.POP(rx)
                     self.pc += opcode.length
-                case Opcode.IN:
+                case Opcode.SYS:
                     rx, port = self.decode_rx_addr(cinstr)
                     if (port in self.ports):
-                        self.IN(rx, port)
-                    self.pc += opcode.length
-                case Opcode.OUT:
-                    rx, port = self.decode_rx_addr(cinstr)
-                    if (port in self.ports):
-                        self.OUT(rx, port)
+                        self.SYS(rx, port)
                     self.pc += opcode.length
                 case Opcode.CALL:
                     addr = self.decode_addr(cinstr)
