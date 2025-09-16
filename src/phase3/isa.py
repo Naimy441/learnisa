@@ -1,8 +1,5 @@
 #!/usr/bin/env python3
 
-# Next Steps
-# 1. Write 2 test programs: fibonacci (loops) and factorial (recursion)
-
 import sys
 from enum import Enum
 
