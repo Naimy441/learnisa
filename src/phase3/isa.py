@@ -1,5 +1,7 @@
 # Next Steps
 # 1. Write 2 test programs: fibonacci (loops) and factorial (recursion)
+# 2. Add auto-runner for tests
+# 3. Create better debugging stuff in regards to tracking bytes and instructions, etc.
 
 import sys
 from enum import Enum
