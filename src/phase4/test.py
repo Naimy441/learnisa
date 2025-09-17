@@ -135,6 +135,7 @@ class TestRunner:
             ("data_word", "1024"),
             ("data_byte", "A"),
             ("data_string", "Hello"),
+            ("file", "HelloWorld!"),
         ]
         
         # Tests that just need to run without error

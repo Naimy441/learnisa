@@ -31,7 +31,7 @@ class Opcode(Enum):
     JNC   = (23, 3) # JNC Addr        - Sets PC to instr Addr if ~C          - 1 + 2 = 3 bytes
     PUSH  = (24, 2) # PUSH Rx         - Pushes Rx onto the stack             - 1 + 1 = 2 bytes
     POP   = (25, 2) # POP Rx          - Pops from the stack, stores in Rx    - 1 + 1 = 2 bytes
-    SYS   = (26, 4) # SYS Rx, Port    - Takes input or prints int or char    - 1 + 1 + 2 = 4 bytes
+    SYS   = (26, 4) # SYS Rx, Port    - Runs kernel level instruction        - 1 + 1 + 2 = 4 bytes
     CALL  = (27, 3) # CALL Addr       - Jumps to Addr, saves Addr to stack   - 1 + 2 = 3 bytes
     RET   = (28, 1) # RET             - Pops Addr in stack, jumps after Addr - 1 byte
     HALT  = (29, 1) # HALT            - Ends program                         - 1 byte
@@ -68,11 +68,19 @@ class ISA:
         self.ports = {
             0x0000: "STDIN_INT",
             0x0001: "STDIN_CHAR",
+
             0x0002: "STDOUT_INT",
             0x0003: "STDOUT_CHAR",
             0x0004: "STDOUT_INT_NR",
-            0x0005: "STDOUT_CHAR_NR"
+            0x0005: "STDOUT_CHAR_NR",
+
+            0x0100: "FILE_OPEN",  # INPUT - R0: MEMORY ADDRESS TO FILE NAME, R1: 0 in READ mode, 1 in WRITE mode, 2 in APPEND mode                     # OUTPUT - R0: FILE DESCRIPTOR
+            0x0101: "FILE_READ",  # INPUT - R0: FILE DESCRIPTOR, R1: BUFFER MEMORY ADDRESS (WHERE TO WRITE TO IN MEM), R2: NUMBER OF BYTES TO READ     # OUTPUT - R0: NUMBER OF BYTES READ 
+            0x0102: "FILE_WRITE", # INPUT - R0: FILE DESCRIPTOR, R1: BUFFER MEMORY ADDRESS (WHERE TO READ FROM IN MEM), R2: NUMBER OF BYTES TO WRITE   # OUTPUT - R0: NUMBER OF BYTES WRITTEN
+            0x0103: "FILE_CLOSE"  # INPUT - R0: FILE DESCRIPTOR                                                                                        # OUTPUT - R0: 0 if SUCCESS, 1 if ERROR
         }
+        self.files = {}
+        self.next_fd = 3 # 0, 1, 2 are reserved for STDIN, STDOUT, and STDERR
 
         # Assembler
         self.DATA_LENGTH = 0
@@ -304,6 +312,49 @@ class ISA:
             print(self.reg[rx], end='')
         elif call == "STDOUT_CHAR_NR":
             print(chr(self.reg[rx]), end='')
+        elif call == "FILE_OPEN":
+            fd = self.next_fd
+            self.next_fd += 1
+            i = self.reg[0]
+            fn = ""
+            while self.mem[i] != 0:
+                fn += chr(self.mem[i])
+                i += 1
+            mode = self.reg[1]
+            if mode == 0:
+                f = open(fn, "rb")
+            elif mode == 1:
+                f = open(fn, "wb")
+            elif mode == 2:
+                f = open(fn, "ab")
+            self.files[fd] = f
+            self.reg[0] = fd & 0xFFFF
+        elif call == "FILE_READ":
+            fd = self.reg[0]
+            i = self.reg[1]
+            num_bytes = self.reg[2]
+            buf = self.files[fd].read(num_bytes)
+            for byte in buf:
+                self.mem[i] = byte
+                i += 1
+            self.reg[0] = len(buf) & 0xFFFF 
+        elif call == "FILE_WRITE":
+            fd = self.reg[0]
+            i = self.reg[1]
+            num_bytes = self.reg[2]
+            buf = bytearray()
+            for offset in range(num_bytes):
+                buf.append(self.mem[i + offset])
+            self.files[fd].write(buf)
+            self.reg[0] = num_bytes & 0xFFFF
+        elif call == "FILE_CLOSE":
+            fd = self.reg[0]
+            try:
+                self.files[fd].close()
+                del self.files[fd]
+                self.reg[0] = 0
+            except:
+                self.reg[0] = 1
 
     def CALL(self, addr, opcode):
         if self.sp - 2 >= 0:
