@@ -1,0 +1,69 @@
+Exactly — for bootstrapping, the first thing you need is an assembler written in your toy assembly, because that’s what will let you eventually compile everything without Python.
+
+Here’s how your notes would adapt for an assembler in assembly:
+
+⸻
+
+1️⃣ CMD
+	•	Take a file path for an assembly source file instead of C.
+
+⸻
+
+2️⃣ READ
+	•	Load the assembly text file into memory.
+
+⸻
+
+3️⃣ LEXER
+	•	Go through every character in the assembly file.
+	•	Identify:
+	•	Opcodes (LOAD, ADD, STORE, etc.)
+	•	Registers (R0, R1, etc.)
+	•	Immediate values / addresses
+	•	Delimiters (;, line breaks)
+	•	Store token types and values contiguously in memory.
+
+⸻
+
+4️⃣ PARSER
+	•	Parse the token stream into a structured form.
+	•	For assembly, this is simpler than C:
+	•	Each instruction is essentially a node with opcode + operands.
+	•	Build an instruction table / AST-like structure in memory.
+
+⸻
+
+5️⃣ CODE GENERATOR / BINARY
+	•	Convert each parsed instruction into machine code directly.
+	•	Map:
+	•	Opcode → binary opcode
+	•	Register → register bits
+	•	Immediate/address → bytes
+	•	Place the resulting bytes into memory or output buffer.
+
+⸻
+
+6️⃣ WRITE
+	•	Write the machine code to a .bin file.
+	•	This is the key difference from a C compiler:
+	•	No need to generate assembly from AST.
+	•	AST-like structure is directly mapped to binary.
+
+⸻
+
+✅ Key differences from a C compiler
+
+Step	C Compiler	Assembler in Assembly
+Input	C source code	Assembly source code
+Lexer	Identify keywords, identifiers, literals	Identify opcodes, registers, numbers
+Parser	Build AST	Build instruction table / minimal AST
+Codegen	AST → ISA assembly	AST/instruction table → machine code
+Binary	Encode assembly → binary	Encode instruction → binary directly
+Output	.bin executable	.bin executable
+
+
+⸻
+
+So, in short: for the assembler, you skip generating assembly; the AST/instruction table goes straight to binary.
+
+If you want, I can sketch a memory layout for the assembler, showing how it reads source → tokens → instruction table → binary buffer, which makes implementing it in assembly much easier. Do you want me to do that?
