@@ -37,6 +37,19 @@ class TestRunner:
         
         return self.capture_output(test_execution)
 
+    def run_isa_test_with_args(self, test_name, args):
+        """Run a single ISA test with command line arguments and return output"""
+        def test_execution():
+            try:
+                isa = ISA(f"tests/{test_name}")
+                isa.assemble(f"tests/{test_name}", False)
+                argc = len(args)
+                isa.run(f"tests/{test_name}", False, argc, args)
+            except Exception as e:
+                print(f"Error: {e}")
+        
+        return self.capture_output(test_execution)
+
     def verify_register_state(self, test_name, expected_reg_values):
         """Verify final register state for tests that don't produce output"""
         try:
@@ -96,6 +109,25 @@ class TestRunner:
                 print("ERROR")
                 self.tests_failed += 1
                 self.test_results.append((test_name, "ERROR", str(e)))
+
+    def run_test_with_args(self, test_name, args, expected_output):
+        """Run a test with command line arguments and verify results"""
+        print(f"Running {test_name} with args {args}...", end=" ")
+        
+        try:
+            output = self.run_isa_test_with_args(test_name, args)
+            if output == expected_output:
+                print("PASS")
+                self.tests_passed += 1
+                self.test_results.append((test_name, "PASS", ""))
+            else:
+                print("FAIL")
+                self.tests_failed += 1
+                self.test_results.append((test_name, "FAIL", f"Expected '{expected_output}', got '{output}'"))
+        except Exception as e:
+            print("ERROR")
+            self.tests_failed += 1
+            self.test_results.append((test_name, "ERROR", str(e)))
 
     def run_all_tests(self):
         """Run all tests with their expected outcomes"""
@@ -158,6 +190,9 @@ class TestRunner:
         # Run basic tests
         for test_name in basic_tests:
             self.run_test(test_name)
+        
+        # Run tests with command line arguments
+        self.run_test_with_args("concat", ["Hello", "World"], "HelloWorld")
         
         # Print summary
         print("=" * 50)

@@ -46,6 +46,12 @@ class Opcode(Enum):
 class ISA:
     HEADER_LENGTH = 16
     MAGIC_NUM = (0x41, 0x4E)
+
+    # Memory Map Guidlines (Total 64 KB)
+    # 0x0000 - 0x3FFF : Code + global/static data (16 KB)
+    # 0x4000 - 0xBFFF : Heap / dynamic memory (32 KB)
+    # 0xC000 - 0xFFFF : Stack (16 KB, grows downward)
+    HEAP_START = 0x4000
     
     MAX_REG = 8
     KILOBYTE = 1024 # A kilobyte has 1024 bytes
@@ -818,8 +824,30 @@ class ISA:
             else:
                 raise ValueError(f"Magic number ({mgcn[0]} {mgcn[1]}) does not match expected signature: {MAGIC_NUM[0]} {MAGIC_NUM[1]}")
 
-    def run(self, input_fn, debug_mode=False):
+    def load_argv_into_mem(self, argc, argv):
+        if argc != 0 and argv is not None:
+            offset = 0
+            ptrs = []
+            for arg in argv:
+                ptrs.append(self.HEAP_START + offset)
+                for j in range(len(arg)):
+                    self.mem[self.HEAP_START + offset] = ord(arg[j])
+                    offset += 1
+                self.mem[self.HEAP_START + offset] = 0
+                offset += 1
+            
+            for ptr in reversed(ptrs):
+                self.sp -= 2
+                self.mem[self.sp] = ptr >> 8 & 0xFF
+                self.mem[self.sp + 1] = ptr & 0xFF
+
+            self.sp -= 2
+            self.mem[self.sp] = argc >> 8 & 0xFF
+            self.mem[self.sp + 1] = argc & 0xFF
+
+    def run(self, input_fn, debug_mode=False, argc=0, argv=None):
         self.load_bin_into_mem(input_fn)
+        self.load_argv_into_mem(argc, argv)
         if debug_mode:
             print(self)
 
@@ -995,11 +1023,17 @@ class ISA:
         self.pc = 0
         self.sp = self.MEM_SIZE
         self.flags = 0b00000000 
+        self.files = {}
+        self.next_fd = 3
     
 if __name__ == "__main__":
     if (len(sys.argv) > 1):
         input_fn = sys.argv[1]
+        if (len(sys.argv) > 2):
+            argv = sys.argv[2:]
+            argc = len(argv)
+
         isa = ISA(input_fn)
         isa.assemble(input_fn, False)
-        isa.run(input_fn, False)
+        isa.run(input_fn, False, argc, argv)
         print(isa)

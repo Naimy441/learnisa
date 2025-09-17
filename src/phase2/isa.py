@@ -7,9 +7,10 @@
 # 5. .data/.code and the header
 # 6. Constants and immediate values
 # 7. Strings in .data, LB, and SB
-# 8. Write 2 test programs: fibonacci (loops) and factorial (recursion)
-# 9. Add auto-runner for tests
-# 10. Create better debugging stuff in regards to tracking bytes and instructions, etc.
+# 8. Load command line arguments into the stack
+# 9. Write 2 test programs: fibonacci (loops) and factorial (recursion)
+# 10. Add auto-runner for tests
+# 11. Create better debugging stuff in regards to tracking bytes and instructions, etc.
 
 import sys
 from enum import Enum
