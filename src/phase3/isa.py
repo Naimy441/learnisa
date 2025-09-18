@@ -1,5 +1,10 @@
 #!/usr/bin/env python3
 
+# Next Steps
+# 1. Add .asciiv
+# 2. Improve SYS with STRING output
+# 3. Add debug_log.txt
+
 import sys
 from enum import Enum
 
@@ -1027,13 +1032,17 @@ class ISA:
         self.next_fd = 3
     
 if __name__ == "__main__":
+    ASSEMBLER_DEBUG_MODE = False
+    RUNNER_DEBUG_MODE = True
+
     if (len(sys.argv) > 1):
         input_fn = sys.argv[1]
+        isa = ISA(input_fn)
+        isa.assemble(input_fn, ASSEMBLER_DEBUG_MODE)
         if (len(sys.argv) > 2):
             argv = sys.argv[2:]
             argc = len(argv)
-
-        isa = ISA(input_fn)
-        isa.assemble(input_fn, False)
-        isa.run(input_fn, False, argc, argv)
+            isa.run(input_fn, RUNNER_DEBUG_MODE, argc, argv)
+        else:
+            isa.run(input_fn, RUNNER_DEBUG_MODE)
         print(isa)

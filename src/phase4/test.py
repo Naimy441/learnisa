@@ -137,7 +137,7 @@ class TestRunner:
         # Tests that modify registers only
         register_tests = [
             ("nop", {0: 0, 1: 0, 2: 0, 3: 0, 4: 0, 5: 0, 6: 0, 7: 0}),  # No change
-            ("load", {0: 42}),
+            ("load", {0: 16384}),
             ("mov", {0: 123, 1: 123}),
             ("inc", {0: 6}),
             ("add", {0: 30, 1: 20}),

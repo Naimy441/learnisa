@@ -1,0 +1,602 @@
+running=False
+pc=93
+reg=[0, 0, 0, 0, 0, 0, 0, 0]
+symbols={'ERR_UNKNOWN': 0, 'ERR_CMD': 32, 'ERR_FREAD': 66, 'start': 93, 'open_file': 114, 'prepare_read_file': 144, 'read_file': 157, 'err': 175, 'err_unknown': 200, 'err_cmd': 205, 'err_fread': 217, 'end': 229}
+Z=False, S=False, C=False, O=False
+sp=65532
+mem[16384]=116
+mem[16385]=101
+mem[16386]=115
+mem[16387]=116
+mem[16388]=46
+mem[16389]=97
+mem[16390]=115
+mem[16391]=109
+mem[65533]=1
+mem[65534]=64
+
+Opcode.POP
+running=True
+pc=95
+reg=[1, 0, 0, 0, 0, 0, 0, 0]
+symbols={'ERR_UNKNOWN': 0, 'ERR_CMD': 32, 'ERR_FREAD': 66, 'start': 93, 'open_file': 114, 'prepare_read_file': 144, 'read_file': 157, 'err': 175, 'err_unknown': 200, 'err_cmd': 205, 'err_fread': 217, 'end': 229}
+Z=False, S=False, C=False, O=False
+sp=65534
+mem[16384]=116
+mem[16385]=101
+mem[16386]=115
+mem[16387]=116
+mem[16388]=46
+mem[16389]=97
+mem[16390]=115
+mem[16391]=109
+mem[65534]=64
+
+Opcode.LOAD
+running=True
+pc=100
+reg=[1, 1, 0, 0, 0, 0, 0, 0]
+symbols={'ERR_UNKNOWN': 0, 'ERR_CMD': 32, 'ERR_FREAD': 66, 'start': 93, 'open_file': 114, 'prepare_read_file': 144, 'read_file': 157, 'err': 175, 'err_unknown': 200, 'err_cmd': 205, 'err_fread': 217, 'end': 229}
+Z=False, S=False, C=False, O=False
+sp=65534
+mem[16384]=116
+mem[16385]=101
+mem[16386]=115
+mem[16387]=116
+mem[16388]=46
+mem[16389]=97
+mem[16390]=115
+mem[16391]=109
+mem[65534]=64
+
+Opcode.CMP
+running=True
+pc=103
+reg=[1, 1, 0, 0, 0, 0, 0, 0]
+symbols={'ERR_UNKNOWN': 0, 'ERR_CMD': 32, 'ERR_FREAD': 66, 'start': 93, 'open_file': 114, 'prepare_read_file': 144, 'read_file': 157, 'err': 175, 'err_unknown': 200, 'err_cmd': 205, 'err_fread': 217, 'end': 229}
+Z=True, S=False, C=False, O=False
+sp=65534
+mem[16384]=116
+mem[16385]=101
+mem[16386]=115
+mem[16387]=116
+mem[16388]=46
+mem[16389]=97
+mem[16390]=115
+mem[16391]=109
+mem[65534]=64
+
+Opcode.JZ
+running=True
+pc=114
+reg=[1, 1, 0, 0, 0, 0, 0, 0]
+symbols={'ERR_UNKNOWN': 0, 'ERR_CMD': 32, 'ERR_FREAD': 66, 'start': 93, 'open_file': 114, 'prepare_read_file': 144, 'read_file': 157, 'err': 175, 'err_unknown': 200, 'err_cmd': 205, 'err_fread': 217, 'end': 229}
+Z=True, S=False, C=False, O=False
+sp=65534
+mem[16384]=116
+mem[16385]=101
+mem[16386]=115
+mem[16387]=116
+mem[16388]=46
+mem[16389]=97
+mem[16390]=115
+mem[16391]=109
+mem[65534]=64
+
+Opcode.POP
+running=True
+pc=116
+reg=[16384, 1, 0, 0, 0, 0, 0, 0]
+symbols={'ERR_UNKNOWN': 0, 'ERR_CMD': 32, 'ERR_FREAD': 66, 'start': 93, 'open_file': 114, 'prepare_read_file': 144, 'read_file': 157, 'err': 175, 'err_unknown': 200, 'err_cmd': 205, 'err_fread': 217, 'end': 229}
+Z=True, S=False, C=False, O=False
+sp=65536
+mem[16384]=116
+mem[16385]=101
+mem[16386]=115
+mem[16387]=116
+mem[16388]=46
+mem[16389]=97
+mem[16390]=115
+mem[16391]=109
+
+Opcode.LOAD
+running=True
+pc=121
+reg=[16384, 0, 0, 0, 0, 0, 0, 0]
+symbols={'ERR_UNKNOWN': 0, 'ERR_CMD': 32, 'ERR_FREAD': 66, 'start': 93, 'open_file': 114, 'prepare_read_file': 144, 'read_file': 157, 'err': 175, 'err_unknown': 200, 'err_cmd': 205, 'err_fread': 217, 'end': 229}
+Z=True, S=False, C=False, O=False
+sp=65536
+mem[16384]=116
+mem[16385]=101
+mem[16386]=115
+mem[16387]=116
+mem[16388]=46
+mem[16389]=97
+mem[16390]=115
+mem[16391]=109
+
+Opcode.SYS
+running=True
+pc=125
+reg=[3, 0, 0, 0, 0, 0, 0, 0]
+symbols={'ERR_UNKNOWN': 0, 'ERR_CMD': 32, 'ERR_FREAD': 66, 'start': 93, 'open_file': 114, 'prepare_read_file': 144, 'read_file': 157, 'err': 175, 'err_unknown': 200, 'err_cmd': 205, 'err_fread': 217, 'end': 229}
+Z=True, S=False, C=False, O=False
+sp=65536
+mem[16384]=116
+mem[16385]=101
+mem[16386]=115
+mem[16387]=116
+mem[16388]=46
+mem[16389]=97
+mem[16390]=115
+mem[16391]=109
+
+Opcode.LOAD
+running=True
+pc=130
+reg=[3, 3, 0, 0, 0, 0, 0, 0]
+symbols={'ERR_UNKNOWN': 0, 'ERR_CMD': 32, 'ERR_FREAD': 66, 'start': 93, 'open_file': 114, 'prepare_read_file': 144, 'read_file': 157, 'err': 175, 'err_unknown': 200, 'err_cmd': 205, 'err_fread': 217, 'end': 229}
+Z=True, S=False, C=False, O=False
+sp=65536
+mem[16384]=116
+mem[16385]=101
+mem[16386]=115
+mem[16387]=116
+mem[16388]=46
+mem[16389]=97
+mem[16390]=115
+mem[16391]=109
+
+Opcode.CMP
+running=True
+pc=133
+reg=[3, 3, 0, 0, 0, 0, 0, 0]
+symbols={'ERR_UNKNOWN': 0, 'ERR_CMD': 32, 'ERR_FREAD': 66, 'start': 93, 'open_file': 114, 'prepare_read_file': 144, 'read_file': 157, 'err': 175, 'err_unknown': 200, 'err_cmd': 205, 'err_fread': 217, 'end': 229}
+Z=True, S=False, C=False, O=False
+sp=65536
+mem[16384]=116
+mem[16385]=101
+mem[16386]=115
+mem[16387]=116
+mem[16388]=46
+mem[16389]=97
+mem[16390]=115
+mem[16391]=109
+
+Opcode.JZ
+running=True
+pc=144
+reg=[3, 3, 0, 0, 0, 0, 0, 0]
+symbols={'ERR_UNKNOWN': 0, 'ERR_CMD': 32, 'ERR_FREAD': 66, 'start': 93, 'open_file': 114, 'prepare_read_file': 144, 'read_file': 157, 'err': 175, 'err_unknown': 200, 'err_cmd': 205, 'err_fread': 217, 'end': 229}
+Z=True, S=False, C=False, O=False
+sp=65536
+mem[16384]=116
+mem[16385]=101
+mem[16386]=115
+mem[16387]=116
+mem[16388]=46
+mem[16389]=97
+mem[16390]=115
+mem[16391]=109
+
+Opcode.LOAD
+running=True
+pc=149
+reg=[3, 16384, 0, 0, 0, 0, 0, 0]
+symbols={'ERR_UNKNOWN': 0, 'ERR_CMD': 32, 'ERR_FREAD': 66, 'start': 93, 'open_file': 114, 'prepare_read_file': 144, 'read_file': 157, 'err': 175, 'err_unknown': 200, 'err_cmd': 205, 'err_fread': 217, 'end': 229}
+Z=True, S=False, C=False, O=False
+sp=65536
+mem[16384]=116
+mem[16385]=101
+mem[16386]=115
+mem[16387]=116
+mem[16388]=46
+mem[16389]=97
+mem[16390]=115
+mem[16391]=109
+
+Opcode.LOAD
+running=True
+pc=154
+reg=[3, 16384, 100, 0, 0, 0, 0, 0]
+symbols={'ERR_UNKNOWN': 0, 'ERR_CMD': 32, 'ERR_FREAD': 66, 'start': 93, 'open_file': 114, 'prepare_read_file': 144, 'read_file': 157, 'err': 175, 'err_unknown': 200, 'err_cmd': 205, 'err_fread': 217, 'end': 229}
+Z=True, S=False, C=False, O=False
+sp=65536
+mem[16384]=116
+mem[16385]=101
+mem[16386]=115
+mem[16387]=116
+mem[16388]=46
+mem[16389]=97
+mem[16390]=115
+mem[16391]=109
+
+Opcode.JMP
+running=True
+pc=157
+reg=[3, 16384, 100, 0, 0, 0, 0, 0]
+symbols={'ERR_UNKNOWN': 0, 'ERR_CMD': 32, 'ERR_FREAD': 66, 'start': 93, 'open_file': 114, 'prepare_read_file': 144, 'read_file': 157, 'err': 175, 'err_unknown': 200, 'err_cmd': 205, 'err_fread': 217, 'end': 229}
+Z=True, S=False, C=False, O=False
+sp=65536
+mem[16384]=116
+mem[16385]=101
+mem[16386]=115
+mem[16387]=116
+mem[16388]=46
+mem[16389]=97
+mem[16390]=115
+mem[16391]=109
+
+Opcode.SYS
+running=True
+pc=161
+reg=[3, 16384, 100, 26, 0, 0, 0, 0]
+symbols={'ERR_UNKNOWN': 0, 'ERR_CMD': 32, 'ERR_FREAD': 66, 'start': 93, 'open_file': 114, 'prepare_read_file': 144, 'read_file': 157, 'err': 175, 'err_unknown': 200, 'err_cmd': 205, 'err_fread': 217, 'end': 229}
+Z=True, S=False, C=False, O=False
+sp=65536
+mem[16384]=76
+mem[16385]=79
+mem[16386]=65
+mem[16387]=68
+mem[16388]=32
+mem[16389]=82
+mem[16390]=48
+mem[16391]=44
+mem[16392]=32
+mem[16393]=49
+mem[16394]=53
+mem[16395]=10
+mem[16396]=83
+mem[16397]=89
+mem[16398]=83
+mem[16399]=32
+mem[16400]=82
+mem[16401]=48
+mem[16402]=44
+mem[16403]=32
+mem[16404]=48
+mem[16405]=120
+mem[16406]=48
+mem[16407]=48
+mem[16408]=48
+mem[16409]=50
+
+Opcode.LOAD
+running=True
+pc=166
+reg=[3, 16384, 100, 26, 0, 0, 0, 0]
+symbols={'ERR_UNKNOWN': 0, 'ERR_CMD': 32, 'ERR_FREAD': 66, 'start': 93, 'open_file': 114, 'prepare_read_file': 144, 'read_file': 157, 'err': 175, 'err_unknown': 200, 'err_cmd': 205, 'err_fread': 217, 'end': 229}
+Z=True, S=False, C=False, O=False
+sp=65536
+mem[16384]=76
+mem[16385]=79
+mem[16386]=65
+mem[16387]=68
+mem[16388]=32
+mem[16389]=82
+mem[16390]=48
+mem[16391]=44
+mem[16392]=32
+mem[16393]=49
+mem[16394]=53
+mem[16395]=10
+mem[16396]=83
+mem[16397]=89
+mem[16398]=83
+mem[16399]=32
+mem[16400]=82
+mem[16401]=48
+mem[16402]=44
+mem[16403]=32
+mem[16404]=48
+mem[16405]=120
+mem[16406]=48
+mem[16407]=48
+mem[16408]=48
+mem[16409]=50
+
+Opcode.CMP
+running=True
+pc=169
+reg=[3, 16384, 100, 26, 0, 0, 0, 0]
+symbols={'ERR_UNKNOWN': 0, 'ERR_CMD': 32, 'ERR_FREAD': 66, 'start': 93, 'open_file': 114, 'prepare_read_file': 144, 'read_file': 157, 'err': 175, 'err_unknown': 200, 'err_cmd': 205, 'err_fread': 217, 'end': 229}
+Z=False, S=False, C=False, O=False
+sp=65536
+mem[16384]=76
+mem[16385]=79
+mem[16386]=65
+mem[16387]=68
+mem[16388]=32
+mem[16389]=82
+mem[16390]=48
+mem[16391]=44
+mem[16392]=32
+mem[16393]=49
+mem[16394]=53
+mem[16395]=10
+mem[16396]=83
+mem[16397]=89
+mem[16398]=83
+mem[16399]=32
+mem[16400]=82
+mem[16401]=48
+mem[16402]=44
+mem[16403]=32
+mem[16404]=48
+mem[16405]=120
+mem[16406]=48
+mem[16407]=48
+mem[16408]=48
+mem[16409]=50
+
+Opcode.JZ
+running=True
+pc=172
+reg=[3, 16384, 100, 26, 0, 0, 0, 0]
+symbols={'ERR_UNKNOWN': 0, 'ERR_CMD': 32, 'ERR_FREAD': 66, 'start': 93, 'open_file': 114, 'prepare_read_file': 144, 'read_file': 157, 'err': 175, 'err_unknown': 200, 'err_cmd': 205, 'err_fread': 217, 'end': 229}
+Z=False, S=False, C=False, O=False
+sp=65536
+mem[16384]=76
+mem[16385]=79
+mem[16386]=65
+mem[16387]=68
+mem[16388]=32
+mem[16389]=82
+mem[16390]=48
+mem[16391]=44
+mem[16392]=32
+mem[16393]=49
+mem[16394]=53
+mem[16395]=10
+mem[16396]=83
+mem[16397]=89
+mem[16398]=83
+mem[16399]=32
+mem[16400]=82
+mem[16401]=48
+mem[16402]=44
+mem[16403]=32
+mem[16404]=48
+mem[16405]=120
+mem[16406]=48
+mem[16407]=48
+mem[16408]=48
+mem[16409]=50
+
+Opcode.JNZ
+running=True
+pc=157
+reg=[3, 16384, 100, 26, 0, 0, 0, 0]
+symbols={'ERR_UNKNOWN': 0, 'ERR_CMD': 32, 'ERR_FREAD': 66, 'start': 93, 'open_file': 114, 'prepare_read_file': 144, 'read_file': 157, 'err': 175, 'err_unknown': 200, 'err_cmd': 205, 'err_fread': 217, 'end': 229}
+Z=False, S=False, C=False, O=False
+sp=65536
+mem[16384]=76
+mem[16385]=79
+mem[16386]=65
+mem[16387]=68
+mem[16388]=32
+mem[16389]=82
+mem[16390]=48
+mem[16391]=44
+mem[16392]=32
+mem[16393]=49
+mem[16394]=53
+mem[16395]=10
+mem[16396]=83
+mem[16397]=89
+mem[16398]=83
+mem[16399]=32
+mem[16400]=82
+mem[16401]=48
+mem[16402]=44
+mem[16403]=32
+mem[16404]=48
+mem[16405]=120
+mem[16406]=48
+mem[16407]=48
+mem[16408]=48
+mem[16409]=50
+
+Opcode.SYS
+running=True
+pc=161
+reg=[3, 16384, 100, 0, 0, 0, 0, 0]
+symbols={'ERR_UNKNOWN': 0, 'ERR_CMD': 32, 'ERR_FREAD': 66, 'start': 93, 'open_file': 114, 'prepare_read_file': 144, 'read_file': 157, 'err': 175, 'err_unknown': 200, 'err_cmd': 205, 'err_fread': 217, 'end': 229}
+Z=False, S=False, C=False, O=False
+sp=65536
+mem[16384]=76
+mem[16385]=79
+mem[16386]=65
+mem[16387]=68
+mem[16388]=32
+mem[16389]=82
+mem[16390]=48
+mem[16391]=44
+mem[16392]=32
+mem[16393]=49
+mem[16394]=53
+mem[16395]=10
+mem[16396]=83
+mem[16397]=89
+mem[16398]=83
+mem[16399]=32
+mem[16400]=82
+mem[16401]=48
+mem[16402]=44
+mem[16403]=32
+mem[16404]=48
+mem[16405]=120
+mem[16406]=48
+mem[16407]=48
+mem[16408]=48
+mem[16409]=50
+
+Opcode.LOAD
+running=True
+pc=166
+reg=[3, 16384, 100, 0, 0, 0, 0, 0]
+symbols={'ERR_UNKNOWN': 0, 'ERR_CMD': 32, 'ERR_FREAD': 66, 'start': 93, 'open_file': 114, 'prepare_read_file': 144, 'read_file': 157, 'err': 175, 'err_unknown': 200, 'err_cmd': 205, 'err_fread': 217, 'end': 229}
+Z=False, S=False, C=False, O=False
+sp=65536
+mem[16384]=76
+mem[16385]=79
+mem[16386]=65
+mem[16387]=68
+mem[16388]=32
+mem[16389]=82
+mem[16390]=48
+mem[16391]=44
+mem[16392]=32
+mem[16393]=49
+mem[16394]=53
+mem[16395]=10
+mem[16396]=83
+mem[16397]=89
+mem[16398]=83
+mem[16399]=32
+mem[16400]=82
+mem[16401]=48
+mem[16402]=44
+mem[16403]=32
+mem[16404]=48
+mem[16405]=120
+mem[16406]=48
+mem[16407]=48
+mem[16408]=48
+mem[16409]=50
+
+Opcode.CMP
+running=True
+pc=169
+reg=[3, 16384, 100, 0, 0, 0, 0, 0]
+symbols={'ERR_UNKNOWN': 0, 'ERR_CMD': 32, 'ERR_FREAD': 66, 'start': 93, 'open_file': 114, 'prepare_read_file': 144, 'read_file': 157, 'err': 175, 'err_unknown': 200, 'err_cmd': 205, 'err_fread': 217, 'end': 229}
+Z=True, S=False, C=False, O=False
+sp=65536
+mem[16384]=76
+mem[16385]=79
+mem[16386]=65
+mem[16387]=68
+mem[16388]=32
+mem[16389]=82
+mem[16390]=48
+mem[16391]=44
+mem[16392]=32
+mem[16393]=49
+mem[16394]=53
+mem[16395]=10
+mem[16396]=83
+mem[16397]=89
+mem[16398]=83
+mem[16399]=32
+mem[16400]=82
+mem[16401]=48
+mem[16402]=44
+mem[16403]=32
+mem[16404]=48
+mem[16405]=120
+mem[16406]=48
+mem[16407]=48
+mem[16408]=48
+mem[16409]=50
+
+Opcode.JZ
+running=True
+pc=229
+reg=[3, 16384, 100, 0, 0, 0, 0, 0]
+symbols={'ERR_UNKNOWN': 0, 'ERR_CMD': 32, 'ERR_FREAD': 66, 'start': 93, 'open_file': 114, 'prepare_read_file': 144, 'read_file': 157, 'err': 175, 'err_unknown': 200, 'err_cmd': 205, 'err_fread': 217, 'end': 229}
+Z=True, S=False, C=False, O=False
+sp=65536
+mem[16384]=76
+mem[16385]=79
+mem[16386]=65
+mem[16387]=68
+mem[16388]=32
+mem[16389]=82
+mem[16390]=48
+mem[16391]=44
+mem[16392]=32
+mem[16393]=49
+mem[16394]=53
+mem[16395]=10
+mem[16396]=83
+mem[16397]=89
+mem[16398]=83
+mem[16399]=32
+mem[16400]=82
+mem[16401]=48
+mem[16402]=44
+mem[16403]=32
+mem[16404]=48
+mem[16405]=120
+mem[16406]=48
+mem[16407]=48
+mem[16408]=48
+mem[16409]=50
+
+Opcode.HALT
+running=False
+pc=229
+reg=[3, 16384, 100, 0, 0, 0, 0, 0]
+symbols={'ERR_UNKNOWN': 0, 'ERR_CMD': 32, 'ERR_FREAD': 66, 'start': 93, 'open_file': 114, 'prepare_read_file': 144, 'read_file': 157, 'err': 175, 'err_unknown': 200, 'err_cmd': 205, 'err_fread': 217, 'end': 229}
+Z=True, S=False, C=False, O=False
+sp=65536
+mem[16384]=76
+mem[16385]=79
+mem[16386]=65
+mem[16387]=68
+mem[16388]=32
+mem[16389]=82
+mem[16390]=48
+mem[16391]=44
+mem[16392]=32
+mem[16393]=49
+mem[16394]=53
+mem[16395]=10
+mem[16396]=83
+mem[16397]=89
+mem[16398]=83
+mem[16399]=32
+mem[16400]=82
+mem[16401]=48
+mem[16402]=44
+mem[16403]=32
+mem[16404]=48
+mem[16405]=120
+mem[16406]=48
+mem[16407]=48
+mem[16408]=48
+mem[16409]=50
+
+running=False
+pc=229
+reg=[3, 16384, 100, 0, 0, 0, 0, 0]
+symbols={'ERR_UNKNOWN': 0, 'ERR_CMD': 32, 'ERR_FREAD': 66, 'start': 93, 'open_file': 114, 'prepare_read_file': 144, 'read_file': 157, 'err': 175, 'err_unknown': 200, 'err_cmd': 205, 'err_fread': 217, 'end': 229}
+Z=True, S=False, C=False, O=False
+sp=65536
+mem[16384]=76
+mem[16385]=79
+mem[16386]=65
+mem[16387]=68
+mem[16388]=32
+mem[16389]=82
+mem[16390]=48
+mem[16391]=44
+mem[16392]=32
+mem[16393]=49
+mem[16394]=53
+mem[16395]=10
+mem[16396]=83
+mem[16397]=89
+mem[16398]=83
+mem[16399]=32
+mem[16400]=82
+mem[16401]=48
+mem[16402]=44
+mem[16403]=32
+mem[16404]=48
+mem[16405]=120
+mem[16406]=48
+mem[16407]=48
+mem[16408]=48
+mem[16409]=50
+

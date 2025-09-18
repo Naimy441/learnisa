@@ -79,6 +79,8 @@ class ISA:
             0x0003: "STDOUT_CHAR",
             0x0004: "STDOUT_INT_NR",
             0x0005: "STDOUT_CHAR_NR",
+            0x0006: "STDOUT_STR",     # INPUT - Rx: MEMORY ADDRESS TO FIRST CHAR IN STRING
+            0x0007: "STDOUT_STR_NR",  # INPUT - Rx: MEMORY ADDRESS TO FIRST CHAR IN STRING
 
             0x0100: "FILE_OPEN",  # INPUT - R0: MEMORY ADDRESS TO FILE NAME, R1: 0 in READ mode, 1 in WRITE mode, 2 in APPEND mode                     # OUTPUT - R0: FILE DESCRIPTOR
             0x0101: "FILE_READ",  # INPUT - R0: FILE DESCRIPTOR, R1: BUFFER MEMORY ADDRESS (WHERE TO WRITE TO IN MEM), R2: NUMBER OF BYTES TO READ     # OUTPUT - R0: NUMBER OF BYTES READ 
@@ -318,6 +320,20 @@ class ISA:
             print(self.reg[rx], end='')
         elif call == "STDOUT_CHAR_NR":
             print(chr(self.reg[rx]), end='')
+        elif call == "STDOUT_STR":
+            i = self.reg[rx]
+            buf = ""
+            while (self.mem[i] != 0):
+                buf += chr(self.mem[i])
+                i += 1
+            print(buf)
+        elif call == "STDOUT_STR_NR":
+            i = self.reg[rx]
+            buf = ""
+            while (self.mem[i] != 0):
+                buf += chr(self.mem[i])
+                i += 1
+            print(buf, end='')
         elif call == "FILE_OPEN":
             fd = self.next_fd
             self.next_fd += 1
@@ -343,7 +359,7 @@ class ISA:
             for byte in buf:
                 self.mem[i] = byte
                 i += 1
-            self.reg[0] = len(buf) & 0xFFFF 
+            self.reg[rx] = len(buf) & 0xFFFF 
         elif call == "FILE_WRITE":
             fd = self.reg[0]
             i = self.reg[1]
@@ -352,15 +368,15 @@ class ISA:
             for offset in range(num_bytes):
                 buf.append(self.mem[i + offset])
             self.files[fd].write(buf)
-            self.reg[0] = num_bytes & 0xFFFF
+            self.reg[rx] = num_bytes & 0xFFFF
         elif call == "FILE_CLOSE":
             fd = self.reg[0]
             try:
                 self.files[fd].close()
                 del self.files[fd]
-                self.reg[0] = 0
+                self.reg[rx] = 0
             except:
-                self.reg[0] = 1
+                self.reg[rx] = 1
 
     def CALL(self, addr, opcode):
         if self.sp - 2 >= 0:
@@ -593,6 +609,9 @@ class ISA:
                         memory_addr += len(line[2:]) 
                     elif line[1] == '.word':
                         memory_addr += (len(line[2:]) * 2)
+                    elif line[1] == '.asciiz':
+                        # Len of a string, without the quotation marks, with the 0 delimiter added
+                        memory_addr += len(" ".join(line[2:]).replace('\'', '')) + 1 
                     else:
                         memory_addr += 2
                     continue
@@ -688,7 +707,7 @@ class ISA:
                                     try:
                                         bytearr.append(int(e, 0) & 0xFF)
                                     except ValueError():
-                                        print(f"Invalid element in .byte directive: {e}")
+                                        self.log(f"Invalid element in .byte directive: {e}")
                             data_buf.extend(bytearr)
                             if debug_mode:
                                 debug_buf.append(bytearr)
@@ -707,7 +726,23 @@ class ISA:
                                         val & 0xFF
                                     ])
                                 except ValueError():
-                                    print(f"Invalid element in .byte directive: {e}")
+                                    self.log(f"Invalid element in .byte directive: {e}")
+                            data_buf.extend(bytearr)
+                            if debug_mode:
+                                debug_buf.append(bytearr)
+                                debug_info.append({
+                                    'instr': ' '.join(line),
+                                    'hex': ' '.join(f'{b:02X}' for b in bytearr),
+                                    'addr': len(data_buf) - len(bytearr)
+                                })
+                        elif line[1] == '.asciiz':
+                            string = " ".join(line[2:]).replace('\'', '') + '\0'
+                            bytearr = []
+                            for c in string:
+                                try:
+                                    bytearr.append(ord(c) & 0xFF)
+                                except ValueError():
+                                    self.log(f"Invalid element in .asciiz directive: {c}")
                             data_buf.extend(bytearr)
                             if debug_mode:
                                 debug_buf.append(bytearr)
@@ -738,7 +773,7 @@ class ISA:
 
                 opcode = Opcode[line[0]]
                 if debug_mode:
-                    print(opcode)
+                    self.log(opcode)
 
                 if len(code_buf) + len(data_buf) + opcode.length < self.MEM_SIZE:
                     bytearr = self.get_byte_array(opcode, line)
@@ -849,7 +884,7 @@ class ISA:
         self.load_bin_into_mem(input_fn)
         self.load_argv_into_mem(argc, argv)
         if debug_mode:
-            print(self)
+            self.log(self)
 
         self.running = True
         while (self.running):
@@ -862,7 +897,7 @@ class ISA:
             cinstr = self.mem[self.pc : end]
 
             if debug_mode:
-                print(opcode)
+                self.log(opcode)
 
             match opcode:
                 case Opcode.NOP:
@@ -1004,7 +1039,7 @@ class ISA:
                     self.HALT()
             
             if debug_mode:
-                print(self)
+                self.log(self)
 
     # Helper methods
     def __str__(self):
@@ -1013,9 +1048,11 @@ class ISA:
             if self.mem[i] != 0:
                 changed_mem[i] = self.mem[i]
         
-        changed_mem_str = "\n".join(f"mem[{addr}]={val}" for addr, val in changed_mem.items())
+        changed_mem_str = "\n".join(f"mem[{addr}]={val}" for addr, val in changed_mem.items() if addr >= self.HEAP_START)
 
-        return f"running={self.running}\npc={self.pc}\nreg={self.reg}\nsymbols={self.symbols}\nZ={self.is_flag_set(self.Z)}, S={self.is_flag_set(self.S)}, C={self.is_flag_set(self.C)}, O={self.is_flag_set(self.O)}\nsp={self.sp}\n" + changed_mem_str + '\n'
+        str_out = f"running={self.running}\npc={self.pc}\nreg={self.reg}\nsymbols={self.symbols}\nZ={self.is_flag_set(self.Z)}, S={self.is_flag_set(self.S)}, C={self.is_flag_set(self.C)}, O={self.is_flag_set(self.O)}\nsp={self.sp}\n"
+        str_out += changed_mem_str + '\n'
+        return str_out 
 
     def reset(self):
         self.reg = [0] * 8 # 8 registers, 16 bits per register
@@ -1026,14 +1063,25 @@ class ISA:
         self.files = {}
         self.next_fd = 3
     
+    def log(self, string):
+        with open('debug_log.txt', 'a') as f:
+            f.write(str(string) + '\n')
+    
 if __name__ == "__main__":
+    with open('debug_log.txt', 'w') as f:
+        f.write("")
+    
+    ASSEMBLER_DEBUG_MODE = False
+    RUNNER_DEBUG_MODE = True
+
     if (len(sys.argv) > 1):
         input_fn = sys.argv[1]
+        isa = ISA(input_fn)
+        isa.assemble(input_fn, ASSEMBLER_DEBUG_MODE)
         if (len(sys.argv) > 2):
             argv = sys.argv[2:]
             argc = len(argv)
-
-        isa = ISA(input_fn)
-        isa.assemble(input_fn, False)
-        isa.run(input_fn, False, argc, argv)
-        print(isa)
+            isa.run(input_fn, RUNNER_DEBUG_MODE, argc, argv)
+        else:
+            isa.run(input_fn, RUNNER_DEBUG_MODE)
+        isa.log(isa)
