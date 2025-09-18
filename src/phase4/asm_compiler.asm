@@ -140,7 +140,8 @@ read_file:
     JNZ read_file
 
 lexer_tok_space_match:
-    SYS R2, 0x0000
+    LOAD R2, STR_LOAD
+    SYS R2, 0x0006
     INC R1
     JMP lexer
 
@@ -155,8 +156,8 @@ lexer_tok_space:
     CMP R5, R1
     JZ lexer_tok_space_match
 
-    LOAD R2, [R5]
-    LOAD R3, [R6]
+    LB R2, [R5]
+    LB R3, [R6]
     CMP R2, R3
     JNZ lexer_tok_space_fail
 
@@ -169,29 +170,33 @@ lexer_tok_space_init:
     JMP lexer_tok_space
 
 lexer_proceed_until_delim:
-    LOAD R2, [R1]       ; Load char byte from HEAP at memory address R1
-
-    LOAD R3, SPACE
+    LOAD R4, SPACE
+    LB R3, [R4]
     CMP R2, R3 
     JZ lexer_tok_space_init
 
-    LOAD R3, NEWLINE
+    LOAD R4, NEWLINE
+    LB R3, [R4]
     CMP R2, R3
     JZ lexer
 
-    LOAD R3, TAB
+    LOAD R4, TAB
+    LB R3, [R4]
     CMP R2, R3
     JZ lexer
 
-    LOAD R3, COLON
+    LOAD R4, COLON
+    LB R3, [R4]
     CMP R2, R3
     JZ lexer
 
-    LOAD R3, SEMICOLON
+    LOAD R4, SEMICOLON
+    LB R3, [R4]
     CMP R2, R3
     JZ lexer
 
-    LOAD R3, COMMA
+    LOAD R4, COMMA
+    LB R3, [R4]
     CMP R2, R3
     JZ lexer
 
@@ -199,15 +204,16 @@ lexer_proceed_until_delim:
     JMP lexer
 
 prepare_lexer:
+    PUSH R0             ; Store file descriptor to STACK
     PUSH R5             ; Store total number of bytes read to STACK
     LOAD R1, 16384      ; Memory address for the start of HEAP
     LOAD R5, R1         ; Copy as starting index
 
 lexer:    
-    LOAD R2, [R1]
-    LOAD R3, 0
+    LB R2, [R1]         ; LB only loads 1 byte (1 char) from HEAP at memory address R1
+    LOAD R3, 0          ; Check EOF
     CMP R2, R3
-    JZ lexer_proceed_until_delim
+    JNZ lexer_proceed_until_delim
 
     JMP end
 
