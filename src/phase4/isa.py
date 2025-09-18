@@ -497,6 +497,10 @@ class ISA:
                     bytearr = self.validate_rx_ry(opcode, line)
                     bytearr.insert(1, 0x02) # Register
                     return bytearr
+                elif line[2].startswith('[R') and line[2].endswith(']'):
+                    bytearr = self.validate_rx_indr(opcode, line)
+                    bytearr.insert(1, 0x04) # Indirect
+                    return bytearr
                 elif is_symbol:
                     bytearr = self.validate_rx_val(opcode, line, is_symbol)
                     bytearr.insert(1, 0x01) # Immediate
@@ -504,10 +508,6 @@ class ISA:
                 elif line[2].lower().startswith('0x'):
                     bytearr = self.validate_rx_addr(opcode, line, is_symbol)
                     bytearr.insert(1, 0x03) # Absolute addr
-                    return bytearr
-                elif line[2].startswith('[R') and line[2].endswith(']'):
-                    bytearr = self.validate_rx_indr(opcode, line)
-                    bytearr.insert(1, 0x04) # Indirect
                     return bytearr
                 else:
                     bytearr = self.validate_rx_val(opcode, line, is_symbol)
