@@ -53,7 +53,7 @@ class ISA:
     # 0xC000 - 0xFFFF : Stack (16 KB, grows downward)
     HEAP_START = 0x4000
     
-    MAX_REG = 8
+    MAX_REG = 10
     KILOBYTE = 1024 # A kilobyte has 1024 bytes
     MEM_SIZE = 64 * KILOBYTE # MEM_SIZE and memory-addressable instruction space are the same
     
@@ -66,7 +66,7 @@ class ISA:
     def __init__(self, input_fn=None):
         # CPU
         self.running = False
-        self.reg = [0] * self.MAX_REG # 8 registers, 16 bits per register
+        self.reg = [0] * self.MAX_REG # 10 registers, 16 bits per register
         self.mem = bytearray(self.MEM_SIZE) # 64kb memory, 8 bits per address
         self.sp = self.MEM_SIZE
         self.pc = 0 # ID of instruction to run
@@ -1055,7 +1055,7 @@ class ISA:
         return str_out 
 
     def reset(self):
-        self.reg = [0] * 8 # 8 registers, 16 bits per register
+        self.reg = [0] * self.MAX_REG # 10 registers, 16 bits per register
         self.mem = bytearray(64 * self.KILOBYTE) # 64kb memory
         self.pc = 0
         self.sp = self.MEM_SIZE

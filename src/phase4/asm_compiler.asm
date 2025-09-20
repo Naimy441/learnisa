@@ -6,17 +6,17 @@ TOK_EOF       = 0
 TOK_DATA      = 1
 TOK_CODE      = 2
 
-TOK_BYTE      = 3
-TOK_WORD      = 4
-TOK_ASCIIZ    = 5
+TOK_VAR       = 3
+TOK_BYTE      = 4
+TOK_WORD      = 5
+TOK_ASCIIZ    = 6
 
-TOK_LABEL     = 6
-TOK_OPCODE    = 7
-TOK_REGISTER  = 8
-TOK_IMMEDIATE = 9
-TOK_ADDRESS   = 10
-TOK_INDIRECT  = 11
-TOK_VAR       = 2
+TOK_LABEL     = 7
+TOK_OPCODE    = 8
+TOK_REGISTER  = 9
+TOK_IMMEDIATE = 10
+TOK_ADDRESS   = 11
+TOK_INDIRECT  = 12
 
 CODE_NOP   = 0
 CODE_LOAD  = 1
@@ -49,6 +49,8 @@ CODE_CALL  = 27
 CODE_RET   = 28
 CODE_HALT  = 29
 
+OPCODE_START = 0
+OPCODE_END = 29
 STR_NOP    = .asciiz 'NOP'
 STR_LOAD   = .asciiz 'LOAD'
 STR_STORE  = .asciiz 'STORE'
@@ -139,69 +141,49 @@ read_file:
     ADD R5, R3          ; R5 is the total number of bytes read
     JNZ read_file
 
-lexer_tok_space_match:
-    LOAD R2, STR_LOAD
+
+lexer_tok_space_fail_proceed_until_opcode:
+    ; Continue until you hit the 0 for opcode string
+    JMP lexer
+
+lexer_if_space:
+    LOAD R0, OPCODE_START
+    LOAD R6, STR_LOAD
+    JMP lexer_loop_space
+lexer_loop_space:
+    ; R5 starting index, R1 ending index
+
+    ; Check if we have checked all available opcodes
+    LOAD R7, OPCODE_END
+    CMP R7, R0
+    JZ lexer
+
+    ; If string indexes match, we have reached the end of the string
+    CMP R5, R1
+    JZ if_end_string_reached
+    JNZ else_end_string_reached
+if_end_string_reached:
+    LOAD R2, R0
     SYS R2, 0x0006
     INC R1
     JMP lexer
-
-lexer_tok_space_fail:
-    INC R1
-    JMP lexer
-
-lexer_tok_space:
-    ; R5 starting index, R1 ending index
-    ; R2, R3 available
-
-    CMP R5, R1
-    JZ lexer_tok_space_match
-
+else_end_string_reached:
     LB R2, [R5]
     LB R3, [R6]
     CMP R2, R3
-    JNZ lexer_tok_space_fail
-
+    JNZ if_chars_unequal
+    JZ else_chars_unequal
+if_chars_unequal:
+    INC R0      ; Check next opcode
+    ; Go to the starting index of the next opcode string
+    LOAD R2, 0
+    CMP R0, R2
+    JZ lexer_tok_space
+    JMP lexer_tok_space_fail
+else_chars_unequal:
     INC R5
     INC R6
     JMP lexer_tok_space
-
-lexer_tok_space_init:
-    LOAD R6, STR_LOAD
-    JMP lexer_tok_space
-
-lexer_proceed_until_delim:
-    LOAD R4, SPACE
-    LB R3, [R4]
-    CMP R2, R3 
-    JZ lexer_tok_space_init
-
-    LOAD R4, NEWLINE
-    LB R3, [R4]
-    CMP R2, R3
-    JZ lexer
-
-    LOAD R4, TAB
-    LB R3, [R4]
-    CMP R2, R3
-    JZ lexer
-
-    LOAD R4, COLON
-    LB R3, [R4]
-    CMP R2, R3
-    JZ lexer
-
-    LOAD R4, SEMICOLON
-    LB R3, [R4]
-    CMP R2, R3
-    JZ lexer
-
-    LOAD R4, COMMA
-    LB R3, [R4]
-    CMP R2, R3
-    JZ lexer
-
-    INC R1              ; Increment to next memory address    
-    JMP lexer
 
 prepare_lexer:
     PUSH R0             ; Store file descriptor to STACK
@@ -214,16 +196,56 @@ lexer:
     LOAD R3, 0          ; Check EOF
     CMP R2, R3
     JNZ lexer_proceed_until_delim
+    JZ end
 
-    JMP end
+lexer_proceed_until_delim:
+    LOAD R4, SPACE
+    LB R3, [R4]
+    CMP R2, R3 
+    JZ lexer_if_space
 
-; PARSER: Generate instruction table
-;   Opcode
-;   Adressing Byte?
-;   Operands
+    ; LOAD R4, NEWLINE
+    ; LB R3, [R4]
+    ; CMP R2, R3
+    ; JZ lexer
+
+    ; LOAD R4, TAB
+    ; LB R3, [R4]
+    ; CMP R2, R3
+    ; JZ lexer
+
+    ; LOAD R4, COLON
+    ; LB R3, [R4]
+    ; CMP R2, R3
+    ; JZ lexer
+
+    ; LOAD R4, SEMICOLON
+    ; LB R3, [R4]
+    ; CMP R2, R3
+    ; JZ lexer
+
+    ; LOAD R4, COMMA
+    ; LB R3, [R4]
+    ; CMP R2, R3
+    ; JZ lexer
+
+    INC R1              ; Increment to next memory address    
+    JMP lexer
+
+; LEXER: Tokenize
+
+; PARSER: Resolve symbols
+;   (1st Pass) Generate symbol table with addresses
+;   Track data to in memory count of instruction address, store total data length
+;   Then in .code:
+;   Resolve labels to in memory count of instruction address num
+;   Resolve vars to previously tracked instruction addr
 
 ; CODE GENERATOR: Turn instruction table into binary
-;   Map instructions to binary
+;   (2nd Pass) 
+;   Loop through all tokens
+;   For each token_type, take in token_values and convert to binary based on expectations
+;   Add binary to buffer at the start of HEAP
 
 ; WRITE: Write file to .bin
 
