@@ -1,0 +1,5 @@
+LOAD R0, 42
+PUSH R0
+POP R1
+HALT
+; Expected: R0 = 42, R1 = 42

@@ -1,0 +1,4 @@
+LOAD R0, 170
+NOT R0
+HALT
+; Expected: R0 = 65365

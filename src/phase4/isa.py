@@ -29,12 +29,16 @@ class Opcode(Enum):
     JNZ   = (21, 3) # JNZ Addr        - Sets PC to instr Addr if ~Z          - 1 + 2 = 3 bytes
     JC    = (22, 3) # JC Addr         - Sets PC to instr Addr if C           - 1 + 2 = 3 bytes
     JNC   = (23, 3) # JNC Addr        - Sets PC to instr Addr if ~C          - 1 + 2 = 3 bytes
-    PUSH  = (24, 2) # PUSH Rx         - Pushes Rx onto the stack             - 1 + 1 = 2 bytes
-    POP   = (25, 2) # POP Rx          - Pops from the stack, stores in Rx    - 1 + 1 = 2 bytes
-    SYS   = (26, 4) # SYS Rx, Port    - Runs kernel level instruction        - 1 + 1 + 2 = 4 bytes
-    CALL  = (27, 3) # CALL Addr       - Jumps to Addr, saves Addr to stack   - 1 + 2 = 3 bytes
-    RET   = (28, 1) # RET             - Pops Addr in stack, jumps after Addr - 1 byte
-    HALT  = (29, 1) # HALT            - Ends program                         - 1 byte
+    JL    = (24, 3) # JL Addr         - Sets PC to instr Addr if S!=O        - 1 + 2 = 3 bytes
+    JLE   = (25, 3) # JLE Addr        - Sets PC to instr Addr if Z=1|S!=O     - 1 + 2 = 3 bytes
+    JG    = (26, 3) # JG Addr         - Sets PC to instr Addr if Z=0&S=O     - 1 + 2 = 3 bytes
+    JGE   = (27, 3) # JGE Addr        - Sets PC to instr Addr if S=O         - 1 + 2 = 3 bytes
+    PUSH  = (28, 2) # PUSH Rx         - Pushes Rx onto the stack             - 1 + 1 = 2 bytes
+    POP   = (29, 2) # POP Rx          - Pops from the stack, stores in Rx    - 1 + 1 = 2 bytes
+    SYS   = (30, 4) # SYS Rx, Port    - Runs kernel level instruction        - 1 + 1 + 2 = 4 bytes
+    CALL  = (31, 3) # CALL Addr       - Jumps to Addr, saves Addr to stack   - 1 + 2 = 3 bytes
+    RET   = (32, 1) # RET             - Pops Addr in stack, jumps after Addr - 1 byte
+    HALT  = (33, 1) # HALT            - Ends program                         - 1 byte
     
     def __new__(cls, code, length):
         obj = object.__new__(cls)
@@ -256,7 +260,16 @@ class ISA:
         self.update_flags(self.reg[rx])
 
     def CMP(self, rx, ry):
-        self.update_flags((self.reg[rx] - self.reg[ry]) & 0xFFFF)
+        res = (self.reg[rx] - self.reg[ry])
+        
+        self.update_flags(res)
+        rx_sign = self.reg[rx] & 0x8000
+        ry_sign = self.reg[ry] & 0x8000 
+        res_sign = res & 0x8000
+        if rx_sign != ry_sign and rx_sign != res_sign:
+            self.set_flag(self.O)
+        else:
+            self.clear_flag(self.O)
     
     def SHL(self, rx):
         self.reg[rx] = self.reg[rx] << 1 & 0xFFFF
@@ -289,6 +302,40 @@ class ISA:
 
     def JNC(self, addr, opcode):
         if not self.is_flag_set(self.C):
+            self.pc = addr  
+        else:
+            self.pc += opcode.length
+
+    def JL(self, addr, opcode):
+        S = self.is_flag_set(self.S)
+        O = self.is_flag_set(self.O)
+        if S != O:
+            self.pc = addr  
+        else:
+            self.pc += opcode.length
+
+    def JLE(self, addr, opcode):
+        S = self.is_flag_set(self.S)
+        O = self.is_flag_set(self.O)
+        Z = self.is_flag_set(self.Z)
+        if Z or S != O:
+            self.pc = addr  
+        else:
+            self.pc += opcode.length
+
+    def JG(self, addr, opcode):
+        S = self.is_flag_set(self.S)
+        O = self.is_flag_set(self.O)
+        Z = self.is_flag_set(self.Z)
+        if not Z and S == O:
+            self.pc = addr  
+        else:
+            self.pc += opcode.length
+
+    def JGE(self, addr, opcode):
+        S = self.is_flag_set(self.S)
+        O = self.is_flag_set(self.O)
+        if S == O:
             self.pc = addr  
         else:
             self.pc += opcode.length
@@ -490,7 +537,7 @@ class ISA:
                 is_symbol = True
 
         match opcode:
-            case Opcode.NOP:
+            case Opcode.NOP | Opcode.RET | Opcode.HALT:
                 return [opcode.value & 0xFF]
             case Opcode.LOAD:
                 if line[2].startswith('R'):
@@ -522,60 +569,16 @@ class ISA:
                     bytearr = self.validate_rx_indr(opcode, line)
                     bytearr.insert(1, 0x04) # Indirect
                     return bytearr
-            case Opcode.LB:
+            case Opcode.LB | Opcode.SB:
                 return self.validate_rx_indr(opcode, line)
-            case Opcode.SB:
-                return self.validate_rx_indr(opcode, line)
-            case Opcode.MOV:
-                return self.validate_rx_ry(opcode, line)
-            case Opcode.INC:
+            case Opcode.INC | Opcode.DEC | Opcode.NOT | Opcode.PUSH | Opcode.POP | Opcode.SHL | Opcode.SHR:
                 return self.validate_rx(opcode, line)
-            case Opcode.DEC:
-                return self.validate_rx(opcode, line)
-            case Opcode.ADD:
+            case Opcode.MOV | Opcode.ADD | Opcode.SUB | Opcode.CMP | Opcode.MUL | Opcode.DIV | Opcode.AND | Opcode.OR | Opcode.XOR:
                 return self.validate_rx_ry(opcode, line)
-            case Opcode.SUB:
-                return self.validate_rx_ry(opcode, line)
-            case Opcode.MUL:
-                return self.validate_rx_ry(opcode, line)
-            case Opcode.DIV:
-                return self.validate_rx_ry(opcode, line)
-            case Opcode.AND:
-                return self.validate_rx_ry(opcode, line)
-            case Opcode.OR:
-                return self.validate_rx_ry(opcode, line)
-            case Opcode.XOR:
-                return self.validate_rx_ry(opcode, line)
-            case Opcode.NOT:
-                return self.validate_rx(opcode, line)
-            case Opcode.CMP:
-                return self.validate_rx_ry(opcode, line)
-            case Opcode.SHL:
-                return self.validate_rx(opcode, line)
-            case Opcode.SHR:
-                return self.validate_rx(opcode, line)
-            case Opcode.JMP:
+            case Opcode.JMP | Opcode.JZ | Opcode.JNZ | Opcode.JC | Opcode.JNC | Opcode.JL | Opcode.JLE | Opcode.JG | Opcode.JGE | Opcode.CALL:
                 return self.validate_addr(opcode, line, is_symbol)
-            case Opcode.JZ:
-                return self.validate_addr(opcode, line, is_symbol)
-            case Opcode.JNZ:
-                return self.validate_addr(opcode, line, is_symbol)
-            case Opcode.JC:
-                return self.validate_addr(opcode, line, is_symbol)
-            case Opcode.JNC:
-                return self.validate_addr(opcode, line, is_symbol)
-            case Opcode.PUSH:
-                return self.validate_rx(opcode, line)
-            case Opcode.POP:
-                return self.validate_rx(opcode, line)
             case Opcode.SYS:
                 return self.validate_rx_addr(opcode, line, True)
-            case Opcode.CALL:
-                return self.validate_addr(opcode, line, is_symbol)
-            case Opcode.RET:
-                return [opcode.value & 0xFF]
-            case Opcode.HALT:
-                return [opcode.value & 0xFF]
             case _:
                 raise ValueError(f"Unknown opcode: {opcode}")
 
@@ -1017,6 +1020,18 @@ class ISA:
                 case Opcode.JNC:
                     addr = self.decode_addr(cinstr)
                     self.JNC(addr, opcode)
+                case Opcode.JL:
+                    addr = self.decode_addr(cinstr)
+                    self.JL(addr, opcode)
+                case Opcode.JLE:
+                    addr = self.decode_addr(cinstr)
+                    self.JLE(addr, opcode)
+                case Opcode.JG:
+                    addr = self.decode_addr(cinstr)
+                    self.JG(addr, opcode)
+                case Opcode.JGE:
+                    addr = self.decode_addr(cinstr)
+                    self.JGE(addr, opcode)
                 case Opcode.PUSH:
                     rx = self.decode_rx(cinstr)
                     self.PUSH(rx)

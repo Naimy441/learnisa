@@ -89,13 +89,14 @@ BYTE   = .asciiz '.byte'
 WORD   = .asciiz '.word'
 ASCIIZ = .asciiz '.asciiz'
 
-ADDR1     = .byte '0'
-ADDR2     = .byte 'x'
+ADDR1     = .byte 48    ; 0
+ADDR2     = .byte 120   ; x
 
-REG       = .byte 'R'
-RBRACE    = .byte '['
-LBRACE    = .byte ']'
-STR       = .byte 39
+REG       = .byte 82    ; R
+RBRACE    = .byte 91    ; [
+LBRACE    = .byte 93    ; ]
+STR       = .byte 39    ; '
+EQ_SIGN   = .byte 61    ; =
 
 SEMICOLON = .byte 59
 COLON     = .byte 58
@@ -284,15 +285,70 @@ loop_until_next_opcode:
 
 lexer_if_colon:
     ; Get all chars before the colon but after the newline char
-    JMP lexer
+    LOAD R5, R1
+while_not_newline:
+    DEC R5
+    LOAD R4, NEWLINE
+    LB R3, [R4]
+    LB R2, [R5]         ; LB only loads 1 byte (1 char) from HEAP at memory address R1
+    CMP R2, R3
+    JNZ while_not_newline
+    DEC R5
+while_r5_ne_r1:
+    INC R5
+    SYS R5, 0x0005
+    CMP R5, R1
+    JNZ while_r5_ne_r1
+    JZ lexer
 
 lexer_if_semicolon:
     ; Skip all chars until next new line
-    JMP lexer
+    LOAD R4, NEWLINE
+    LB R3, [R4]
+    LB R2, [R1]         ; LB only loads 1 byte (1 char) from HEAP at memory address R1
+    CMP R2, R3
+    JNZ lexer_if_semicolon
+    JZ lexer
 
 lexer_if_period:
     ; Check .data and .code directives
-    JMP lexer
+    LOAD R8, R1 ; R8 is a indexing var
+    LOAD R7, 4  ; Loop counter
+    LOAD R4, DATA
+
+loop_check_data_directive:
+    INC R3      ; Go to first char after period
+    LB R2, [R8] ; Actual char
+    LB R3, [R4] ; Comparison char
+    CMP R2, R4
+    JNZ init_loop_check_code_directive   ; .data is false
+    INC R8
+    DEC R7
+    LOAD R2, 0
+    CMP R7, R2
+    JNZ loop_check_data_directive
+    LOAD R0, 1  ; .data is true
+    STORE R0, 49151  ; Add num to end of HEAP
+    JZ lexer
+
+init_loop_check_code_directive:
+    LOAD R8, R1 ; R8 is a indexing var
+    LOAD R7, 4  ; Loop counter
+    LOAD R4, DATA
+loop_check_code_directive:
+    INC R3      ; Go to first char after period
+    LB R2, [R8] ; Actual char
+    LB R3, [R4] ; Comparison char
+    CMP R2, R4
+    JNZ lexer   ; .data is false
+    INC R8
+    DEC R7
+    LOAD R2, 0
+    CMP R7, R2
+    JNZ loop_check_code_directive
+    LOAD R0, 0  ; .code is true
+    STORE R0, 49151  ; Add num to end of HEAP
+    JZ lexer
 
 prepare_lexer:
     PUSH R0             ; Store file descriptor to STACK
@@ -315,6 +371,148 @@ lexer:
     JZ end
 
 lexer_proceed_until_delim:
+    LOAD R0, 49151  ; Add num to end of HEAP
+    LOAD R6, 1
+    CMP R0, R6      ; Check .data directive
+    JZ handle_data
+    JNZ handle_code
+handle_data:
+    LOAD R4, 65     ; ASCII for A
+    LB R3, [R4]
+    CMP R2, R3
+    JL if_is_not_char
+    LOAD R4, 90     ; ASCII for Z
+    LB R3, [R4]
+    CMP R2, R3
+    JLE if_is_char
+
+    LOAD R4, 97     ; ASCII for a
+    LB R3, [R4]
+    CMP R2, R3
+    JL if_is_not_char
+    LOAD R4, 122     ; ASCII for z
+    LB R3, [R4]
+    CMP R2, R3
+    JLE if_is_char
+
+    LOAD R4, 95     ; ASCII for _
+    LB R3, [R4]
+    CMP R2, R3
+    JNZ if_is_not_char
+    JZ if_is_char
+if_is_not_char:
+    INC R1
+    JMP lexer
+if_is_char:
+    LOAD R4, EQ_SIGN
+    LB R3, [R4]
+    CMP R2, R3
+    JNZ while_char_not_equal_sign
+    JZ if_char_not_data_directive
+while_char_not_equal_sign:
+    INC R1
+    LB R2, [R1]         ; LB only loads 1 byte (1 char) from HEAP at memory address R1
+    CMP R2, R4
+    JZ while_char_not_directive
+if_char_not_data_directive:
+    INC R1
+    LOAD R4, PERIOD
+    LB R3, [R4]
+    LB R2, [R1]         ; LB only loads 1 byte (1 char) from HEAP at memory address R1
+    CMP R2, R3
+    JZ data_if_period
+    JNZ data_if_number
+data_if_period:
+    INC R1
+    LOAD R4, 97     ; ASCII for a
+    LB R3, [R4]
+    LB R2, [R1]     ; LB only loads 1 byte (1 char) from HEAP at memory address R1
+    CMP R2, R3
+    JZ is_data_asciiz
+
+    LOAD R4, 98     ; ASCII for b
+    LB R3, [R4]
+    LB R2, [R1]     ; LB only loads 1 byte (1 char) from HEAP at memory address R1
+    CMP R2, R3
+    JZ is_data_byte
+
+    LOAD R4, 119     ; ASCII for w
+    LB R3, [R4]
+    LB R2, [R1]     ; LB only loads 1 byte (1 char) from HEAP at memory address R1
+    CMP R2, R3
+    JZ is_data_byte ; Bytes and words follow same format so use in lexer
+    JNZ lexer
+is_data_asciiz:
+    INC R1
+    LOAD R4, SPACE
+    LB R3, [R4]
+    LB R2, [R1]     ; LB only loads 1 byte (1 char) from HEAP at memory address R1
+    CMP R2, R3 
+    JZ is_data_asciiz
+while_not_apostrophe1:
+    INC R1
+    LOAD R4, STR
+    LB R4, [R4]
+    LB R2, [R1]
+    CMP R2, R4
+    JNZ while_not_apostrophe1
+while_not_apostrophe2:
+    INC R1
+    LOAD R4, STR
+    LB R4, [R4]
+    LB R2, [R1]
+    CMP R2, R4
+    SYS R2, 0x0005
+    JNZ while_not_apostrophe2
+    JZ lexer
+is_data_byte:
+    INC R1
+    LOAD R4, SPACE
+    LB R3, [R4]
+    LB R2, [R1]     ; LB only loads 1 byte (1 char) from HEAP at memory address R1
+    CMP R2, R3 
+    JZ is_data_byte
+data_if_byte:
+    INC R1
+    LOAD R4, 48     ; ASCII for 0
+    LB R3, [R4]
+    LB R2, [R1]     ; LB only loads 1 byte (1 char) from HEAP at memory address R1
+    CMP R2, R3
+    JL lexer
+    LOAD R4, 57     ; ASCII for 9
+    LB R3, [R4]
+    CMP R2, R3
+    JLE if_is_num_byte
+    JMP if_is_not_num_byte
+if_is_not_num_byte:
+    LOAD R4, COMMA 
+    LB R3, [R4]
+    LB R2, [R1]     ; LB only loads 1 byte (1 char) from HEAP at memory address R1
+    CMP R2, R3
+    JNZ lexer
+    INC R1
+    JMP data_if_byte
+if_is_num_byte:
+    SYS R2, 0x0005
+    JMP data_if_number
+    JMP lexer
+data_if_number:
+    LOAD R4, 48     ; ASCII for 0
+    LB R3, [R4]
+    CMP R2, R3
+    JL if_is_not_num
+    LOAD R4, 57     ; ASCII for 9
+    LB R3, [R4]
+    CMP R2, R3
+    JLE if_is_num
+    JMP if_is_not_num
+if_is_not_num:
+    JMP lexer
+if_is_num:
+    SYS R2, 0x0005
+    JMP data_if_number
+    
+handle_code:
     LOAD R4, PERIOD
     LB R3, [R4]
     CMP R2, R3
