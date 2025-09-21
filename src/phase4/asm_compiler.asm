@@ -89,7 +89,9 @@ BYTE   = .asciiz '.byte'
 WORD   = .asciiz '.word'
 ASCIIZ = .asciiz '.asciiz'
 
-ADDR      = .asciiz '0x'
+ADDR1     = .byte '0'
+ADDR2     = .byte 'x'
+
 REG       = .byte 'R'
 RBRACE    = .byte '['
 LBRACE    = .byte ']'
@@ -101,6 +103,7 @@ COMMA     = .byte 44
 SPACE     = .byte 32
 TAB       = .byte 9
 NEWLINE   = .byte 10
+PERIOD    = .byte 46
 
 ERR_UNKNOWN = .asciiz 'ERROR: An uknown error occurred'
 ERR_CMD     = .asciiz 'ERROR: No command line args found'
@@ -141,55 +144,168 @@ read_file:
     ADD R5, R3          ; R5 is the total number of bytes read
     JNZ read_file
 
+get_operators:
+    LOAD R7, 2
+    CMP R9, R7  ; If already got second operator, exit
+    JZ if_finished_second
+    JNZ else_finished_second
+if_finished_second:
+    ; Skip till newline (ignoring comments)
+    INC R1
+    LB R2, [R1]         ; LB only loads 1 byte (1 char) from HEAP at memory address R1
+    LOAD R4, NEWLINE
+    LB R3, [R4]
+    CMP R2, R3
+    JZ lexer
+    JNZ if_finished_second
+else_finished_second:
+    LOAD R7, 1
+    CMP R9, R7  ; If on first, start at first char of next operator
+    JZ if_finished_first
+    JNZ else_finished_first
+if_finished_first:
+    INC R1  ; Start on next
+else_finished_first:
+    LB R2, [R1]         ; LB only loads 1 byte (1 char) from HEAP at memory address R1
+    
+    LOAD R4, REG
+    LB R3, [R4]
+    CMP R2, R3 
+    JZ if_reg
+    JNZ check_rbrace
+if_reg:
+    INC R1  ; Skip R
+    SYS R2, 0x0003  ; Print x
+    
+    INC R1
+    JMP get_operators
+check_rbrace:
+    LOAD R4, RBRACE
+    LB R3, [R4]
+    CMP R2, R3 
+    JZ if_rbrace
+    JNZ check_addr1
+if_rbrace:
+    INC R1  ; Skip [
+    INC R1  ; Skip R
+    SYS R2, 0x0003 ; Print x
+    INC R1  ; Skip ]
 
-lexer_tok_space_fail_proceed_until_opcode:
-    ; Continue until you hit the 0 for opcode string
-    JMP lexer
+    INC R9
+    JMP get_operators
+check_addr1:
+    LOAD R4, ADDR1
+    LB R3, [R4]
+    CMP R2, R3 
+    JZ if_addr1
+    JNZ check_num
+if_addr1:
+    SYS R2, 0x0003
+    INC R1
+    SYS R2, 0x0003
+    INC R1
+    SYS R2, 0x0003
+    INC R1
+    SYS R2, 0x0003
+    INC R1
+    SYS R2, 0x0003
+    INC R1
+    SYS R2, 0x0003
+    INC R1
+
+    INC R9
+    JMP get_operators
+check_num:
+    ; It's a number, if it made it this far 
+    SYS R2, 0x0003 
+    INC R1
+    LB R2, [R1]         ; LB only loads 1 byte (1 char) from HEAP at memory address R1
+    LOAD R4, SPACE
+    LB R3, [R4]
+    CMP R2, R3
+    JZ get_operators
+    JNZ check_num
 
 lexer_if_space:
-    LOAD R0, OPCODE_START
-    LOAD R6, STR_LOAD
+    ; Initalize lexer_loop_space
+    LOAD R0, OPCODE_START   ; R0 is a counter for which opcode we are on
+    LOAD R6, STR_LOAD       ; Opcodes are in contigiuous mem, 1st opcode is LOAD
     JMP lexer_loop_space
 lexer_loop_space:
-    ; R5 starting index, R1 ending index
+    LOAD R2, 1
+    CMP R9, R2
+    JZ if_opcode_found
+    JNZ else_opcode_found
+if_opcode_found:
+    INC R1
+    SYS R0, 0x0006
+    LOAD R9, 0  ; Counting var for operator
+    JMP get_operators
+else_opcode_found:
+    LOAD R9, 1              ; FOUND variable: assumes str match found
 
     ; Check if we have checked all available opcodes
     LOAD R7, OPCODE_END
     CMP R7, R0
     JZ lexer
 
+lexer_loop_compare_string_to_opcode:
     ; If string indexes match, we have reached the end of the string
-    CMP R5, R1
+    CMP R1, R8      ; R1 ending index, R8 current index
     JZ if_end_string_reached
     JNZ else_end_string_reached
 if_end_string_reached:
-    LOAD R2, R0
-    SYS R2, 0x0006
-    INC R1
-    JMP lexer
-else_end_string_reached:
-    LB R2, [R5]
-    LB R3, [R6]
+    INC R0          ; Check next opcode
+    LOAD R8, R5     ; Set R8, current index, to R5, starting index
+    LOAD R9, 0      ; Not Found
+    JMP lexer_loop_space
+else_end_string_reached
+    LB R2, [R8]     ; Char at current index
+    LB R3, [R6]     ; Char in opcode string
     CMP R2, R3
-    JNZ if_chars_unequal
-    JZ else_chars_unequal
-if_chars_unequal:
-    INC R0      ; Check next opcode
-    ; Go to the starting index of the next opcode string
-    LOAD R2, 0
-    CMP R0, R2
-    JZ lexer_tok_space
-    JMP lexer_tok_space_fail
-else_chars_unequal:
-    INC R5
+    JZ if_chars_match
+    JNZ else_chars_match
+if_chars_match:
+    INC R8
     INC R6
-    JMP lexer_tok_space
+    JMP lexer_loop_compare_string_to_opcode
+else_chars_match:
+    INC R0          ; Check next opcode
+    LOAD R9, 0      ; Not Found
+    JMP loop_until_next_opcode
+    ; Go to the starting index of the next opcode string
+loop_until_next_opcode:
+    LOAD R2, 0 
+    LOAD R3, [R6]
+    INC R6
+    CMP R3, R2      ; Check if the opcode is done
+    JZ lexer_loop_space
+    JNZ loop_until_next_opcode
+
+lexer_if_colon:
+    ; Get all chars before the colon but after the newline char
+    JMP lexer
+
+lexer_if_semicolon:
+    ; Skip all chars until next new line
+    JMP lexer
+
+lexer_if_period:
+    ; Check .data and .code directives
+    JMP lexer
 
 prepare_lexer:
     PUSH R0             ; Store file descriptor to STACK
     PUSH R5             ; Store total number of bytes read to STACK
     LOAD R1, 16384      ; Memory address for the start of HEAP
+
+    LOAD R9, 0
+    ADD R9, R1
+    ADD R9, R5
+    PUSH R9             ; Store available starting memory address pos to STACK
+
     LOAD R5, R1         ; Copy as starting index
+    LOAD R8, R1         ; Copy as current index
 
 lexer:    
     LB R2, [R1]         ; LB only loads 1 byte (1 char) from HEAP at memory address R1
@@ -199,37 +315,27 @@ lexer:
     JZ end
 
 lexer_proceed_until_delim:
+    LOAD R4, PERIOD
+    LB R3, [R4]
+    CMP R2, R3
+    JZ lexer_if_period
+
     LOAD R4, SPACE
     LB R3, [R4]
     CMP R2, R3 
     JZ lexer_if_space
 
-    ; LOAD R4, NEWLINE
-    ; LB R3, [R4]
-    ; CMP R2, R3
-    ; JZ lexer
+    LOAD R4, COLON
+    LB R3, [R4]
+    CMP R2, R3
+    JZ lexer_if_colon
 
-    ; LOAD R4, TAB
-    ; LB R3, [R4]
-    ; CMP R2, R3
-    ; JZ lexer
+    LOAD R4, SEMICOLON
+    LB R3, [R4]
+    CMP R2, R3
+    JZ lexer_if_semicolon
 
-    ; LOAD R4, COLON
-    ; LB R3, [R4]
-    ; CMP R2, R3
-    ; JZ lexer
-
-    ; LOAD R4, SEMICOLON
-    ; LB R3, [R4]
-    ; CMP R2, R3
-    ; JZ lexer
-
-    ; LOAD R4, COMMA
-    ; LB R3, [R4]
-    ; CMP R2, R3
-    ; JZ lexer
-
-    INC R1              ; Increment to next memory address    
+    INC R1              ; Increment to next memory address (skips tabs, newlines)
     JMP lexer
 
 ; LEXER: Tokenize
