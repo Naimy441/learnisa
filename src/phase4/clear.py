@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """
-Script to clear all .bin, .hex, and .dbg files in the current directory and subdirectories.
+Script to clear all .bin, .hex, .dbg, .symbols files and debug_log.txt in the current directory and subdirectories.
 """
 
 import os
@@ -13,17 +13,24 @@ def clear_bin_files():
     # Change to the script directory
     os.chdir(script_dir)
     
-    # Find all .bin and .hex files recursively
-    bin_files = glob.glob("**/*.bin", recursive=True)
-    hex_files = glob.glob("**/*.hex", recursive=True)
-    dbg_files = glob.glob("**/*.dbg", recursive=True)
-    all_files = bin_files + hex_files + dbg_files
+    # File patterns to delete
+    patterns = ["**/*.bin", "**/*.hex", "**/*.dbg", "**/*.symbols", "**/debug_log.txt"]
+    all_files = []
+    counts = {}
+
+    # Collect files and count by type
+    for pattern in patterns:
+        files = glob.glob(pattern, recursive=True)
+        all_files.extend(files)
+        counts[pattern] = len(files)
     
     if not all_files:
-        print("No .bin or .hex files found to delete.")
+        print("No files found to delete.")
         return
     
-    print(f"Found {len(bin_files)} .bin files and {len(hex_files)} .hex and {len(dbg_files)} .dbg files to delete:")
+    print("Files to delete:")
+    for pattern in patterns:
+        print(f"  {pattern}: {counts[pattern]} files")
     
     deleted_count = 0
     for file_path in all_files:

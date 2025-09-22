@@ -42,15 +42,18 @@ CODE_JZ    = 20
 CODE_JNZ   = 21
 CODE_JC    = 22
 CODE_JNC   = 23
-CODE_PUSH  = 24
-CODE_POP   = 25
-CODE_SYS   = 26
-CODE_CALL  = 27
-CODE_RET   = 28
-CODE_HALT  = 29
+CODE_JL    = 24
+CODE_JLE   = 25
+CODE_JG    = 26
+CODE_JGE   = 27
+CODE_PUSH  = 28
+CODE_POP   = 29
+CODE_SYS   = 30
+CODE_CALL  = 31
+CODE_RET   = 32
+CODE_HALT  = 33
 
-OPCODE_START = 0
-OPCODE_END = 29
+OPCODE_END = 33
 STR_NOP    = .asciiz 'NOP'
 STR_LOAD   = .asciiz 'LOAD'
 STR_STORE  = .asciiz 'STORE'
@@ -75,6 +78,10 @@ STR_JZ     = .asciiz 'JZ'
 STR_JNZ    = .asciiz 'JNZ'
 STR_JC     = .asciiz 'JC'
 STR_JNC    = .asciiz 'JNC'
+STR_JL     = .asciiz 'JL'
+STR_JLE    = .asciiz 'JLE'
+STR_JG     = .asciiz 'JG'
+STR_JGE    = .asciiz 'JGE'
 STR_PUSH   = .asciiz 'PUSH'
 STR_POP    = .asciiz 'POP'
 STR_SYS    = .asciiz 'SYS'
@@ -229,8 +236,8 @@ check_num:
 
 lexer_if_space:
     ; Initalize lexer_loop_space
-    LOAD R0, OPCODE_START   ; R0 is a counter for which opcode we are on
-    LOAD R6, STR_LOAD       ; Opcodes are in contigiuous mem, 1st opcode is LOAD
+    LOAD R0, 0              ; R0 is a counter for which opcode we are on
+    LOAD R6, STR_NOP       ; Opcodes are in contigiuous mem, 1st opcode is NOP
     JMP lexer_loop_space
 lexer_loop_space:
     LOAD R2, 1
@@ -239,7 +246,7 @@ lexer_loop_space:
     JNZ else_opcode_found
 if_opcode_found:
     INC R1
-    SYS R0, 0x0006
+    SYS R0, 0x0002
     LOAD R9, 0  ; Counting var for operator
     JMP get_operators
 else_opcode_found:
@@ -256,9 +263,7 @@ lexer_loop_compare_string_to_opcode:
     JZ if_end_string_reached
     JNZ else_end_string_reached
 if_end_string_reached:
-    INC R0          ; Check next opcode
     LOAD R8, R5     ; Set R8, current index, to R5, starting index
-    LOAD R9, 0      ; Not Found
     JMP lexer_loop_space
 else_end_string_reached:
     LB R2, [R8]     ; Char at current index
@@ -277,7 +282,7 @@ else_chars_match:
     ; Go to the starting index of the next opcode string
 loop_until_next_opcode:
     LOAD R2, 0 
-    LOAD R3, [R6]
+    LB R3, [R6]   ; Checks the char, not the addr
     INC R6
     CMP R3, R2      ; Check if the opcode is done
     JZ lexer_loop_space
