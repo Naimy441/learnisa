@@ -260,7 +260,7 @@ if_end_string_reached:
     LOAD R8, R5     ; Set R8, current index, to R5, starting index
     LOAD R9, 0      ; Not Found
     JMP lexer_loop_space
-else_end_string_reached
+else_end_string_reached:
     LB R2, [R8]     ; Char at current index
     LB R3, [R6]     ; Char in opcode string
     CMP R2, R3
@@ -328,7 +328,7 @@ loop_check_data_directive:
     CMP R7, R2
     JNZ loop_check_data_directive
     LOAD R0, 1  ; .data is true
-    STORE R0, 49151  ; Add num to end of HEAP
+    STORE R0, 0xBFFF  ; Add num to end of HEAP
     JZ lexer
 
 init_loop_check_code_directive:
@@ -347,7 +347,7 @@ loop_check_code_directive:
     CMP R7, R2
     JNZ loop_check_code_directive
     LOAD R0, 0  ; .code is true
-    STORE R0, 49151  ; Add num to end of HEAP
+    STORE R0, 0xBFFF  ; Add num to end of HEAP
     JZ lexer
 
 prepare_lexer:
@@ -413,7 +413,7 @@ while_char_not_equal_sign:
     INC R1
     LB R2, [R1]         ; LB only loads 1 byte (1 char) from HEAP at memory address R1
     CMP R2, R4
-    JZ while_char_not_directive
+    JZ while_char_not_equal_sign
 if_char_not_data_directive:
     INC R1
     LOAD R4, PERIOD

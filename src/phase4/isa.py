@@ -97,6 +97,7 @@ class ISA:
         # Assembler
         self.DATA_LENGTH = 0
         self.symbols = {}
+        self.debug_symbols = {}
         if input_fn is not None:
             self.set_instr(input_fn)
         else:
@@ -105,6 +106,13 @@ class ISA:
     def set_instr(self, input_fn):
         with open(f"{input_fn}.asm", "r") as a:
             self.instr = a.read().splitlines()
+
+    def load_debug_symbols(self, input_fn):
+        with open(f"{input_fn}.symbols", "r") as f:
+            lines = f.readlines()
+        for line in lines:
+            line_list = line.split()
+            self.debug_symbols[int(line_list[2])] = line_list[0]
     
     def set_flag(self, flag):
         self.flags |= flag
@@ -535,7 +543,6 @@ class ISA:
             if line[i] in self.symbols:
                 line[i] = f"0x{self.symbols[line[i]]:04X}"
                 is_symbol = True
-
         match opcode:
             case Opcode.NOP | Opcode.RET | Opcode.HALT:
                 return [opcode.value & 0xFF]
@@ -805,10 +812,15 @@ class ISA:
                         h.write(" ".join(f"{b:02X}" for b in arr) + "\n") # Formats as 2 digit hexadecimal
                 
                 with open(f"{output_fn}.dbg", "w") as t:
-                    t.write(f"{'INSTRUCTION':<25}{'HEX':<20}{'ADDRESS'}\n")
+                    t.write(f"{'ADDRESS':<10} {'INSTRUCTION':<35} {'HEX'}\n")
                     t.write("=" * 60 + "\n")
                     for info in debug_info:
-                        t.write(f"{info['instr']:<25}{info['hex']:<20}{info['addr']}\n")
+                        t.write(f"{info['addr']:<10} {info['instr']:<35} {info['hex']}\n")
+                
+                with open(f"{output_fn}.symbols", "w") as s:
+                    symbols = self.symbols
+                    for symbol in symbols.keys():
+                        s.write(f"{symbol} = {symbols[symbol]}\n")
 
     # Fetch-Decode-Execute Cycle
     def decode_rx_ry(self, cinstr):
@@ -883,9 +895,11 @@ class ISA:
             self.mem[self.sp] = argc >> 8 & 0xFF
             self.mem[self.sp + 1] = argc & 0xFF
 
-    def run(self, input_fn, debug_mode=False, argc=0, argv=None):
+    def run(self, input_fn, debug_mode=False, step_mode=False, argc=0, argv=None):
         self.load_bin_into_mem(input_fn)
         self.load_argv_into_mem(argc, argv)
+        if step_mode:
+            self.load_debug_symbols(input_fn)
         if debug_mode:
             self.log(self)
 
@@ -899,8 +913,11 @@ class ISA:
                 end += 1
             cinstr = self.mem[self.pc : end]
 
+            if step_mode:
+                print(opcode)
+                print(cinstr)
             if debug_mode:
-                self.log(opcode)
+                self.log(opcode)    
 
             match opcode:
                 case Opcode.NOP:
@@ -1007,30 +1024,39 @@ class ISA:
                     self.pc += opcode.length
                 case Opcode.JMP:
                     addr = self.decode_addr(cinstr)
+                    self.print_debug_symbol(step_mode, addr)
                     self.JMP(addr)
                 case Opcode.JZ:
                     addr = self.decode_addr(cinstr)
+                    self.print_debug_symbol(step_mode, addr)
                     self.JZ(addr, opcode)
                 case Opcode.JNZ:
                     addr = self.decode_addr(cinstr)
+                    self.print_debug_symbol(step_mode, addr)
                     self.JNZ(addr, opcode)
                 case Opcode.JC:
                     addr = self.decode_addr(cinstr)
+                    self.print_debug_symbol(step_mode, addr)
                     self.JC(addr, opcode)
                 case Opcode.JNC:
                     addr = self.decode_addr(cinstr)
+                    self.print_debug_symbol(step_mode, addr)
                     self.JNC(addr, opcode)
                 case Opcode.JL:
                     addr = self.decode_addr(cinstr)
+                    self.print_debug_symbol(step_mode, addr)
                     self.JL(addr, opcode)
                 case Opcode.JLE:
                     addr = self.decode_addr(cinstr)
+                    self.print_debug_symbol(step_mode, addr)
                     self.JLE(addr, opcode)
                 case Opcode.JG:
                     addr = self.decode_addr(cinstr)
+                    self.print_debug_symbol(step_mode, addr)
                     self.JG(addr, opcode)
                 case Opcode.JGE:
                     addr = self.decode_addr(cinstr)
+                    self.print_debug_symbol(step_mode, addr)
                     self.JGE(addr, opcode)
                 case Opcode.PUSH:
                     rx = self.decode_rx(cinstr)
@@ -1052,7 +1078,11 @@ class ISA:
                     self.RET(opcode)
                 case Opcode.HALT:
                     self.HALT()
-            
+
+            if step_mode:
+                print(self)
+                input('Type anything to continue: ')
+                print('\n')
             if debug_mode:
                 self.log(self)
 
@@ -1063,9 +1093,19 @@ class ISA:
             if self.mem[i] != 0:
                 changed_mem[i] = self.mem[i]
         
-        changed_mem_str = "\n".join(f"mem[{addr}]={val}" for addr, val in changed_mem.items() if addr >= self.HEAP_START)
+        lines = []
+        line = []
+        for addr, val in changed_mem.items():
+            if addr >= self.HEAP_START:
+                line.append(f"[{addr}]={val}")
+                if len(line) == 4:
+                    lines.append(" ".join(line))
+                    line = []
+        if line:
+            lines.append(" ".join(line))
+        changed_mem_str = "\n".join(lines)
 
-        str_out = f"running={self.running}\npc={self.pc}\nreg={self.reg}\nsymbols={self.symbols}\nZ={self.is_flag_set(self.Z)}, S={self.is_flag_set(self.S)}, C={self.is_flag_set(self.C)}, O={self.is_flag_set(self.O)}\nsp={self.sp}\n"
+        str_out = f"running={self.running}\npc={self.pc}\nreg={self.reg}\nZ={self.is_flag_set(self.Z)}, S={self.is_flag_set(self.S)}, C={self.is_flag_set(self.C)}, O={self.is_flag_set(self.O)}\nsp={self.sp}\n"
         str_out += changed_mem_str + '\n'
         return str_out 
 
@@ -1082,12 +1122,18 @@ class ISA:
         with open('debug_log.txt', 'a') as f:
             f.write(str(string) + '\n')
     
+    def print_debug_symbol(self, step_mode, addr):
+        if step_mode:
+            if addr in self.debug_symbols:
+                print(f"Symbol: {self.debug_symbols[addr]}")
+    
 if __name__ == "__main__":
     with open('debug_log.txt', 'w') as f:
         f.write("")
     
-    ASSEMBLER_DEBUG_MODE = False
+    ASSEMBLER_DEBUG_MODE = True
     RUNNER_DEBUG_MODE = True
+    RUNNER_STEP_MODE = True
 
     if (len(sys.argv) > 1):
         input_fn = sys.argv[1]
@@ -1096,7 +1142,7 @@ if __name__ == "__main__":
         if (len(sys.argv) > 2):
             argv = sys.argv[2:]
             argc = len(argv)
-            isa.run(input_fn, RUNNER_DEBUG_MODE, argc, argv)
+            isa.run(input_fn, RUNNER_DEBUG_MODE, RUNNER_STEP_MODE, argc, argv)
         else:
-            isa.run(input_fn, RUNNER_DEBUG_MODE)
+            isa.run(input_fn, RUNNER_DEBUG_MODE, RUNNER_STEP_MODE)
         isa.log(isa)

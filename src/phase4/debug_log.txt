@@ -1,0 +1,625 @@
+Opcode.POP
+Opcode.LOAD
+Opcode.CMP
+Opcode.JZ
+Opcode.LOAD
+Opcode.JNZ
+Opcode.POP
+Opcode.LOAD
+Opcode.SYS
+Opcode.LOAD
+Opcode.CMP
+Opcode.JZ
+Opcode.LOAD
+Opcode.JNZ
+Opcode.LOAD
+Opcode.LOAD
+Opcode.JMP
+Opcode.SYS
+Opcode.LOAD
+Opcode.CMP
+Opcode.JZ
+Opcode.ADD
+Opcode.JNZ
+Opcode.LOAD
+Opcode.CMP
+Opcode.JZ
+Opcode.JNZ
+Opcode.INC
+Opcode.LB
+Opcode.LOAD
+Opcode.LB
+Opcode.CMP
+Opcode.JZ
+Opcode.JNZ
+Opcode.LOAD
+Opcode.CMP
+Opcode.JZ
+Opcode.JNZ
+Opcode.INC
+Opcode.LB
+Opcode.LOAD
+Opcode.LB
+Opcode.CMP
+Opcode.JZ
+Opcode.JNZ
+Opcode.INC
+Opcode.SYS
+Opcode.INC
+Opcode.JMP
+Opcode.LOAD
+Opcode.LB
+Opcode.CMP
+Opcode.JZ
+Opcode.JNZ
+Opcode.INC
+Opcode.INC
+Opcode.SYS
+Opcode.INC
+Opcode.INC
+Opcode.JMP
+Opcode.LOAD
+Opcode.LB
+Opcode.CMP
+Opcode.JZ
+Opcode.JNZ
+Opcode.SYS
+Opcode.INC
+Opcode.SYS
+Opcode.INC
+Opcode.SYS
+Opcode.INC
+Opcode.SYS
+Opcode.INC
+Opcode.SYS
+Opcode.INC
+Opcode.SYS
+Opcode.INC
+Opcode.INC
+Opcode.JMP
+Opcode.SYS
+Opcode.INC
+Opcode.LB
+Opcode.LOAD
+Opcode.LB
+Opcode.CMP
+Opcode.JZ
+Opcode.JNZ
+Opcode.LOAD
+Opcode.LOAD
+Opcode.JMP
+Opcode.LOAD
+Opcode.CMP
+Opcode.JZ
+Opcode.JNZ
+Opcode.INC
+Opcode.SYS
+Opcode.LOAD
+Opcode.JMP
+Opcode.LOAD
+Opcode.LOAD
+Opcode.CMP
+Opcode.JZ
+Opcode.CMP
+Opcode.JZ
+Opcode.JNZ
+Opcode.INC
+Opcode.LOAD
+Opcode.LOAD
+Opcode.JMP
+Opcode.LB
+Opcode.LB
+Opcode.CMP
+Opcode.JZ
+Opcode.JNZ
+Opcode.INC
+Opcode.INC
+Opcode.JMP
+Opcode.INC
+Opcode.LOAD
+Opcode.JMP
+Opcode.LOAD
+Opcode.LOAD
+Opcode.INC
+Opcode.CMP
+Opcode.JZ
+Opcode.JNZ
+Opcode.LOAD
+Opcode.DEC
+Opcode.LOAD
+Opcode.LB
+Opcode.LB
+Opcode.CMP
+Opcode.JNZ
+Opcode.DEC
+Opcode.INC
+Opcode.SYS
+Opcode.CMP
+Opcode.JNZ
+Opcode.JZ
+Opcode.LOAD
+Opcode.LB
+Opcode.LB
+Opcode.CMP
+Opcode.JNZ
+Opcode.JZ
+Opcode.LOAD
+Opcode.LOAD
+Opcode.LOAD
+Opcode.INC
+Opcode.LB
+Opcode.LB
+Opcode.CMP
+Opcode.JNZ
+Opcode.INC
+Opcode.DEC
+Opcode.LOAD
+Opcode.CMP
+Opcode.JNZ
+Opcode.LOAD
+Opcode.STORE
+Opcode.JZ
+Opcode.LOAD
+Opcode.LOAD
+Opcode.LOAD
+Opcode.INC
+Opcode.LB
+Opcode.LB
+Opcode.CMP
+Opcode.JNZ
+Opcode.INC
+Opcode.DEC
+Opcode.LOAD
+Opcode.CMP
+Opcode.JNZ
+Opcode.LOAD
+Opcode.STORE
+Opcode.JZ
+Opcode.PUSH
+Opcode.PUSH
+Opcode.LOAD
+Opcode.LOAD
+Opcode.ADD
+Opcode.ADD
+Opcode.PUSH
+Opcode.LOAD
+Opcode.LOAD
+Opcode.LB
+Opcode.LOAD
+Opcode.CMP
+Opcode.JNZ
+Opcode.JZ
+Opcode.LOAD
+Opcode.LOAD
+Opcode.CMP
+Opcode.JZ
+Opcode.JNZ
+Opcode.LOAD
+Opcode.LB
+Opcode.CMP
+Opcode.JL
+Opcode.LOAD
+Opcode.LB
+Opcode.CMP
+Opcode.JLE
+Opcode.LOAD
+Opcode.LB
+Opcode.CMP
+Opcode.JL
+Opcode.LOAD
+Opcode.LB
+Opcode.CMP
+Opcode.JLE
+Opcode.LOAD
+Opcode.LB
+Opcode.CMP
+Opcode.JNZ
+Opcode.JZ
+Opcode.INC
+Opcode.JMP
+Opcode.LOAD
+Opcode.LB
+Opcode.CMP
+Opcode.JNZ
+Opcode.JZ
+Opcode.INC
+Opcode.LB
+Opcode.CMP
+Opcode.JZ
+Opcode.INC
+Opcode.LOAD
+Opcode.LB
+Opcode.LB
+Opcode.CMP
+Opcode.JZ
+Opcode.JNZ
+Opcode.INC
+Opcode.LOAD
+Opcode.LB
+Opcode.LB
+Opcode.CMP
+Opcode.JZ
+Opcode.LOAD
+Opcode.LB
+Opcode.LB
+Opcode.CMP
+Opcode.JZ
+Opcode.LOAD
+Opcode.LB
+Opcode.LB
+Opcode.CMP
+Opcode.JZ
+Opcode.JNZ
+Opcode.INC
+Opcode.LOAD
+Opcode.LB
+Opcode.LB
+Opcode.CMP
+Opcode.JZ
+Opcode.INC
+Opcode.LOAD
+Opcode.LB
+Opcode.LB
+Opcode.CMP
+Opcode.JNZ
+Opcode.INC
+Opcode.LOAD
+Opcode.LB
+Opcode.LB
+Opcode.CMP
+Opcode.SYS
+Opcode.JNZ
+Opcode.JZ
+Opcode.INC
+Opcode.LOAD
+Opcode.LB
+Opcode.LB
+Opcode.CMP
+Opcode.JZ
+Opcode.INC
+Opcode.LOAD
+Opcode.LB
+Opcode.LB
+Opcode.CMP
+Opcode.JL
+Opcode.LOAD
+Opcode.LB
+Opcode.CMP
+Opcode.JLE
+Opcode.JMP
+Opcode.LOAD
+Opcode.LB
+Opcode.LB
+Opcode.CMP
+Opcode.JNZ
+Opcode.INC
+Opcode.JMP
+Opcode.SYS
+Opcode.JMP
+Opcode.JMP
+Opcode.LOAD
+Opcode.LB
+Opcode.CMP
+Opcode.JL
+Opcode.LOAD
+Opcode.LB
+Opcode.CMP
+Opcode.JLE
+Opcode.JMP
+Opcode.JMP
+Opcode.SYS
+Opcode.JMP
+Opcode.LOAD
+Opcode.LB
+Opcode.CMP
+Opcode.JZ
+Opcode.LOAD
+Opcode.LB
+Opcode.CMP
+Opcode.JZ
+Opcode.LOAD
+Opcode.LB
+Opcode.CMP
+Opcode.JZ
+Opcode.LOAD
+Opcode.LB
+Opcode.CMP
+Opcode.JZ
+Opcode.INC
+Opcode.JMP
+Opcode.LOAD
+Opcode.CMP
+Opcode.JZ
+Opcode.LOAD
+Opcode.CMP
+Opcode.JZ
+Opcode.JNZ
+Opcode.LOAD
+Opcode.LOAD
+Opcode.SYS
+Opcode.JMP
+Opcode.LOAD
+Opcode.SYS
+Opcode.JMP
+Opcode.HALT
+running=False
+pc=350
+reg=[0, 0, 0, 0, 0, 0, 0, 0, 0, 0]
+Z=False, S=False, C=False, O=False
+sp=65532
+[16384]=116 [16385]=101 [16386]=115 [16387]=116
+[16388]=46 [16389]=97 [16390]=115 [16391]=109
+[65533]=1 [65534]=64
+
+Opcode.POP
+running=True
+pc=352
+reg=[1, 0, 0, 0, 0, 0, 0, 0, 0, 0]
+Z=False, S=False, C=False, O=False
+sp=65534
+[16384]=116 [16385]=101 [16386]=115 [16387]=116
+[16388]=46 [16389]=97 [16390]=115 [16391]=109
+[65534]=64
+
+Opcode.LOAD
+running=True
+pc=357
+reg=[1, 1, 0, 0, 0, 0, 0, 0, 0, 0]
+Z=False, S=False, C=False, O=False
+sp=65534
+[16384]=116 [16385]=101 [16386]=115 [16387]=116
+[16388]=46 [16389]=97 [16390]=115 [16391]=109
+[65534]=64
+
+Opcode.CMP
+running=True
+pc=360
+reg=[1, 1, 0, 0, 0, 0, 0, 0, 0, 0]
+Z=True, S=False, C=False, O=False
+sp=65534
+[16384]=116 [16385]=101 [16386]=115 [16387]=116
+[16388]=46 [16389]=97 [16390]=115 [16391]=109
+[65534]=64
+
+Opcode.JZ
+running=True
+pc=371
+reg=[1, 1, 0, 0, 0, 0, 0, 0, 0, 0]
+Z=True, S=False, C=False, O=False
+sp=65534
+[16384]=116 [16385]=101 [16386]=115 [16387]=116
+[16388]=46 [16389]=97 [16390]=115 [16391]=109
+[65534]=64
+
+Opcode.POP
+running=True
+pc=373
+reg=[16384, 1, 0, 0, 0, 0, 0, 0, 0, 0]
+Z=True, S=False, C=False, O=False
+sp=65536
+[16384]=116 [16385]=101 [16386]=115 [16387]=116
+[16388]=46 [16389]=97 [16390]=115 [16391]=109
+
+Opcode.LOAD
+running=True
+pc=378
+reg=[16384, 0, 0, 0, 0, 0, 0, 0, 0, 0]
+Z=True, S=False, C=False, O=False
+sp=65536
+[16384]=116 [16385]=101 [16386]=115 [16387]=116
+[16388]=46 [16389]=97 [16390]=115 [16391]=109
+
+Opcode.SYS
+running=True
+pc=382
+reg=[3, 0, 0, 0, 0, 0, 0, 0, 0, 0]
+Z=True, S=False, C=False, O=False
+sp=65536
+[16384]=116 [16385]=101 [16386]=115 [16387]=116
+[16388]=46 [16389]=97 [16390]=115 [16391]=109
+
+Opcode.LOAD
+running=True
+pc=387
+reg=[3, 3, 0, 0, 0, 0, 0, 0, 0, 0]
+Z=True, S=False, C=False, O=False
+sp=65536
+[16384]=116 [16385]=101 [16386]=115 [16387]=116
+[16388]=46 [16389]=97 [16390]=115 [16391]=109
+
+Opcode.CMP
+running=True
+pc=390
+reg=[3, 3, 0, 0, 0, 0, 0, 0, 0, 0]
+Z=True, S=False, C=False, O=False
+sp=65536
+[16384]=116 [16385]=101 [16386]=115 [16387]=116
+[16388]=46 [16389]=97 [16390]=115 [16391]=109
+
+Opcode.JZ
+running=True
+pc=401
+reg=[3, 3, 0, 0, 0, 0, 0, 0, 0, 0]
+Z=True, S=False, C=False, O=False
+sp=65536
+[16384]=116 [16385]=101 [16386]=115 [16387]=116
+[16388]=46 [16389]=97 [16390]=115 [16391]=109
+
+Opcode.LOAD
+running=True
+pc=406
+reg=[3, 16384, 0, 0, 0, 0, 0, 0, 0, 0]
+Z=True, S=False, C=False, O=False
+sp=65536
+[16384]=116 [16385]=101 [16386]=115 [16387]=116
+[16388]=46 [16389]=97 [16390]=115 [16391]=109
+
+Opcode.LOAD
+running=True
+pc=411
+reg=[3, 16384, 100, 0, 0, 0, 0, 0, 0, 0]
+Z=True, S=False, C=False, O=False
+sp=65536
+[16384]=116 [16385]=101 [16386]=115 [16387]=116
+[16388]=46 [16389]=97 [16390]=115 [16391]=109
+
+Opcode.JMP
+running=True
+pc=414
+reg=[3, 16384, 100, 0, 0, 0, 0, 0, 0, 0]
+Z=True, S=False, C=False, O=False
+sp=65536
+[16384]=116 [16385]=101 [16386]=115 [16387]=116
+[16388]=46 [16389]=97 [16390]=115 [16391]=109
+
+Opcode.SYS
+running=True
+pc=418
+reg=[3, 16384, 100, 31, 0, 0, 0, 0, 0, 0]
+Z=True, S=False, C=False, O=False
+sp=65536
+[16384]=76 [16385]=79 [16386]=65 [16387]=68
+[16388]=32 [16389]=82 [16390]=57 [16391]=44
+[16392]=32 [16393]=49 [16394]=53 [16395]=10
+[16396]=83 [16397]=89 [16398]=83 [16399]=32
+[16400]=82 [16401]=57 [16402]=44 [16403]=32
+[16404]=48 [16405]=120 [16406]=48 [16407]=48
+[16408]=48 [16409]=50 [16410]=10 [16411]=72
+[16412]=65 [16413]=76 [16414]=84
+
+Opcode.LOAD
+running=True
+pc=423
+reg=[3, 16384, 100, 31, 0, 0, 0, 0, 0, 0]
+Z=True, S=False, C=False, O=False
+sp=65536
+[16384]=76 [16385]=79 [16386]=65 [16387]=68
+[16388]=32 [16389]=82 [16390]=57 [16391]=44
+[16392]=32 [16393]=49 [16394]=53 [16395]=10
+[16396]=83 [16397]=89 [16398]=83 [16399]=32
+[16400]=82 [16401]=57 [16402]=44 [16403]=32
+[16404]=48 [16405]=120 [16406]=48 [16407]=48
+[16408]=48 [16409]=50 [16410]=10 [16411]=72
+[16412]=65 [16413]=76 [16414]=84
+
+Opcode.CMP
+running=True
+pc=426
+reg=[3, 16384, 100, 31, 0, 0, 0, 0, 0, 0]
+Z=False, S=False, C=False, O=False
+sp=65536
+[16384]=76 [16385]=79 [16386]=65 [16387]=68
+[16388]=32 [16389]=82 [16390]=57 [16391]=44
+[16392]=32 [16393]=49 [16394]=53 [16395]=10
+[16396]=83 [16397]=89 [16398]=83 [16399]=32
+[16400]=82 [16401]=57 [16402]=44 [16403]=32
+[16404]=48 [16405]=120 [16406]=48 [16407]=48
+[16408]=48 [16409]=50 [16410]=10 [16411]=72
+[16412]=65 [16413]=76 [16414]=84
+
+Opcode.JZ
+running=True
+pc=429
+reg=[3, 16384, 100, 31, 0, 0, 0, 0, 0, 0]
+Z=False, S=False, C=False, O=False
+sp=65536
+[16384]=76 [16385]=79 [16386]=65 [16387]=68
+[16388]=32 [16389]=82 [16390]=57 [16391]=44
+[16392]=32 [16393]=49 [16394]=53 [16395]=10
+[16396]=83 [16397]=89 [16398]=83 [16399]=32
+[16400]=82 [16401]=57 [16402]=44 [16403]=32
+[16404]=48 [16405]=120 [16406]=48 [16407]=48
+[16408]=48 [16409]=50 [16410]=10 [16411]=72
+[16412]=65 [16413]=76 [16414]=84
+
+Opcode.ADD
+running=True
+pc=432
+reg=[3, 16384, 100, 31, 0, 31, 0, 0, 0, 0]
+Z=False, S=False, C=False, O=False
+sp=65536
+[16384]=76 [16385]=79 [16386]=65 [16387]=68
+[16388]=32 [16389]=82 [16390]=57 [16391]=44
+[16392]=32 [16393]=49 [16394]=53 [16395]=10
+[16396]=83 [16397]=89 [16398]=83 [16399]=32
+[16400]=82 [16401]=57 [16402]=44 [16403]=32
+[16404]=48 [16405]=120 [16406]=48 [16407]=48
+[16408]=48 [16409]=50 [16410]=10 [16411]=72
+[16412]=65 [16413]=76 [16414]=84
+
+Opcode.JNZ
+running=True
+pc=414
+reg=[3, 16384, 100, 31, 0, 31, 0, 0, 0, 0]
+Z=False, S=False, C=False, O=False
+sp=65536
+[16384]=76 [16385]=79 [16386]=65 [16387]=68
+[16388]=32 [16389]=82 [16390]=57 [16391]=44
+[16392]=32 [16393]=49 [16394]=53 [16395]=10
+[16396]=83 [16397]=89 [16398]=83 [16399]=32
+[16400]=82 [16401]=57 [16402]=44 [16403]=32
+[16404]=48 [16405]=120 [16406]=48 [16407]=48
+[16408]=48 [16409]=50 [16410]=10 [16411]=72
+[16412]=65 [16413]=76 [16414]=84
+
+Opcode.SYS
+running=True
+pc=418
+reg=[3, 16384, 100, 0, 0, 31, 0, 0, 0, 0]
+Z=False, S=False, C=False, O=False
+sp=65536
+[16384]=76 [16385]=79 [16386]=65 [16387]=68
+[16388]=32 [16389]=82 [16390]=57 [16391]=44
+[16392]=32 [16393]=49 [16394]=53 [16395]=10
+[16396]=83 [16397]=89 [16398]=83 [16399]=32
+[16400]=82 [16401]=57 [16402]=44 [16403]=32
+[16404]=48 [16405]=120 [16406]=48 [16407]=48
+[16408]=48 [16409]=50 [16410]=10 [16411]=72
+[16412]=65 [16413]=76 [16414]=84
+
+Opcode.LOAD
+running=True
+pc=423
+reg=[3, 16384, 100, 0, 0, 31, 0, 0, 0, 0]
+Z=False, S=False, C=False, O=False
+sp=65536
+[16384]=76 [16385]=79 [16386]=65 [16387]=68
+[16388]=32 [16389]=82 [16390]=57 [16391]=44
+[16392]=32 [16393]=49 [16394]=53 [16395]=10
+[16396]=83 [16397]=89 [16398]=83 [16399]=32
+[16400]=82 [16401]=57 [16402]=44 [16403]=32
+[16404]=48 [16405]=120 [16406]=48 [16407]=48
+[16408]=48 [16409]=50 [16410]=10 [16411]=72
+[16412]=65 [16413]=76 [16414]=84
+
+Opcode.CMP
+running=True
+pc=426
+reg=[3, 16384, 100, 0, 0, 31, 0, 0, 0, 0]
+Z=True, S=False, C=False, O=False
+sp=65536
+[16384]=76 [16385]=79 [16386]=65 [16387]=68
+[16388]=32 [16389]=82 [16390]=57 [16391]=44
+[16392]=32 [16393]=49 [16394]=53 [16395]=10
+[16396]=83 [16397]=89 [16398]=83 [16399]=32
+[16400]=82 [16401]=57 [16402]=44 [16403]=32
+[16404]=48 [16405]=120 [16406]=48 [16407]=48
+[16408]=48 [16409]=50 [16410]=10 [16411]=72
+[16412]=65 [16413]=76 [16414]=84
+
+Opcode.JZ
+running=True
+pc=936
+reg=[3, 16384, 100, 0, 0, 31, 0, 0, 0, 0]
+Z=True, S=False, C=False, O=False
+sp=65536
+[16384]=76 [16385]=79 [16386]=65 [16387]=68
+[16388]=32 [16389]=82 [16390]=57 [16391]=44
+[16392]=32 [16393]=49 [16394]=53 [16395]=10
+[16396]=83 [16397]=89 [16398]=83 [16399]=32
+[16400]=82 [16401]=57 [16402]=44 [16403]=32
+[16404]=48 [16405]=120 [16406]=48 [16407]=48
+[16408]=48 [16409]=50 [16410]=10 [16411]=72
+[16412]=65 [16413]=76 [16414]=84
+
+Opcode.LB
