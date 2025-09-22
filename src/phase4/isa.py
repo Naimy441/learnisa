@@ -547,11 +547,11 @@ class ISA:
             case Opcode.NOP | Opcode.RET | Opcode.HALT:
                 return [opcode.value & 0xFF]
             case Opcode.LOAD:
-                if line[2].startswith('R'):
+                if line[2].startswith('R') and not is_symbol:
                     bytearr = self.validate_rx_ry(opcode, line)
                     bytearr.insert(1, 0x02) # Register
                     return bytearr
-                elif line[2].startswith('[R') and line[2].endswith(']'):
+                elif line[2].startswith('[R') and line[2].endswith(']') and not is_symbol:
                     bytearr = self.validate_rx_indr(opcode, line)
                     bytearr.insert(1, 0x04) # Indirect
                     return bytearr
@@ -601,6 +601,7 @@ class ISA:
                 continue
 
             line = cur_instr.split(';')[0].strip().replace(',', '').replace('=', '').split()
+            # print(line)
 
             # .data
             if line[0] == '.data':
@@ -631,28 +632,36 @@ class ISA:
                 if line[0] in self.symbols:
                     raise ValueError(f"Data or label '{line[0]}' already defined")
                 self.symbols[line[0][:-1]] = len_bytes + memory_addr
+                # print(len_bytes)
 
             else:
                 opcode_name = line[0]
                 opcode = Opcode[opcode_name]
-
                 # Check for variable-length instructions including ADDRESSING BYTE
-                if opcode_name in ('LOAD', 'STORE'):
+                if opcode_name == 'LOAD':
                     operand = line[2]
-                    if operand.startswith('R'):
+                    is_symbol = operand in self.symbols
+                    if operand.startswith('R') and not is_symbol:
                         len_bytes += 4
+                    elif operand.startswith('[R') and operand.endswith(']') and not is_symbol:
+                        len_bytes += 4  
                     elif operand in self.symbols:
-                        len_bytes += 5               
+                        print(operand)
+                        len_bytes += 5         
                     elif operand.lower().startswith('0x'): 
                         len_bytes += 5
-                    elif operand.startswith('[R') and operand.endswith(']'):
-                        len_bytes += 4
                     else:
                         try:
                             int(operand, 0) 
                             len_bytes += 5   # Immediate
                         except ValueError:
                             raise ValueError(f"Impossible instruction {opcode_name} {operand}")
+                elif opcode_name == 'STORE':
+                    operand = line[2]         
+                    if operand.lower().startswith('0x'): 
+                        len_bytes += 5
+                    else:
+                        len_bytes += 4
                 else:
                     len_bytes += opcode.length
 
@@ -915,7 +924,9 @@ class ISA:
 
             if step_mode:
                 print(opcode)
-                print(cinstr)
+                for b in cinstr:
+                    print(f"{b:02X}", end=' ')
+                print()
             if debug_mode:
                 self.log(opcode)    
 
@@ -1131,18 +1142,23 @@ if __name__ == "__main__":
     with open('debug_log.txt', 'w') as f:
         f.write("")
     
-    ASSEMBLER_DEBUG_MODE = True
+    ASSEMBLER = True
+    RUNNER = True
+
+    ASSEMBLER_DEBUG_MODE = False
     RUNNER_DEBUG_MODE = True
-    RUNNER_STEP_MODE = True
+    RUNNER_STEP_MODE = False
 
     if (len(sys.argv) > 1):
         input_fn = sys.argv[1]
         isa = ISA(input_fn)
-        isa.assemble(input_fn, ASSEMBLER_DEBUG_MODE)
-        if (len(sys.argv) > 2):
-            argv = sys.argv[2:]
-            argc = len(argv)
-            isa.run(input_fn, RUNNER_DEBUG_MODE, RUNNER_STEP_MODE, argc, argv)
-        else:
-            isa.run(input_fn, RUNNER_DEBUG_MODE, RUNNER_STEP_MODE)
+        if (ASSEMBLER):
+            isa.assemble(input_fn, ASSEMBLER_DEBUG_MODE)
+        if (RUNNER):
+            if (len(sys.argv) > 2):
+                argv = sys.argv[2:]
+                argc = len(argv)
+                isa.run(input_fn, RUNNER_DEBUG_MODE, RUNNER_STEP_MODE, argc, argv)
+            else:
+                isa.run(input_fn, RUNNER_DEBUG_MODE, RUNNER_STEP_MODE)
         isa.log(isa)
