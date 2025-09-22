@@ -1,0 +1,20 @@
+{
+  "name": "customasm",
+  "displayName": "Custom ASM",
+  "version": "0.0.1",
+  "engines": { "vscode": "^1.70.0" },
+  "categories": ["Programming Languages"],
+  "contributes": {
+    "languages": [{
+      "id": "customasm",
+      "aliases": ["CustomASM"],
+      "extensions": [".asm"],
+      "configuration": "./language-configuration.json"
+    }],
+    "grammars": [{
+      "language": "customasm",
+      "scopeName": "source.customasm",
+      "path": "./customasm.tmLanguage.json"
+    }]
+  }
+}
