@@ -18,59 +18,55 @@ TOK_IMMEDIATE = 10
 TOK_ADDRESS   = 11
 TOK_INDIRECT  = 12
 
+; Opcodes with 0 operators
 CODE_NOP   = 0
-CODE_LOAD  = 1
-CODE_STORE = 2
-CODE_LB    = 3
-CODE_SB    = 4
-CODE_MOV   = 5
-CODE_INC   = 6
-CODE_DEC   = 7
-CODE_ADD   = 8
-CODE_SUB   = 9
-CODE_MUL   = 10
-CODE_DIV   = 11
-CODE_AND   = 12
-CODE_OR    = 13
-CODE_XOR   = 14
-CODE_NOT   = 15
-CODE_CMP   = 16
-CODE_SHL   = 17
-CODE_SHR   = 18
-CODE_JMP   = 19
-CODE_JZ    = 20
-CODE_JNZ   = 21
-CODE_JC    = 22
-CODE_JNC   = 23
-CODE_JL    = 24
-CODE_JLE   = 25
-CODE_JG    = 26
-CODE_JGE   = 27
-CODE_PUSH  = 28
-CODE_POP   = 29
-CODE_SYS   = 30
-CODE_CALL  = 31
-CODE_RET   = 32
-CODE_HALT  = 33
-
+CODE_RET   = 1
+CODE_HALT  = 2
+OPCODE_0_OPER = 2
+; Opcodes with 1 operators
+CODE_INC   = 3
+CODE_DEC   = 4
+CODE_NOT   = 5
+CODE_SHL   = 6
+CODE_SHR   = 7
+CODE_JMP   = 8
+CODE_JZ    = 9
+CODE_JNZ   = 10
+CODE_JC    = 11
+CODE_JNC   = 12
+CODE_JL    = 13
+CODE_JLE   = 14
+CODE_JG    = 15
+CODE_JGE   = 16
+CODE_PUSH  = 17
+CODE_POP   = 18
+CODE_CALL  = 19
+OPCODE_1_OPER = 19
+; Opcodes with 2 operators
+CODE_LB    = 20
+CODE_SB    = 21
+CODE_MOV   = 22
+CODE_ADD   = 23
+CODE_SUB   = 24
+CODE_MUL   = 25
+CODE_DIV   = 26
+CODE_AND   = 27
+CODE_OR    = 28
+CODE_XOR   = 29
+CODE_CMP   = 30
+CODE_SYS   = 31
+CODE_LOAD  = 32
+CODE_STORE = 33
+OPCODE_2_OPER = 33
 OPCODE_END = 33
+
 STR_NOP    = .asciiz 'NOP'
-STR_LOAD   = .asciiz 'LOAD'
-STR_STORE  = .asciiz 'STORE'
-STR_LB     = .asciiz 'LB'
-STR_SB     = .asciiz 'SB'
-STR_MOV    = .asciiz 'MOV'
+STR_RET    = .asciiz 'RET'
+STR_HALT   = .asciiz 'HALT'
+
 STR_INC    = .asciiz 'INC'
 STR_DEC    = .asciiz 'DEC'
-STR_ADD    = .asciiz 'ADD'
-STR_SUB    = .asciiz 'SUB'
-STR_MUL    = .asciiz 'MUL'
-STR_DIV    = .asciiz 'DIV'
-STR_AND    = .asciiz 'AND'
-STR_OR     = .asciiz 'OR'
-STR_XOR    = .asciiz 'XOR'
 STR_NOT    = .asciiz 'NOT'
-STR_CMP    = .asciiz 'CMP'
 STR_SHL    = .asciiz 'SHL'
 STR_SHR    = .asciiz 'SHR'
 STR_JMP    = .asciiz 'JMP'
@@ -84,10 +80,22 @@ STR_JG     = .asciiz 'JG'
 STR_JGE    = .asciiz 'JGE'
 STR_PUSH   = .asciiz 'PUSH'
 STR_POP    = .asciiz 'POP'
-STR_SYS    = .asciiz 'SYS'
 STR_CALL   = .asciiz 'CALL'
-STR_RET    = .asciiz 'RET'
-STR_HALT   = .asciiz 'HALT'
+
+STR_LB     = .asciiz 'LB'
+STR_SB     = .asciiz 'SB'
+STR_MOV    = .asciiz 'MOV'
+STR_ADD    = .asciiz 'ADD'
+STR_SUB    = .asciiz 'SUB'
+STR_MUL    = .asciiz 'MUL'
+STR_DIV    = .asciiz 'DIV'
+STR_AND    = .asciiz 'AND'
+STR_OR     = .asciiz 'OR'
+STR_XOR    = .asciiz 'XOR'
+STR_CMP    = .asciiz 'CMP'
+STR_SYS    = .asciiz 'SYS'
+STR_LOAD   = .asciiz 'LOAD'
+STR_STORE  = .asciiz 'STORE'
 
 DATA   = .asciiz '.data'
 CODE   = .asciiz '.code'
@@ -153,40 +161,42 @@ read_file:
     JNZ read_file
 
 get_operators:
-    LOAD R7, 2
-    CMP R9, R7  ; If already got second operator, exit
-    JZ if_finished_second
-    JNZ else_finished_second
-if_finished_second:
-    ; Skip till newline (ignoring comments)
-    INC R1
-    LB R2, [R1]         ; LB only loads 1 byte (1 char) from HEAP at memory address R1
-    LOAD R4, NEWLINE
-    LB R3, [R4]
-    CMP R2, R3
+    LOAD R9, 0  ; Counting var for operator
+    LOAD R2, OPCODE_0_OPER
+    LOAD R2, [R2]
+    CMP R0, R2
+    JLE lexer
+    INC R9
+    LOAD R2, OPCODE_1_OPER
+    LOAD R2, [R2]
+    CMP R0, R2
+    JLE parse_operators
+    INC R9
+    LOAD R2, OPCODE_2_OPER
+    LOAD R2, [R2]
+    CMP R0, R2
+    JLE parse_operators
+parse_operators:
+    LOAD R8, 0
+    CMP R9, R8
     JZ lexer
-    JNZ if_finished_second
-else_finished_second:
-    LOAD R7, 1
-    CMP R9, R7  ; If on first, start at first char of next operator
-    JZ if_finished_first
-    JNZ else_finished_first
-if_finished_first:
-    INC R1  ; Start on next
-else_finished_first:
-    LB R2, [R1]         ; LB only loads 1 byte (1 char) from HEAP at memory address R1
-    
+    DEC R9
+    JMP check_reg
+check_reg:
     LOAD R4, REG
     LB R3, [R4]
+    LB R2, [R1]
     CMP R2, R3 
     JZ if_reg
     JNZ check_rbrace
 if_reg:
     INC R1  ; Skip R
+    LB R2, [R1]
     SYS R2, 0x0003  ; Print x
-    
-    INC R1
-    JMP get_operators
+    INC R1  ; ,
+    INC R1  ; space
+    INC R1  ; Next operator first char
+    JMP parse_operators
 check_rbrace:
     LOAD R4, RBRACE
     LB R3, [R4]
@@ -196,34 +206,31 @@ check_rbrace:
 if_rbrace:
     INC R1  ; Skip [
     INC R1  ; Skip R
+    LB R2, [R1]
     SYS R2, 0x0003 ; Print x
     INC R1  ; Skip ]
+    INC R1  ; space
+    INC R1  ; Next operator first char
 
-    INC R9
-    JMP get_operators
+    JMP parse_operators
 check_addr1:
     LOAD R4, ADDR1
     LB R3, [R4]
     CMP R2, R3 
     JZ if_addr1
-    JNZ check_num
+    JNZ else_num
 if_addr1:
+    LOAD R5, 6
+    LOAD R6, 0
+loop_if_addr1:
+    LB R2, [R1]
     SYS R2, 0x0003
     INC R1
-    SYS R2, 0x0003
-    INC R1
-    SYS R2, 0x0003
-    INC R1
-    SYS R2, 0x0003
-    INC R1
-    SYS R2, 0x0003
-    INC R1
-    SYS R2, 0x0003
-    INC R1
-
-    INC R9
-    JMP get_operators
-check_num:
+    DEC R5
+    CMP R5, R6
+    JNZ loop_if_addr1
+    JZ parse_operators
+else_num:
     ; It's a number, if it made it this far 
     SYS R2, 0x0003 
     INC R1
@@ -231,8 +238,12 @@ check_num:
     LOAD R4, SPACE
     LB R3, [R4]
     CMP R2, R3
-    JZ get_operators
-    JNZ check_num
+    JZ parse_operators
+    LOAD R4, NEWLINE
+    LB R3, [R4]
+    CMP R2, R3
+    JZ parse_operators
+    JNZ else_num
 
 lexer_if_space:
     ; Initalize lexer_loop_space
@@ -247,7 +258,6 @@ lexer_loop_space:
 if_opcode_found:
     INC R1
     SYS R0, 0x0002
-    LOAD R9, 0  ; Counting var for operator
     JMP get_operators
 else_opcode_found:
     LOAD R9, 1              ; FOUND variable: assumes str match found
@@ -259,13 +269,19 @@ else_opcode_found:
 
 lexer_loop_compare_string_to_opcode:
     ; If string indexes match, we have reached the end of the string
-    CMP R1, R8      ; R1 ending index, R8 current index
+    CMP R1, R8      ; BUG: these never match, so this doesn't exit properly -> R1 ending index, R8 current index
+    ; INC R6
+    ; LB R2, [R6]
+    ; LOAD R3, 0
+    CMP R2, R3
     JZ if_end_string_reached
     JNZ else_end_string_reached
 if_end_string_reached:
+    ; DEC R6
     LOAD R8, R5     ; Set R8, current index, to R5, starting index
     JMP lexer_loop_space
 else_end_string_reached:
+    ; DEC R6
     LB R2, [R8]     ; Char at current index
     LB R3, [R6]     ; Char in opcode string
     CMP R2, R3
