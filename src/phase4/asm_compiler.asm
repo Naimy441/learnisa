@@ -246,63 +246,34 @@ else_num:
     JNZ else_num
 
 lexer_if_space:
-    ; Initalize lexer_loop_space
-    LOAD R0, 0              ; R0 is a counter for which opcode we are on
-    LOAD R6, STR_NOP       ; Opcodes are in contigiuous mem, 1st opcode is NOP
-    JMP lexer_loop_space
+    LOAD R8, 0             ; R8 is a counter for which opcode we are on
+    LOAD R0, STR_NOP       ; Opcodes are in contigiuous mem, 1st opcode is NOP
 lexer_loop_space:
-    LOAD R2, 1
-    CMP R9, R2
-    JZ if_opcode_found
-    JNZ else_opcode_found
-if_opcode_found:
-    INC R1
-    SYS R0, 0x0002
-    JMP get_operators
-else_opcode_found:
-    LOAD R9, 1              ; FOUND variable: assumes str match found
-
     ; Check if we have checked all available opcodes
     LOAD R7, OPCODE_END
-    CMP R7, R0
+    CMP R7, R8
     JZ lexer
-
-lexer_loop_compare_string_to_opcode:
-    ; If string indexes match, we have reached the end of the string
-    CMP R1, R8      ; BUG: these never match, so this doesn't exit properly -> R1 ending index, R8 current index
-    ; INC R6
-    ; LB R2, [R6]
-    ; LOAD R3, 0
-    CMP R2, R3
-    JZ if_end_string_reached
-    JNZ else_end_string_reached
-if_end_string_reached:
-    ; DEC R6
-    LOAD R8, R5     ; Set R8, current index, to R5, starting index
-    JMP lexer_loop_space
-else_end_string_reached:
-    ; DEC R6
-    LB R2, [R8]     ; Char at current index
-    LB R3, [R6]     ; Char in opcode string
-    CMP R2, R3
-    JZ if_chars_match
-    JNZ else_chars_match
-if_chars_match:
-    INC R8
-    INC R6
-    JMP lexer_loop_compare_string_to_opcode
-else_chars_match:
-    INC R0          ; Check next opcode
-    LOAD R9, 0      ; Not Found
-    JMP loop_until_next_opcode
-    ; Go to the starting index of the next opcode string
-loop_until_next_opcode:
-    LOAD R2, 0 
-    LB R3, [R6]   ; Checks the char, not the addr
-    INC R6
-    CMP R3, R2      ; Check if the opcode is done
-    JZ lexer_loop_space
+    ; Compare opcode string to current string
+    PUSH R1
+    LOAD R1, R5 ; R5 is the starting address
+    CALL strcmp ; Outputs to R2
+    POP R1
+    LOAD R4, 1
+    CMP R2, R4
     JNZ loop_until_next_opcode
+    ; Opcode found
+    SYS R8, 0x0002
+    JMP get_operators   ; The addr in R1 is on a space at this point
+loop_until_next_opcode:
+    LOAD R4, 0 
+    LB R3, [R0]     ; Loads the current char
+    INC R0
+    CMP R3, R4      ; Check if we have reached the opcode
+    JNZ loop_until_next_opcode
+    JZ inc_opcode
+inc_opcode:
+    INC R8
+    JMP lexer_loop_space
 
 lexer_if_colon:
     ; Get all chars before the colon but after the newline char
@@ -602,3 +573,41 @@ err_fread:
 
 end:
     HALT
+
+strcmp:
+    PUSH R3
+    PUSH R4
+    PUSH R5
+    PUSH R6
+    PUSH R7
+
+    LOAD R2, 1      ; R2 - Output (0 if not equal, 1 if equal)
+    LOAD R6, R0     ; R0 - Starting address of first string 
+    LOAD R7, R1     ; R1 - Starting address of second string
+loop_strcmp:
+    ; Load the characters at each address
+    LB R3, [R6]
+    LB R4, [R7]
+
+    ; Checks if the end of the first string is reached
+    LOAD R5, 0
+    CMP R3, R5
+    JZ ret_strcmp
+    CMP R4, R5
+    JZ ret_strcmp
+
+    ; Checks if chars are equal to each other
+    CMP R3, R4
+    JNZ break_strcmp
+    INC R6
+    INC R7
+    JMP loop_strcmp
+break_strcmp:
+    LOAD R2, 0
+ret_strcmp:
+    POP R7
+    POP R6
+    POP R5
+    POP R4
+    POP R3
+    RET
