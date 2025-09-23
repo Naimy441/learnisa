@@ -259,3 +259,30 @@ Exactly — that’s the typical way to bootstrap:
 	•	The high-level steps and memory layout can stay almost identical; only the logic for token types, AST nodes, and code generation changes.
 
 This reuse is exactly why bootstrapping works — once your assembler pipeline is solid, building a compiler in the same style is much easier.
+
+Exactly 👍 you’ve got it:
+	•	Assembly / machine level → the hardware only sees raw bits. Registers don’t “know” if they’re signed or unsigned.
+	•	0xFE is just 11111110.
+	•	Whether that’s 254 (unsigned) or -2 (signed 8-bit, two’s complement) depends on the instruction you use.
+	•	Example (x86):
+	•	CMP al, 0 + JL → interprets al as signed.
+	•	CMP al, 0 + JB → interprets al as unsigned.
+	•	C language level → the types decide interpretation.
+	•	char c = 0xFE; → could be -2 or 254 depending on whether char is signed/unsigned.
+	•	unsigned int x = 0xFE; → always 254.
+	•	int x = 0xFE; → always 254 if positive, but if you had 0xFFFFFFFF it would be -1.
+
+So:
+	•	Assembly = bit patterns only, signedness is up to the instruction.
+	•	C = variables have a signed/unsigned type baked in, which changes how math/comparisons are done.
+
+⸻
+
+Do you want your custom assembly language to behave more like “raw assembly” (unsigned base + signed/unsigned instructions), or more like “C” (registers themselves have a signedness)?
+
+For the C language you develop, write some simple programs to help with memory:
+- Implement malloc(), free(), sizeof()
+- Implement simple string library strcpy(), strcat(), etc.
+- Use types and 2's complement, not signed magnititude
+- Structs should be padded
+- Make C runtime libraries and linkers to use them with #include
