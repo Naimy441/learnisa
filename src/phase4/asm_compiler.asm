@@ -161,25 +161,26 @@ read_file:
     JNZ read_file
 
 get_operators:
+    INC R1 ; Go from the space to the first letter of the first operator
     LOAD R9, 0  ; Counting var for operator
     LOAD R2, OPCODE_0_OPER
     LOAD R2, [R2]
-    CMP R0, R2
-    JLE lexer
+    CMP R8, R2  ; Compare smaller value first since JLE is signed comparison (we need it to act signed)
+    JLE finish_parse_oper
     INC R9
     LOAD R2, OPCODE_1_OPER
     LOAD R2, [R2]
-    CMP R0, R2
+    CMP R8, R2
     JLE parse_operators
     INC R9
     LOAD R2, OPCODE_2_OPER
     LOAD R2, [R2]
-    CMP R0, R2
+    CMP R8, R2
     JLE parse_operators
 parse_operators:
-    LOAD R8, 0
-    CMP R9, R8
-    JZ lexer
+    LOAD R4, 0
+    CMP R9, R4
+    JZ finish_parse_oper
     DEC R9
     JMP check_reg
 check_reg:
@@ -220,14 +221,14 @@ check_addr1:
     JZ if_addr1
     JNZ else_num
 if_addr1:
-    LOAD R5, 6
+    LOAD R4, 6
     LOAD R6, 0
 loop_if_addr1:
     LB R2, [R1]
     SYS R2, 0x0003
     INC R1
-    DEC R5
-    CMP R5, R6
+    DEC R4
+    CMP R4, R6
     JNZ loop_if_addr1
     JZ parse_operators
 else_num:
@@ -244,6 +245,9 @@ else_num:
     CMP R2, R3
     JZ parse_operators
     JNZ else_num
+finish_parse_oper:
+    LOAD R5, R1 ; Copy as the new starting index
+    JMP lexer
 
 lexer_if_space:
     LOAD R8, 0             ; R8 is a counter for which opcode we are on
@@ -515,6 +519,11 @@ handle_code:
     CMP R2, R3 
     JZ lexer_if_space
 
+    LOAD R4, NEWLINE
+    LB R3, [R4]
+    CMP R2, R3 
+    JZ lexer_if_space
+
     LOAD R4, COLON
     LB R3, [R4]
     CMP R2, R3
@@ -572,6 +581,7 @@ err_fread:
     JMP end
 
 end:
+    JMP lexer_if_space ; Handle the last token as an opcode
     HALT
 
 strcmp:
