@@ -460,6 +460,7 @@ class ISA:
             self.mem[self.sp] = ret_addr >> 8 & 0xFF
             self.mem[self.sp + 1] = ret_addr & 0xFF
             self.pc = addr
+            self.print_debug_symbol(addr)
         else:
             self.pc += opcode.length
 
@@ -1173,7 +1174,7 @@ if __name__ == "__main__":
 
     ASSEMBLER_DEBUG_MODE = True
     RUNNER_DEBUG_MODE = True
-    RUNNER_STEP_MODE = True
+    RUNNER_STEP_MODE = False
 
     if (len(sys.argv) > 1):
         input_fn = sys.argv[1]

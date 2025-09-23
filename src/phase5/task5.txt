@@ -285,4 +285,5 @@ For the C language you develop, write some simple programs to help with memory:
 - Implement simple string library strcpy(), strcat(), etc.
 - Use types and 2's complement, not signed magnititude
 - Structs should be padded
+- Declaring functions and defining functions so we can call functions before they are defined
 - Make C runtime libraries and linkers to use them with #include

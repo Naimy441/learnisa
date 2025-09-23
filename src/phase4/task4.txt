@@ -67,3 +67,47 @@ Output	.bin executable	.bin executable
 So, in short: for the assembler, you skip generating assembly; the AST/instruction table goes straight to binary.
 
 If you want, I can sketch a memory layout for the assembler, showing how it reads source → tokens → instruction table → binary buffer, which makes implementing it in assembly much easier. Do you want me to do that?
+
+i have to compare a lot of strings in assembly, problem is that i keep rewriting the same function with different registers because sometimes registers are needed somewhere and not elsewhere, is the common solution to store variables on the stack? and then "call" with a function and RET
+
+Yes — what you’re describing is exactly why most assembly programmers use the stack and function calls instead of rewriting the same code for different registers. Here’s the typical approach:
+	1.	Store variables on the stack if they can’t all fit in registers. This allows your function to access them consistently, no matter what registers are free in the caller.
+	•	Example (x86-ish pseudo-assembly):
+
+push eax        ; save caller's value
+push ebx
+mov eax, [esp+offset]  ; load local variable
+
+
+	2.	Write a single function for your string comparison that uses specific registers internally.
+	•	It doesn’t matter which registers the caller uses, because you can push any registers you overwrite at the start and pop them at the end.
+	3.	Call and RET:
+	•	Caller sets up arguments (usually on stack or in registers, depending on your convention).
+	•	Call your function.
+	•	Function does its work, returns, and cleans up.
+
+Example pattern for a string compare function:
+
+str_cmp:
+    push eax        ; save used registers
+    push ecx
+    ; ... do comparison using eax, ecx, etc.
+    pop ecx         ; restore
+    pop eax
+    ret
+
+Benefits:
+	•	You write the comparison logic once.
+	•	You don’t worry about which registers are available in the caller.
+	•	Easier to maintain and extend.
+
+💡 Tip: Use a calling convention (like cdecl or stdcall) to standardize which registers are preserved and where arguments go. This makes your life much easier when your program grows.
+
+If you want, I can sketch a full reusable string compare function using the stack and call/ret that works for arbitrary register usage. Do you want me to do that?
+
+Trying to manually track which registers are free is a nightmare as soon as your program grows. Even a small string comparison function can require several registers, and if the caller also needs them, you’ll end up constantly rewriting code or chasing bugs.
+
+With a stack-based function:
+	•	You can always use the registers you need inside the function because you save/restore the caller’s values.
+	•	Your functions become modular and reusable.
+	•	It’s much easier to maintain and extend your program.
