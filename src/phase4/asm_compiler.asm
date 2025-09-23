@@ -1,4 +1,7 @@
 ; ./isa.py asm_compiler filename
+; TODO: check to see if we can lex only code but a bunch of lines
+; TODO: check and lex .data
+; TODO: actually store the tokens instead of printing out
 
 .data
 TOK_EOF       = 0
@@ -359,7 +362,7 @@ prepare_lexer:
     LOAD R5, R1         ; Copy as starting index
     LOAD R8, R1         ; Copy as current index
 
-lexer:    
+lexer:
     LB R2, [R1]         ; LB only loads 1 byte (1 char) from HEAP at memory address R1
     LOAD R3, 0          ; Check EOF
     CMP R2, R3
