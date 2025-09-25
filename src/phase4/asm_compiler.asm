@@ -1,4 +1,4 @@
-; ./isa.py asm_compiler filename
+; ./isa.py asm_compiler asm_compiler.asm
 ; TODO: check to see if we can lex only code but a bunch of lines
 ; TODO: check and lex .data
 ; TODO: actually store the tokens instead of printing out
@@ -533,22 +533,22 @@ get_operators:
     INC R1 ; Go from the space to the first letter of the first operator
     LOAD R9, 0  ; Counting var for operator
     LOAD R2, OPCODE_0_OPER
-    LOAD R2, [R2]
+    LB R2, [R2]
     CMP R8, R2  ; Compare smaller value first since JLE is signed comparison (we need it to act signed)
     JLE finish_parse_oper
     INC R9
     LOAD R2, OPCODE_1_OPER
-    LOAD R2, [R2]
+    LB R2, [R2]
     CMP R8, R2
     JLE parse_operators
     INC R9
     LOAD R2, OPCODE_2_OPER
-    LOAD R2, [R2]
+    LB R2, [R2]
     CMP R8, R2
     JLE parse_operators
     LOAD R9, 0  ; Immediately go to parse_label and then end
     LOAD R2, OPCODE_LABEL_OPER
-    LOAD R2, [R2]
+    LB R2, [R2]
     CMP R8, R2
     JLE parse_label
 parse_operators:

@@ -388,7 +388,7 @@ class ISA:
         elif call == "STDIN_CHAR":
             self.reg[rx] = ord(input().strip()[0]) & 0xFFFF
         elif call == "STDOUT_INT":
-            print(self.reg[rx], end=' ')
+            print(self.reg[rx])
         elif call == "STDOUT_CHAR":
             print(chr(self.reg[rx]))
         elif call == "STDOUT_INT_NR":
