@@ -1,5 +1,7 @@
 #!/usr/bin/env python3
 
+# TODO: Repartition to allow more kb in the heap, thinking 8kb for code 48 kb for heap, 8kb for stack
+
 import sys
 from enum import Enum
 
@@ -1116,7 +1118,7 @@ class ISA:
         lines = []
         line = []
         for addr, val in changed_mem.items():
-            if addr >= self.HEAP_START:
+            if addr >= 0:
                 line.append(f"[{addr}]={val}")
                 if len(line) == 4:
                     lines.append(" ".join(line))
@@ -1173,9 +1175,9 @@ if __name__ == "__main__":
     ASSEMBLER = True
     RUNNER = True
 
-    ASSEMBLER_DEBUG_MODE = False
+    ASSEMBLER_DEBUG_MODE = True
     RUNNER_DEBUG_MODE = False
-    RUNNER_STEP_MODE = ASSEMBLER_DEBUG_MODE
+    RUNNER_STEP_MODE = False
 
     if (len(sys.argv) > 1):
         input_fn = sys.argv[1]

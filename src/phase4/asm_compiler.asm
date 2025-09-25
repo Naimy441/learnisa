@@ -1,7 +1,6 @@
 ; ./isa.py asm_compiler asm_compiler.asm
-; TODO: check to see if we can lex only code but a bunch of lines
-; TODO: check and lex .data
 ; TODO: actually store the tokens instead of printing out
+; TODO: Refactor for memory repartitioning
 
 .data
 TOK_EOF       = .byte 0
@@ -256,6 +255,7 @@ handle_code:
 ;   Add binary to buffer at the start of HEAP
 
 ; WRITE: Write file to .bin
+;   Write header first with magic byte
 
 err:
     ; IF ERROR CODE = 0, ERR_CMD
