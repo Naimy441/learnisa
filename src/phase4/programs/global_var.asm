@@ -1,5 +1,5 @@
 .data
-CUR_INDEX   = .word 16448
+CUR_INDEX   = .word 340
 
 .code
 ; Load the value at the variable CUR_INDEX
