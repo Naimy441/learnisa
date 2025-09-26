@@ -419,19 +419,19 @@ continue_loop_word:
     INC R5
     JMP loop_while_word
 data_is_asciiz:
-    LOAD R0, 7
+    LOAD R0, 8
     ADD R5, R0
     ADD R1, R0
 loop_while_string:
-    INC R1
-    INC R5
     LB R2, [R1]
-    SYS R2, 0x0003
     LOAD R3, STR
     LB R3, [R3]
     CMP R2, R3
-    JNZ loop_while_string
     JZ lexer
+    SYS R2, 0x0003
+    INC R1
+    INC R5
+    JMP loop_while_string
 
 ; Handle comments (skip them)
 lexer_if_semicolon:
@@ -466,9 +466,11 @@ if_label_at_start:
 while_not_colon:
     INC R5
     LB R2, [R5]         ; LB only loads 1 byte (1 char) from HEAP at memory address R1
-    SYS R2, 0x0005
     CMP R1, R5
-    JNZ while_not_colon
+    JZ end_if_colon
+    SYS R2, 0x0005
+    JMP while_not_colon
+end_if_colon:
     LOAD R3, NEWLINE
     LB R3, [R3]
     SYS R3, 0x0005      ; Print out a newline
