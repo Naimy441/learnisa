@@ -1,8 +1,7 @@
 ; ./isa.py asm_compiler asm_compiler.asm
-; TODO: actually store the tokens instead of printing out
-; TODO: Refactor for memory repartitioning
 
 .data
+; Global Constants
 TOK_EOF       = .byte 0
 
 TOK_DATA      = .byte 1
@@ -130,6 +129,14 @@ ERR_UNKNOWN = .asciiz 'ERROR: An uknown error occurred'
 ERR_CMD     = .asciiz 'ERROR: No command line args found'
 ERR_FREAD   = .asciiz 'ERROR: Failed to read file'
 
+HEAP_START = .word 16384
+LEX_START = .word 16448 ; 64 bytes after HEAP_START
+SRC_START = .word 16512 ; 128 bytes after HEAP_START
+
+; Global Variables
+IS_DATA = .byte 0
+LEX_CUR = .word 16448   ; Starts at 64 bytes after HEAP_START
+
 .code
 start:
     POP R0             ; Loads the number of CMD line arguments
@@ -152,7 +159,8 @@ open_file:
     JNZ err
 
 prepare_read_file:
-    LOAD R1, 16384      ; Memory address for the start of HEAP
+    LOAD R1, SRC_START  ; Memory address after start of HEAP
+    LOAD R1, [R1]
     LOAD R2, 100        ; Num bytes to READ
     JMP read_file
 
@@ -172,10 +180,8 @@ prepare_lexer:
     SB R0, [R1]         ; Put the newline char at R1, which contains the end memory address
 
     PUSH R5             ; Store total number of bytes read to STACK
-    LOAD R1, 16384      ; Memory address for the start of HEAP
-
-    LOAD R0, 0          ; .code is assumed true
-    STORE R0, 0xBFFF    ; Add num to end of HEAP
+    LOAD R1, SRC_START  ; Memory address where SRC code was loaded
+    LOAD R1, [R1]
 
     LOAD R9, 0
     ADD R9, R1
@@ -192,7 +198,8 @@ lexer:
     JNZ lexer_proceed_until_delim
     JZ end
 lexer_proceed_until_delim:
-    LOAD R0, 0xBFFF  ; Load the number at the end of heap, which is 0 if it's .code and 1 if .data
+    LOAD R0, IS_DATA
+    LB R0, [R0]  ; Load the number at the start of heap, which is 0 if it's .code and 1 if .data
     LOAD R6, 1
     CMP R0, R6      ; Check .data directive, this is set from the lexer_if_period function
     JZ handle_data
@@ -306,7 +313,8 @@ data_is_true:
     ADD R1, R0
     LOAD R5, R1
     LOAD R0, 1  ; .data is true
-    STORE R0, 0xBFFF  ; Add num to end of HEAP
+    LOAD R3, IS_DATA 
+    SB R0, [R3]  ; Add num to start of HEAP
     JMP lexer
 code_is_true:
     ; Move onto first letter after .code
@@ -314,7 +322,8 @@ code_is_true:
     ADD R1, R0
     LOAD R5, R1
     LOAD R0, 0  ; .code is true
-    STORE R0, 0xBFFF  ; Add num to end of HEAP
+    LOAD R3, IS_DATA 
+    SB R0, [R3]  ; Add num to start of HEAP
     JMP lexer
 
 ; Handle lines in .data
@@ -451,7 +460,8 @@ lexer_if_colon:
     LOAD R5, R1
 while_not_newline:
     DEC R5
-    LOAD R3, 16384
+    LOAD R3, SRC_START
+    LOAD R3, [R3]  ; We want to ensure we don't go past the beginning of SRC
     CMP R5, R3
     JZ if_label_at_start
     LOAD R3, NEWLINE

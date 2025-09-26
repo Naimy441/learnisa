@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 
-# TODO: Repartition to allow more kb in the heap, thinking 8kb for code 48 kb for heap, 8kb for stack
+# TODO: Think about how to make the CPU and assembler easier to change to higher amounts of memory 64kb -> 128kb for example
 
 import sys
 from enum import Enum
@@ -1118,7 +1118,7 @@ class ISA:
         lines = []
         line = []
         for addr, val in changed_mem.items():
-            if addr >= 0:
+            if addr >= self.HEAP_START:
                 line.append(f"[{addr}]={val}")
                 if len(line) == 4:
                     lines.append(" ".join(line))
