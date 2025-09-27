@@ -398,7 +398,6 @@ class ISA:
         elif call == "STDOUT_CHAR_NR":
             print(chr(self.reg[rx]), end='')
         elif call == "STDOUT_STR":
-            print(rx)
             i = self.reg[rx]
             buf = ""
             while (self.mem[i] != 0):

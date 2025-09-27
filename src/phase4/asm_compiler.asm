@@ -7,17 +7,18 @@ TOK_EOF       = .byte 0
 TOK_DATA      = .byte 1
 TOK_CODE      = .byte 2
 
-TOK_VAR       = .byte 3
+TOK_VAR       = .byte 3 ; Refers to name of a var in .data
 TOK_BYTE      = .byte 4
 TOK_WORD      = .byte 5
 TOK_ASCIIZ    = .byte 6
 
-TOK_LABEL     = .byte 7
-TOK_OPCODE    = .byte 8
-TOK_REGISTER  = .byte 9
-TOK_IMMEDIATE = .byte 10
-TOK_ADDRESS   = .byte 11
-TOK_INDIRECT  = .byte 12
+TOK_LABEL     = .byte 7 ; Refers to a label: in .code
+TOK_SYMBOL    = .byte 8 ; Refers to a reference to a label or a var used in .code
+TOK_OPCODE    = .byte 9
+TOK_REGISTER  = .byte 10
+TOK_IMMEDIATE = .byte 11
+TOK_ADDRESS   = .byte 12
+TOK_INDIRECT  = .byte 13
 
 ; Opcodes with 0 operators
 CODE_NOP   = .byte 0
@@ -125,6 +126,7 @@ TAB       = .byte 9
 NEWLINE   = .byte 10
 PERIOD    = .byte 46
 
+DEBUG       = .asciiz 'DEBUG'
 ERR_UNKNOWN = .asciiz 'ERROR: An uknown error occurred'
 ERR_CMD     = .asciiz 'ERROR: No command line args found'
 ERR_FREAD   = .asciiz 'ERROR: Failed to read file'
@@ -161,7 +163,7 @@ open_file:
 prepare_read_file:
     LOAD R1, SRC_START  ; Memory address after start of HEAP
     LOAD R1, [R1]
-    LOAD R2, 100        ; Num bytes to READ
+    LOAD R2, 4096        ; Num bytes to READ
     JMP read_file
 
 read_file:
@@ -315,6 +317,11 @@ data_is_true:
     LOAD R0, 1  ; .data is true
     LOAD R3, IS_DATA 
     SB R0, [R3]  ; Add num to start of HEAP
+    LOAD R2, TOK_DATA
+    LB R2, [R2]
+    CALL push_token
+    LOAD R2, 0          ; Delimiter to see that the token has ended
+    CALL push_token     ; R2 is the input
     JMP lexer
 code_is_true:
     ; Move onto first letter after .code
@@ -324,6 +331,11 @@ code_is_true:
     LOAD R0, 0  ; .code is true
     LOAD R3, IS_DATA 
     SB R0, [R3]  ; Add num to start of HEAP
+    LOAD R2, TOK_CODE
+    LB R2, [R2]
+    CALL push_token
+    LOAD R2, 0          ; Delimiter to see that the token has ended
+    CALL push_token     ; R2 is the input
     JMP lexer
 
 ; Handle lines in .data
@@ -336,18 +348,20 @@ while_not_newline1:
     LB R2, [R5]         ; LB only loads 1 byte (1 char) from HEAP at memory address R1
     CMP R2, R3
     JNZ while_not_newline1
-    JZ while_not_space
+    LOAD R2, TOK_VAR
+    LB R2, [R2]
+    CALL push_token     ; R2 is the input
+    JMP while_not_space
 while_not_space:
     INC R5
     LB R2, [R5]         ; LB only loads 1 byte (1 char) from HEAP at memory address R1
-    SYS R2, 0x0005
+    CALL push_token     ; R2 is the input
     LOAD R3, SPACE
     LB R3, [R3]
     CMP R2, R3
     JNZ while_not_space
-    LOAD R3, NEWLINE
-    LB R3, [R3]
-    SYS R3, 0x0005      ; Print out a newline
+    LOAD R2, 0          ; Delimiter to see that the token has ended
+    CALL push_token     ; R2 is the input
     ; Set R1 and R5 to be both set at the period
     INC R5
 continue_until_period:
@@ -383,12 +397,15 @@ data_is_byte:
     LOAD R0, 5
     ADD R5, R0
     ADD R1, R0
+    LOAD R2, TOK_BYTE
+    LB R2, [R2]
+    CALL push_token     ; R2 is the input
 loop_while_byte:
     LB R2, [R1]
     LOAD R3, SEMICOLON
     LB R3, [R3]
     CMP R2, R3
-    JZ lexer
+    JZ add_delimiter_token
     LOAD R3, COMMA
     LB R3, [R3]
     CMP R2, R3
@@ -396,8 +413,8 @@ loop_while_byte:
     LOAD R3, NEWLINE
     LB R3, [R3]
     CMP R2, R3
-    JZ lexer
-    SYS R2, 0x0003
+    JZ add_delimiter_token
+    CALL push_token     ; R2 is the input
     JMP continue_loop_byte
 continue_loop_byte:
     INC R1
@@ -407,12 +424,15 @@ data_is_word:
     LOAD R0, 5
     ADD R5, R0
     ADD R1, R0
+    LOAD R2, TOK_WORD
+    LB R2, [R2]
+    CALL push_token     ; R2 is the input
 loop_while_word:
     LB R2, [R1]
     LOAD R3, SEMICOLON
     LB R3, [R3]
     CMP R2, R3
-    JZ lexer
+    JZ add_delimiter_token
     LOAD R3, COMMA
     LB R3, [R3]
     CMP R2, R3
@@ -420,8 +440,8 @@ loop_while_word:
     LOAD R3, NEWLINE
     LB R3, [R3]
     CMP R2, R3
-    JZ lexer
-    SYS R2, 0x0003
+    JZ add_delimiter_token
+    CALL push_token
     JMP continue_loop_word
 continue_loop_word:
     INC R1
@@ -431,16 +451,23 @@ data_is_asciiz:
     LOAD R0, 8
     ADD R5, R0
     ADD R1, R0
+    LOAD R2, TOK_ASCIIZ
+    LB R2, [R2]
+    CALL push_token     ; R2 is the input
 loop_while_string:
     LB R2, [R1]
     LOAD R3, STR
     LB R3, [R3]
     CMP R2, R3
-    JZ lexer
-    SYS R2, 0x0003
+    JZ add_delimiter_token
+    CALL push_token     ; R2 is the input
     INC R1
     INC R5
     JMP loop_while_string
+add_delimiter_token:
+    LOAD R2, 0          ; Delimiter to see that the token has ended
+    CALL push_token     ; R2 is the input
+    JMP lexer
 
 ; Handle comments (skip them)
 lexer_if_semicolon:
@@ -458,6 +485,9 @@ lexer_if_semicolon:
 lexer_if_colon:
     ; Get all chars before the colon but after the newline char
     LOAD R5, R1
+    LOAD R2, TOK_LABEL
+    LB R2, [R2]
+    CALL push_token     ; R2 is the input
 while_not_newline:
     DEC R5
     LOAD R3, SRC_START
@@ -478,12 +508,11 @@ while_not_colon:
     LB R2, [R5]         ; LB only loads 1 byte (1 char) from HEAP at memory address R1
     CMP R1, R5
     JZ end_if_colon
-    SYS R2, 0x0005
+    CALL push_token
     JMP while_not_colon
 end_if_colon:
-    LOAD R3, NEWLINE
-    LB R3, [R3]
-    SYS R3, 0x0005      ; Print out a newline
+    LOAD R2, 0
+    CALL push_token     ; R2 is the input
     ; Set R1 and R5 to be at the char after the colon
     INC R5
     INC R1              
@@ -503,6 +532,9 @@ lexer_if_space_valid:
     PUSH R4
     PUSH R6
     PUSH R7
+    LOAD R2, TOK_OPCODE
+    LB R2, [R2]
+    CALL push_token     ; R2 is the input
 
     LOAD R8, 0             ; R8 is a counter for which opcode we are on
     LOAD R0, STR_NOP       ; Opcodes are in contigiuous mem, 1st opcode is NOP
@@ -520,7 +552,8 @@ lexer_loop_space:
     CMP R2, R4
     JNZ loop_until_next_opcode
     ; Opcode found
-    SYS R8, 0x0002
+    LOAD R2, R8         ; R8 contains the opcode 
+    CALL push_token
     JMP get_operators   ; The addr in R1 is on a space at this point
 loop_until_next_opcode:
     LOAD R4, 0 
@@ -558,16 +591,18 @@ get_operators:
     LB R2, [R2]
     CMP R8, R2
     JLE parse_operators
-    LOAD R9, 0  ; Immediately go to parse_label and then end
+    LOAD R9, 0  ; Immediately go to parse_symbol and then end
     LOAD R2, OPCODE_LABEL_OPER
     LB R2, [R2]
     CMP R8, R2
-    JLE parse_label
+    JLE parse_symbol
 parse_operators:
     LOAD R4, 0
     CMP R9, R4
     JZ finish_parse_oper
     DEC R9
+    LOAD R2, 0          ; Delimiter to see that the token has ended
+    CALL push_token     ; R2 is the input
     JMP check_reg
 check_reg:
     LOAD R4, REG
@@ -577,9 +612,13 @@ check_reg:
     JZ if_reg
     JNZ check_rbrace
 if_reg:
+    LOAD R2, TOK_REGISTER
+    LB R2, [R2]
+    CALL push_token     ; R2 is the input
+
     INC R1  ; Skip R
     LB R2, [R1]
-    SYS R2, 0x0003  ; Print x
+    CALL push_token     ; R2 is the input, contains x
     INC R1  ; ,
     INC R1  ; space
 
@@ -596,10 +635,14 @@ check_rbrace:
     JZ if_rbrace
     JNZ check_addr
 if_rbrace:
+    LOAD R2, TOK_INDIRECT
+    LB R2, [R2]
+    CALL push_token     ; R2 is the input
+
     INC R1  ; Skip [
     INC R1  ; Skip R
     LB R2, [R1]
-    SYS R2, 0x0003 ; Print x
+    CALL push_token     ; R2 is the input, contains x
     INC R1  ; Skip ]
     INC R1  ; space
 
@@ -609,7 +652,7 @@ check_addr:
     LB R3, [R4]
     CMP R2, R3 
     JZ if_addr
-    JNZ else_num
+    JNZ check_num
 if_addr:
     LOAD R4, ADDR2
     LB R3, [R4]
@@ -617,38 +660,64 @@ if_addr:
     INC R1
     LB R2, [R1]
     CMP R2, R3 
+    JZ init_loop_if_addr
+    ; Move back to the first letter so num can properly parse
+    DEC R1
+    LB R2, [R1]
+    JMP check_num
+init_loop_if_addr:
     LOAD R4, 6
     LOAD R6, 0
     DEC R1
-    JZ loop_if_addr
-    ; Move back to the first letter so num can properly parse
-    LB R2, [R1]
-    JNZ else_num
+    LOAD R2, TOK_ADDRESS
+    LB R2, [R2]
+    CALL push_token     ; R2 is the input
+    JMP loop_if_addr
 loop_if_addr:
     LB R2, [R1]
-    SYS R2, 0x0003
+    CALL push_token     ; R2 is the input
     INC R1
     DEC R4
     CMP R4, R6
     JNZ loop_if_addr
     JZ parse_operators
-else_num:
-    ; It's a number, if it made it this far 
-    SYS R2, 0x0003 
-    INC R1
-    LB R2, [R1]         ; LB only loads 1 byte (1 char) from HEAP at memory address R1
-    LOAD R4, SPACE
-    LB R3, [R4]
-    CMP R2, R3
-    JZ parse_operators
-    LOAD R4, NEWLINE
-    LB R3, [R4]
-    CMP R2, R3
-    JZ parse_operators
-    JNZ else_num
-parse_label:
+check_num:  
+    ; Checks if the char is an ascii val from 48-57, which are the digits 0-9
     LB R2, [R1]
-    SYS R2, 0x0003 
+    LOAD R3, 48
+    CMP R2, R3
+    JL parse_symbol
+    LOAD R3, 57
+    CMP R2, R3
+    JG parse_symbol
+    JMP else_num
+else_num:
+    LOAD R2, TOK_IMMEDIATE
+    LB R2, [R2]
+    CALL push_token     ; R2 is the input
+    JMP else_num_loop
+else_num_loop:
+    ; It's a number, if it made it this far 
+    LB R2, [R1]
+    CALL push_token     ; R2 is the input
+    INC R1
+    LB R2, [R1]         ; LB only loads 1 byte (1 char) from HEAP at memory address R1
+    LOAD R4, SPACE
+    LB R3, [R4]
+    CMP R2, R3
+    JZ parse_operators
+    LOAD R4, NEWLINE
+    LB R3, [R4]
+    CMP R2, R3
+    JZ parse_operators
+    JNZ else_num_loop
+parse_symbol:
+    LOAD R2, TOK_SYMBOL
+    LB R2, [R2]
+    CALL push_token     ; R2 is the input
+parse_symbol_loop:
+    LB R2, [R1]
+    CALL push_token
     INC R1
 
     LB R2, [R1]         ; LB only loads 1 byte (1 char) from HEAP at memory address R1
@@ -661,8 +730,10 @@ parse_label:
     LB R3, [R4]
     CMP R2, R3
     JZ parse_operators
-    JNZ parse_label
+    JNZ parse_symbol_loop
 finish_parse_oper:
+    LOAD R2, 0          ; Delimiter to see that the token has ended
+    CALL push_token     ; R2 is the input
     LOAD R5, R1 ; Copy as the new starting index
     JMP end_lexer_if_space
 
@@ -702,5 +773,29 @@ ret_strcmp:
     POP R6
     POP R5
     POP R4
+    POP R3
+    RET
+
+print_debug:
+    PUSH R3
+
+    LOAD R3, DEBUG
+    SYS R3, 0x0006
+    
+    POP R3
+    RET
+
+push_token:
+    ; This function has a weird bug, where if you write a function beneath it, the symbol addresses get mixed up
+    PUSH R3
+
+    LOAD R3, LEX_CUR
+    LOAD R3, [R3]
+
+    SB R2, [R3]     ; R2 - Input token
+    SYS R2, 0x0002
+    INC R3
+    STORE R3, LEX_CUR
+
     POP R3
     RET
