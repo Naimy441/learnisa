@@ -255,21 +255,21 @@ handle_code:
 
 ; LEXER: Tokenize
 
-; PARSER: Resolve symbols
+; PARSER: Find symbols
 ;   (1st Pass) Generate symbol table with addresses
-;   Track data to in memory count of instruction address, store total data length
-;   Then in code directive:
-;   Resolve labels to in memory count of instruction address num
-;   Resolve vars to previously tracked instruction addr
+;   In data directive, track data to in memory count of instruction address, store total data length, using knowledge of lengths of expected data
+;   In code directive, track code to in memory count of instruction address, store total code length, using knowledge of lengths of expected code
 
-; CODE GENERATOR: Turn instruction table into binary
-;   (2nd Pass) 
+; PARSER: Replace symbols
+;   (2nd Pass) Rewrite lexed tokens into final binary
 ;   Loop through all tokens
-;   For each token_type, take in token_values and convert to binary based on expectations
-;   Add binary to buffer at the start of HEAP
+;   Convert addresses and numbers into actual numerical values
+;   For each token_type, replace delimited strings with their symbol
+;   Remove all zero delimiters
 
 ; WRITE: Write file to .bin
 ;   Write header first with magic byte
+;   Write everything in MEM to file as its already in binary by this point
 
 err:
     ; IF ERROR CODE = 0, ERR_CMD
