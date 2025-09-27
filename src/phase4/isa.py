@@ -591,7 +591,11 @@ class ISA:
                     bytearr.insert(1, 0x01) # Immediate
                     return bytearr
             case Opcode.STORE:
-                if line[2].lower().startswith('0x'):
+                if is_symbol:
+                    bytearr = self.validate_rx_val(opcode, line, is_symbol)
+                    bytearr.insert(1, 0x03) # Absolute addr
+                    return bytearr
+                elif line[2].lower().startswith('0x'):
                     bytearr = self.validate_rx_addr(opcode, line, is_symbol)
                     bytearr.insert(1, 0x03) # Absolute addr
                     return bytearr 
@@ -678,7 +682,9 @@ class ISA:
                             raise ValueError(f"Impossible instruction {opcode_name} {operand}")
                 elif opcode_name == 'STORE':
                     operand = line[2]         
-                    if operand.lower().startswith('0x'): 
+                    if operand in self.symbols:
+                        len_bytes += 5   
+                    elif operand.lower().startswith('0x'): 
                         len_bytes += 5
                     else:
                         len_bytes += 4
