@@ -7,13 +7,13 @@ TOK_EOF       = .byte 0
 TOK_DATA      = .byte 1
 TOK_CODE      = .byte 2
 
-TOK_VAR       = .byte 3 ; Refers to name of a var in .data
+TOK_VAR       = .byte 3 ; Refers to name of a var in data directive
 TOK_BYTE      = .byte 4
 TOK_WORD      = .byte 5
 TOK_ASCIIZ    = .byte 6
 
-TOK_LABEL     = .byte 7 ; Refers to a label: in .code
-TOK_SYMBOL    = .byte 8 ; Refers to a reference to a label or a var used in .code
+TOK_LABEL     = .byte 7 ; Refers to a label: in code directive
+TOK_SYMBOL    = .byte 8 ; Refers to a reference to a label or a var used in code directive
 TOK_OPCODE    = .byte 9
 TOK_REGISTER  = .byte 10
 TOK_IMMEDIATE = .byte 11
@@ -201,12 +201,17 @@ lexer:
     JZ end
 lexer_proceed_until_delim:
     LOAD R0, IS_DATA
-    LB R0, [R0]  ; Load the number at the start of heap, which is 0 if it's .code and 1 if .data
+    LB R0, [R0]  ; Load the number at the start of heap, which is 0 if it's code directive and 1 if data directive
     LOAD R6, 1
-    CMP R0, R6      ; Check .data directive, this is set from the lexer_if_period function
+    CMP R0, R6      ; Check data directive, this is set from the lexer_if_period function
     JZ handle_data
     JNZ handle_code
 handle_data:
+    LOAD R4, SEMICOLON
+    LB R3, [R4]
+    CMP R2, R3
+    JZ lexer_if_semicolon
+    
     LOAD R4, PERIOD
     LB R3, [R4]
     CMP R2, R3
@@ -220,15 +225,15 @@ handle_data:
     INC R1              ; Increment to next memory address (skips tabs, newlines)
     JMP lexer
 handle_code:
-    LOAD R4, PERIOD
-    LB R3, [R4]
-    CMP R2, R3
-    JZ lexer_if_period
-
     LOAD R4, SEMICOLON
     LB R3, [R4]
     CMP R2, R3
     JZ lexer_if_semicolon
+
+    LOAD R4, PERIOD
+    LB R3, [R4]
+    CMP R2, R3
+    JZ lexer_if_period
 
     LOAD R4, COLON
     LB R3, [R4]
@@ -253,7 +258,7 @@ handle_code:
 ; PARSER: Resolve symbols
 ;   (1st Pass) Generate symbol table with addresses
 ;   Track data to in memory count of instruction address, store total data length
-;   Then in .code:
+;   Then in code directive:
 ;   Resolve labels to in memory count of instruction address num
 ;   Resolve vars to previously tracked instruction addr
 
@@ -294,7 +299,7 @@ err_fread:
 end:
     HALT
 
-; Check .data and .code directives
+; Check data and code directives
 lexer_if_period:
     INC R1  ; Move off the period and onto the first letter
     LOAD R3, 1
@@ -310,11 +315,11 @@ lexer_if_period:
     JZ code_is_true
     JMP lexer
 data_is_true:
-    ; Move onto first letter after .data
+    ; Move onto first letter after data directive
     LOAD R0, 4
     ADD R1, R0
     LOAD R5, R1
-    LOAD R0, 1  ; .data is true
+    LOAD R0, 1  ; data directive is true
     LOAD R3, IS_DATA 
     SB R0, [R3]  ; Add num to start of HEAP
     LOAD R2, TOK_DATA
@@ -324,11 +329,11 @@ data_is_true:
     CALL push_token     ; R2 is the input
     JMP lexer
 code_is_true:
-    ; Move onto first letter after .code
+    ; Move onto first letter after code directive
     LOAD R0, 4
     ADD R1, R0
     LOAD R5, R1
-    LOAD R0, 0  ; .code is true
+    LOAD R0, 0  ; code directive is true
     LOAD R3, IS_DATA 
     SB R0, [R3]  ; Add num to start of HEAP
     LOAD R2, TOK_CODE
@@ -338,7 +343,7 @@ code_is_true:
     CALL push_token     ; R2 is the input
     JMP lexer
 
-; Handle lines in .data
+; Handle lines in data directive
 lexer_if_eq_sign:
     LOAD R5, R1
 while_not_newline1:
