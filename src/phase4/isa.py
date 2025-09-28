@@ -163,10 +163,10 @@ class ISA:
 
     def LOAD(self, rx, operand, mode):
         # Mode = Operand                    - Opcode         - Variable Length Encoding
-        # 0    = register-to-register       - LOAD Rx, Ry    - 1 + 1 (Addr Byte) + 1 + 1 = 4 bytes
-        # 1    = immediate                  - LOAD Rx, Val   - 1 + 1 (Addr Byte) + 1 + 2 = 5 bytes
-        # 2    = absolute memory address    - LOAD Rx, Addr  - 1 + 1 (Addr Byte) + 1 + 2 = 5 bytes
-        # 3    = indirect through register  - LOAD Rx, [Ry]  - 1 + 1 (Addr Byte) + 1 + 1 = 4 bytes
+        # 2    = register-to-register       - LOAD Rx, Ry    - 1 + 1 (Addr Byte) + 1 + 1 = 4 bytes
+        # 1    = immediate, symbol          - LOAD Rx, Val   - 1 + 1 (Addr Byte) + 1 + 2 = 5 bytes
+        # 3    = absolute mem addr          - LOAD Rx, Addr  - 1 + 1 (Addr Byte) + 1 + 2 = 5 bytes
+        # 4    = indirect through register  - LOAD Rx, [Ry]  - 1 + 1 (Addr Byte) + 1 + 1 = 4 bytes
         if mode == 0:
             self.reg[rx] = self.reg[operand]
         elif mode == 1:
@@ -179,8 +179,8 @@ class ISA:
             
     def STORE(self, rx, operand, mode):
         # Mode = Operand                    - Opcode         - Variable Length Encoding
-        # 2    = absolute memory address    - STORE Rx, Addr  - 1 + 1 (Addr Byte) + 1 + 2 = 5 bytes
-        # 3    = indirect through register  - STORE Rx, [Ry]  - 1 + 1 (Addr Byte) + 1 + 1 = 4 bytes
+        # 3    = absolute mem addr, symbol  - STORE Rx, Addr  - 1 + 1 (Addr Byte) + 1 + 2 = 5 bytes
+        # 4    = indirect through register  - STORE Rx, [Ry]  - 1 + 1 (Addr Byte) + 1 + 1 = 4 bytes
         if mode == 2:
             self.mem[operand] = (self.reg[rx] >> 8) & 0xFF
             self.mem[operand + 1] = self.reg[rx] & 0xFF

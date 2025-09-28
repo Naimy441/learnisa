@@ -146,8 +146,9 @@ PARSE_START = .word 16448 ; 64 bytes after HEAP_START
 LEX_START = .word 16512 ; 64 bytes after PARSE_START
 SRC_START = .word 16576 ; 64 bytes after LEX_START
 
-MAGIC_NUM   = .word 16618     ; AN in decimal
-HEADER_LENGTH = .word 16      ; Header length       
+MAGIC_NUM   = .word 16718     ; AN in decimal
+HEADER_LENGTH = .word 16      ; Header length    
+RESERVED = .word 0
 
 ; Global Variables
 IS_DATA = .byte 0       ; Assume code directive is true by starting with 0
@@ -177,6 +178,7 @@ start:
 
 open_file:
     POP R0              ; Loads the pointer to file name, CMD line argument
+    PUSH R0
     LOAD R1, 0          ; Open file in READ mode
     SYS R0, 0x0100      ; Calls FILE_OPEN, R0 contains File Descriptor
     LOAD R1, 3
@@ -202,23 +204,20 @@ read_file:
     JMP read_file
 
 prepare_lexer:
-    PUSH R0             ; Store file descriptor to STACK
+    SYS R0, 0x0103      ; Close the input file, file descriptor in R0
     
-    ; Add a new line character at the very end
+    ; Add a few new line characters at the very end
+    LOAD R0, 10         ; 10 is \n
+    SB R0, [R1]         ; Put the newline char at R1, which contains the end memory address
+    INC R1
     LOAD R0, 10         ; 10 is \n
     SB R0, [R1]         ; Put the newline char at R1, which contains the end memory address
 
     STORE R1, SYM_START   ; Store the end location of SRC code
     STORE R1, SYM_CUR     ; Store the end location of SRC code
 
-    PUSH R5             ; Store total number of bytes read to STACK
     LOAD R1, SRC_START  ; Memory address where SRC code was loaded
     LOAD R1, [R1]
-
-    LOAD R9, 0
-    ADD R9, R1
-    ADD R9, R5
-    PUSH R9             ; Store available starting memory address pos to STACK
 
     LOAD R5, R1         ; Copy as starting index
     LOAD R8, R1         ; Copy as current index
@@ -284,31 +283,6 @@ handle_code:
     JMP lexer
 
 prepare_parser:
-    ; Prepare data used in header
-    LOAD R0, HEADER_LENGTH
-    LOAD R0, [R0]
-    LOAD R1, DATA_OFFSET
-    LOAD R1, [R1]
-    STORE R0, DATA_OFFSET
-
-    LOAD R2, DATA_LENGTH
-    LOAD R2, [R2]
-    LOAD R3, CODE_OFFSET
-    LOAD R3, [R3]
-    ADD R2, R0
-    STORE R2, CODE_OFFSET
-
-    LOAD R6, BIN_SIZE
-    LOAD R6, [R6]
-    LOAD R4, CODE_LENGTH
-    LOAD R4, [R4]
-    SUB R6, R2  ; Calculate the size of code (total - data)
-    STORE R6, CODE_LENGTH
-
-    LOAD R5, ENTRY_POINT
-    LOAD R5, [R5]
-    STORE R2, ENTRY_POINT
-
     ; Set LEX_END with value at LEX_CUR
     LOAD R0, LEX_CUR
     LOAD R0, [R0]
@@ -340,7 +314,7 @@ parser:
     LOAD R0, LEX_CUR
     LOAD R0, [R0]
     CMP R0, R1
-    JZ end
+    JZ prepare_write_file
     ; Load the current token into R2
     LB R2, [R0]
     ; Check if we should parse as data or code
@@ -417,9 +391,6 @@ parse_asciiz:
     LOAD R3, 0
     CMP R2, R3
     JNZ parse_asciiz
-    ; Push a final delimiter for the string data
-    LOAD R2, 0
-    CALL push_byte  ; R2 is the INPUT
     JMP continue_parser
 parse_set_is_data_false:
     LOAD R4, IS_DATA
@@ -472,7 +443,6 @@ parse_code_opcode:
     CMP R2, R3
     JZ continue_parser
     ; Go to the first char of the string 
-    CALL print_debug
     INC R0
     LB R2, [R0]     ; Opcode is already a number
     CALL push_byte  ; R2 is the INPUT
@@ -524,17 +494,17 @@ parse_addressing_byte_load_symbol:
     SYS R2, 0x0002
     JMP continue_parser
 parse_addressing_byte_load_register:
-    LOAD R2, 0
+    LOAD R2, 2
     CALL push_byte  ; R2 is the INPUT
     SYS R2, 0x0002
     JMP continue_parser
 parse_addressing_byte_load_indirect:
-    LOAD R2, 3
+    LOAD R2, 4
     CALL push_byte  ; R2 is the INPUT
     SYS R2, 0x0002
     JMP continue_parser
 parse_addressing_byte_load_address:
-    LOAD R2, 2
+    LOAD R2, 3
     CALL push_byte  ; R2 is the INPUT
     SYS R2, 0x0002
     JMP continue_parser
@@ -565,17 +535,17 @@ parse_addressing_byte_store:
 
     JMP continue_parser
 parse_addressing_byte_store_symbol:
-    LOAD R2, 2
+    LOAD R2, 3
     CALL push_byte  ; R2 is the INPUT
     SYS R2, 0x0002
     JMP continue_parser
 parse_addressing_byte_store_address:
-    LOAD R2, 2
+    LOAD R2, 3
     CALL push_byte  ; R2 is the INPUT
     SYS R2, 0x0002
     JMP continue_parser
 parse_addressing_byte_store_indirect:
-    LOAD R2, 3
+    LOAD R2, 4
     CALL push_byte  ; R2 is the INPUT
     SYS R2, 0x0002
     JMP continue_parser
@@ -690,13 +660,99 @@ parse_set_is_data_true:
     SB R5, [R4]
     JMP parser
 
-; PARSER: 
-; Ensure parser actually functions properly
-; Remove old sys commands
+prepare_write_file:
+    ; Prepare data used in header
+    LOAD R0, HEADER_LENGTH
+    LOAD R0, [R0]
+    STORE R0, DATA_OFFSET
 
-; WRITE: Write file to .bin
-;   Write header first with magic byte
-;   Write everything in MEM to file as its already in binary by this point
+    LOAD R2, DATA_LENGTH
+    LOAD R2, [R2]
+    ADD R2, R0
+    STORE R2, CODE_OFFSET
+
+    LOAD R5, ENTRY_POINT
+    LOAD R5, [R5]
+    STORE R2, ENTRY_POINT
+
+    LOAD R6, BIN_SIZE
+    LOAD R6, [R6]
+    ADD R6, R0
+    SUB R6, R2  ; Calculate the size of code (total - code_offset)
+    STORE R6, CODE_LENGTH
+    
+    POP R0      ; Load memory address of file name
+    PUSH R0
+    LOAD R2, PERIOD
+    LB R2, [R2]
+    JMP loop_prepare_fn
+loop_prepare_fn:
+    LB R1, [R0]
+    CMP R1, R2
+    JZ rewrite_file_ext
+    INC R0
+    JMP loop_prepare_fn
+rewrite_file_ext:
+    INC R0
+    LOAD R2, 98  ; Replace a with b
+    SB R2, [R0]
+    INC R0
+    LOAD R2, 105 ; Replace s with i
+    SB R2, [R0]
+    INC R0
+    LOAD R2, 110 ; Replace m with n
+    SB R2, [R0]
+    JMP open_output_file
+open_output_file:
+    POP R0       ; Load memory address of file name
+    LOAD R1, 1   ; Open in write mode
+    SYS R0, 0x0100  ; R0 has file descriptor after this
+    LOAD R9, R0
+    JMP write_header
+write_header:    
+    ; Load data used in header
+    LOAD R3, DATA_OFFSET
+    LOAD R4, DATA_LENGTH
+    LOAD R5, CODE_OFFSET
+    LOAD R6, CODE_LENGTH
+    LOAD R7, ENTRY_POINT
+    
+    LOAD R2, 2   ; Num of bytes to write
+    LOAD R1, MAGIC_NUM
+    SYS R0, 0x0102
+    LOAD R0, R9
+    LOAD R1, DATA_OFFSET
+    SYS R0, 0x0102
+    LOAD R0, R9
+    LOAD R1, DATA_LENGTH
+    SYS R0, 0x0102
+    LOAD R0, R9
+    LOAD R1, CODE_OFFSET
+    SYS R0, 0x0102
+    LOAD R0, R9
+    LOAD R1, CODE_LENGTH
+    SYS R0, 0x0102
+    LOAD R0, R9
+    LOAD R1, ENTRY_POINT
+    SYS R0, 0x0102
+    LOAD R0, R9
+    LOAD R1, RESERVED ; Write 4 bytes of reserved space for the header
+    SYS R0, 0x0102
+    LOAD R0, R9
+    SYS R0, 0x0102
+    LOAD R0, R9
+    JMP write_bin
+write_bin:
+    LOAD R1, PARSE_START
+    LOAD R1, [R1]
+    LOAD R2, PARSE_CUR  ; PARSE_CUR contains the last parser mem addr 
+    LOAD R2, [R2]
+    SUB R2, R1          ; R2 contains number of bytes to write
+    SYS R2, 0x0002
+    SYS R0, 0x0102      ; Write out the .bin file
+    LOAD R0, R9
+    SYS R0, 0x0103      ; Close the file
+    JMP end
 
 err:
     ; IF ERROR CODE = 0, ERR_CMD
