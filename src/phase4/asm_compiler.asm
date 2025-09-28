@@ -319,18 +319,41 @@ prepare_parser:
     LOAD R1, LEX_START
     LOAD R1, [R1]
     STORE R1, LEX_CUR
+
+    ; Assume data is false
+    LOAD R3, IS_DATA
+    LOAD R2, 0
+    SB R2, [R3]
 parser:
+    ; Check if we have reached the end
     LOAD R1, LEX_END
     LOAD R1, [R1]
     LOAD R0, LEX_CUR
     LOAD R0, [R0]
-    CMP R0, R1      ; Check if we have reached the end
+    CMP R0, R1
     JZ end
-
+    ; Skip 0 delimeters
     LB R2, [R0]
+    LOAD R3, 0
+    CMP R2, R3
+    JZ continue_parser
+
+    LOAD R4, IS_DATA
+    LB R4, [R4]
+    LOAD R5, 1
+    CMP R4, R5
+    JZ parse_data
+    JNZ parse_code
+
+    ; LOAD R4, TOK_DATA
+    ; LB R4, [R4]
+
+    ; LOAD R4, TOK_CODE
+    ; LB R4, [R4]
+
     CALL push_byte  ; R2 is the INPUT
     SYS R2, 0x0003
-    
+continue_parser:
     INC R0          ; Set R0 to next token
     STORE R0, LEX_CUR
     JMP parser
