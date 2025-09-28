@@ -425,15 +425,216 @@ parse_code:
     CMP R2, R4
     JZ parse_set_is_data_true
 
+    LOAD R4, TOK_OPCODE
+    LB R4, [R4]
+    CMP R2, R4
+    JZ parse_code_opcode
+    
+    LOAD R4, TOK_REGISTER
+    LB R4, [R4]
+    CMP R2, R4
+    JZ parse_code_register
+
+    LOAD R4, TOK_IMMEDIATE
+    LB R4, [R4]
+    CMP R2, R4
+    JZ parse_code_immediate
+
+    LOAD R4, TOK_ADDRESS
+    LB R4, [R4]
+    CMP R2, R4
+    JZ parse_code_address
+    
+    LOAD R4, TOK_INDIRECT
+    LB R4, [R4]
+    CMP R2, R4
+    JZ parse_code_indirect
+
+    LOAD R4, TOK_SYMBOL
+    LB R4, [R4]
+    CMP R2, R4
+    JZ parse_code_symbol
+
+    JMP continue_parser
+parse_code_opcode:
     ; Skip 0 delimeters
     LB R2, [R0]     ; Current token is in R2
     LOAD R3, 0
     CMP R2, R3
     JZ continue_parser
-
+    ; Go to the first char of the string 
+    INC R0
+    LOAD R1, R0
+    PUSH R0
+    CALL dec_to_int ; R0 is the OUTPUT, R1 is INPUT
+    LOAD R2, R0
+    POP R0
     CALL push_byte  ; R2 is the INPUT
     SYS R2, 0x0002
+    ; Add addressing byte if LOAD or STORE opcodes
+    LOAD R3, CODE_LOAD
+    LB R3, [R3]
+    CMP R2, R3
+    JZ parse_addressing_byte_load
+    LOAD R3, CODE_STORE
+    LB R3, [R3]
+    CMP R2, R3
+    JZ parse_addressing_byte_store
+    JMP continue_parser
+parse_addressing_byte_load:
+    INC R0  ; Skip first register token type
+    INC R0  ; Skip first register token value
+    INC R0  ; Stop on 2nd register token type
+    LB R2, [R0]     ; Current token is in R2
 
+    LOAD R4, TOK_SYMBOL
+    LB R4, [R4]
+    CMP R2, R4
+    JZ parse_addressing_byte_load_symbol
+
+    LOAD R4, TOK_REGISTER
+    LB R4, [R4]
+    CMP R2, R4
+    JZ parse_addressing_byte_load_register
+
+    LOAD R4, TOK_INDIRECT
+    LB R4, [R4]
+    CMP R2, R4
+    JZ parse_addressing_byte_load_indirect
+
+    LOAD R4, TOK_ADDRESS
+    LB R4, [R4]
+    CMP R2, R4
+    JZ parse_addressing_byte_load_address
+
+    LOAD R4, TOK_IMMEDIATE
+    LB R4, [R4]
+    CMP R2, R4
+    JZ parse_addressing_byte_load_immediate
+
+    JMP continue_parser
+parse_addressing_byte_load_symbol:
+    LOAD R2, 1
+    CALL push_byte  ; R2 is the INPUT
+    SYS R2, 0x0002
+    JMP continue_parser
+parse_addressing_byte_load_register:
+    LOAD R2, 2
+    CALL push_byte  ; R2 is the INPUT
+    SYS R2, 0x0002
+    JMP continue_parser
+parse_addressing_byte_load_indirect:
+    LOAD R2, 4
+    CALL push_byte  ; R2 is the INPUT
+    SYS R2, 0x0002
+    JMP continue_parser
+parse_addressing_byte_load_address:
+    LOAD R2, 3
+    CALL push_byte  ; R2 is the INPUT
+    SYS R2, 0x0002
+    JMP continue_parser
+parse_addressing_byte_load_immediate:
+    LOAD R2, 1
+    CALL push_byte  ; R2 is the INPUT
+    SYS R2, 0x0002
+    JMP continue_parser
+parse_addressing_byte_store:
+    INC R0  ; Skip first register token type
+    INC R0  ; Skip first register token value
+    INC R0  ; Stop on 2nd register token type
+    LB R2, [R0]     ; Current token is in R2
+
+    LOAD R4, TOK_SYMBOL
+    LB R4, [R4]
+    CMP R2, R4
+    JZ parse_addressing_byte_store_symbol
+   
+    LOAD R4, TOK_ADDRESS
+    LB R4, [R4]
+    CMP R2, R4
+    JZ parse_addressing_byte_store_address
+
+    LOAD R4, TOK_INDIRECT
+    LB R4, [R4]
+    CMP R2, R4
+    JZ parse_addressing_byte_store_indirect
+
+    JMP continue_parser
+parse_addressing_byte_store_symbol:
+    LOAD R2, 3
+    CALL push_byte  ; R2 is the INPUT
+    SYS R2, 0x0002
+    JMP continue_parser
+parse_addressing_byte_store_address:
+    LOAD R2, 3
+    CALL push_byte  ; R2 is the INPUT
+    SYS R2, 0x0002
+    JMP continue_parser
+parse_addressing_byte_store_indirect:
+    LOAD R2, 4
+    CALL push_byte  ; R2 is the INPUT
+    SYS R2, 0x0002
+    JMP continue_parser
+parse_code_register:
+    ; Skip 0 delimeters
+    LB R2, [R0]     ; Current token is in R2
+    LOAD R3, 0
+    CMP R2, R3
+    JZ continue_parser
+    ; Go to the first char of the string 
+    INC R0
+    LOAD R1, R0
+    CALL dec_to_int ; R0 is the OUTPUT, R1 is INPUT
+    LOAD R2, R0
+    CALL push_byte  ; R2 is the INPUT
+    SYS R2, 0x0002
+    JMP continue_parser
+parse_code_immediate:
+    ; Skip 0 delimeters
+    LB R2, [R0]     ; Current token is in R2
+    LOAD R3, 0
+    CMP R2, R3
+    JZ continue_parser
+    ; Go to the first char of the string 
+    INC R0
+    LOAD R1, R0
+    CALL dec_to_int ; R0 is the OUTPUT, R1 is INPUT
+    LOAD R2, R0
+    CALL push_word  ; R2 is the INPUT
+    SYS R2, 0x0002
+    JMP continue_parser
+parse_code_address:
+    ; Skip 0 delimeters
+    LB R2, [R0]     ; Current token is in R2
+    LOAD R3, 0
+    CMP R2, R3
+    JZ continue_parser
+    ; Go to the first char of the string 
+    INC R0
+    LOAD R1, R0
+    CALL hex_to_int ; R0 is the OUTPUT, R1 is INPUT
+    LOAD R2, R0
+    CALL push_word  ; R2 is the INPUT
+    SYS R2, 0x0002
+    JMP continue_parser
+parse_code_indirect:
+    ; Skip 0 delimeters
+    LB R2, [R0]     ; Current token is in R2
+    LOAD R3, 0
+    CMP R2, R3
+    JZ continue_parser
+    ; Go to the first char of the string 
+    INC R0
+    LOAD R1, R0
+    CALL dec_to_int ; R0 is the OUTPUT, R1 is INPUT
+    LOAD R2, R0
+    CALL push_byte  ; R2 is the INPUT
+    SYS R2, 0x0002
+    JMP continue_parser
+parse_code_symbol:
+    ; Go to the first char of the string 
+    INC R0
+    NOP
     JMP continue_parser
 parse_set_is_data_true:
     LOAD R4, IS_DATA
