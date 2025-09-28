@@ -332,30 +332,113 @@ parser:
     LOAD R0, [R0]
     CMP R0, R1
     JZ end
-    ; Skip 0 delimeters
+    ; Load the current token into R2
     LB R2, [R0]
-    LOAD R3, 0
-    CMP R2, R3
-    JZ continue_parser
-
+    ; Check if we should parse as data or code
     LOAD R4, IS_DATA
     LB R4, [R4]
     LOAD R5, 1
     CMP R4, R5
     JZ parse_data
     JNZ parse_code
-
-    ; LOAD R4, TOK_DATA
-    ; LB R4, [R4]
-
-    ; LOAD R4, TOK_CODE
-    ; LB R4, [R4]
-
-    CALL push_byte  ; R2 is the INPUT
-    SYS R2, 0x0003
 continue_parser:
+    LOAD R0, LEX_CUR
+    LOAD R0, [R0]
     INC R0          ; Set R0 to next token
     STORE R0, LEX_CUR
+    JMP parser
+
+parse_data:
+    ; Check if we have finished reading all data
+    LOAD R4, TOK_CODE
+    LB R4, [R4]
+    CMP R2, R4
+    JZ parse_set_is_data_false
+
+    LOAD R4, TOK_BYTE
+    LB R4, [R4]
+    CMP R2, R4
+    JZ parse_byte
+    
+    LOAD R4, TOK_WORD
+    LB R4, [R4]
+    CMP R2, R4
+    JZ parse_word
+
+    LOAD R4, TOK_ASCIIZ
+    LB R4, [R4]
+    CMP R2, R4
+    JZ parse_asciiz
+
+    JMP continue_parser
+parse_byte:
+    ; Skip 0 delimeters
+    LB R2, [R0]     ; Current token is in R2
+    LOAD R3, 0
+    CMP R2, R3
+    JZ continue_parser
+    ; Go to the first char of the string 
+    INC R0
+    LOAD R1, R0
+    CALL dec_to_int ; R0 is the OUTPUT, R1 is INPUT
+    LOAD R2, R0
+    CALL push_byte  ; R2 is the INPUT
+    ; SYS R2, 0x0002
+    JMP continue_parser
+parse_word:
+    ; Skip 0 delimeters
+    LB R2, [R0]     ; Current token is in R2
+    LOAD R3, 0
+    CMP R2, R3
+    JZ continue_parser
+    ; Go to the first char of the string 
+    INC R0
+    LOAD R1, R0
+    CALL dec_to_int ; R0 is the OUTPUT, R1 is INPUT
+    LOAD R2, R0
+    CALL push_word  ; R2 is the INPUT
+    ; SYS R2, 0x0002
+    JMP continue_parser
+parse_asciiz:
+    INC R0
+    LB R2, [R0]     ; Current token is in R2
+    CALL push_byte  ; R2 is the INPUT
+    ; SYS R2, 0x0002
+    ; Stop at 0 delimeter
+    LOAD R3, 0
+    CMP R2, R3
+    JNZ parse_asciiz
+    ; Push a final delimiter for the string data
+    LOAD R2, 0
+    CALL push_byte  ; R2 is the INPUT
+    JMP continue_parser
+parse_set_is_data_false:
+    LOAD R4, IS_DATA
+    LOAD R5, 0
+    SB R5, [R4]
+    JMP parser
+
+parse_code:
+    ; Check if we should read data first
+    LOAD R4, TOK_DATA
+    LB R4, [R4]
+    CMP R2, R4
+    JZ parse_set_is_data_true
+
+    ; Skip 0 delimeters
+    LB R2, [R0]     ; Current token is in R2
+    LOAD R3, 0
+    CMP R2, R3
+    JZ continue_parser
+
+    CALL push_byte  ; R2 is the INPUT
+    SYS R2, 0x0002
+
+    JMP continue_parser
+parse_set_is_data_true:
+    LOAD R4, IS_DATA
+    LOAD R5, 1
+    SB R5, [R4]
     JMP parser
 
 ; PARSER: Replace symbols, write binary
@@ -1137,6 +1220,20 @@ push_byte:
     LOAD R3, [R3]
 
     SB R2, [R3]     ; R2 - Input byte
+    INC R3
+    STORE R3, PARSE_CUR
+
+    POP R3
+    RET
+
+push_word:
+    PUSH R3
+
+    LOAD R3, PARSE_CUR
+    LOAD R3, [R3]
+
+    STORE R2, [R3]     ; R2 - Input word
+    INC R3
     INC R3
     STORE R3, PARSE_CUR
 
