@@ -206,6 +206,7 @@ prepare_lexer:
     SB R0, [R1]         ; Put the newline char at R1, which contains the end memory address
 
     STORE R1, SYM_START   ; Store the end location of SRC code
+    SYS R1, 0x0002
     STORE R1, SYM_CUR     ; Store the end location of SRC code
 
     PUSH R5             ; Store total number of bytes read to STACK
@@ -475,19 +476,12 @@ data_is_byte:
     LOAD R2, TOK_BYTE
     LB R2, [R2]
     CALL push_token     ; R2 is the input
-    ; Update expected bin_size
-    LOAD R2, BIN_SIZE
-    LOAD R2, [R2]
-    LOAD R3, MEM_BYTE
-    LB R3, [R3]
-    ADD R2, R3
-    STORE R2, BIN_SIZE
 loop_while_byte:
     LB R2, [R1]
     LOAD R3, SEMICOLON
     LB R3, [R3]
     CMP R2, R3
-    JZ add_delimiter_token
+    JZ update_byte_bin_size
     LOAD R3, COMMA
     LB R3, [R3]
     CMP R2, R3
@@ -495,9 +489,10 @@ loop_while_byte:
     LOAD R3, NEWLINE
     LB R3, [R3]
     CMP R2, R3
-    JZ add_delimiter_token
+    JZ update_byte_bin_size
     CALL push_token     ; R2 is the input
     SB R2, [R9] ; Add char to the symbol table
+    SYS R2, 0x0005
     INC R9      ; Update SYM_CUR
     JMP continue_loop_byte
 continue_loop_byte:
@@ -511,19 +506,12 @@ data_is_word:
     LOAD R2, TOK_WORD
     LB R2, [R2]
     CALL push_token     ; R2 is the input
-    ; Update expected bin_size
-    LOAD R2, BIN_SIZE
-    LOAD R2, [R2]
-    LOAD R3, MEM_WORD
-    LB R3, [R3]
-    ADD R2, R3
-    STORE R2, BIN_SIZE
 loop_while_word:
     LB R2, [R1]
     LOAD R3, SEMICOLON
     LB R3, [R3]
     CMP R2, R3
-    JZ add_delimiter_token
+    JZ update_word_bin_size
     LOAD R3, COMMA
     LB R3, [R3]
     CMP R2, R3
@@ -531,9 +519,10 @@ loop_while_word:
     LOAD R3, NEWLINE
     LB R3, [R3]
     CMP R2, R3
-    JZ add_delimiter_token
+    JZ update_word_bin_size
     CALL push_token
     SB R2, [R9] ; Add char to the symbol table
+    SYS R2, 0x0005
     INC R9      ; Update SYM_CUR
     JMP continue_loop_word
 continue_loop_word:
@@ -557,33 +546,93 @@ loop_while_string:
     JZ update_asciiz_bin_size
     CALL push_token     ; R2 is the input
     SB R2, [R9] ; Add char to the symbol table
+    SYS R2, 0x0005
     INC R9      ; Update SYM_CUR
     INC R1
     INC R5
     INC R4
     JMP loop_while_string
 update_asciiz_bin_size:
+    LOAD R2, 0          ; Delimiter to see that the token has ended
+    CALL push_token     ; R2 is the input
+
+    SB R2, [R9] ; Add delimiter to the symbol table
+    SYS R2, 0x0003
+    INC R9      ; Update SYM_CUR
+
+    ; Adds location in mem to the symbol table
+    LOAD R3, BIN_SIZE
+    LOAD R3, [R3]
+    SYS R3, 0x0002
+    SYS R2, 0x0003
+    STORE R3, [R9]
+    INC R9
+    INC R9
+    STORE R9, SYM_CUR
+    POP R9
+
     ; Update expected bin_size
     INC R4      ; Add 1 for the delimiter 0
     LOAD R2, BIN_SIZE
     LOAD R2, [R2]
     ADD R2, R4
     STORE R2, BIN_SIZE
-    JMP add_delimiter_token
-add_delimiter_token:
+    
+    JMP lexer
+update_byte_bin_size:
     LOAD R2, 0          ; Delimiter to see that the token has ended
     CALL push_token     ; R2 is the input
 
     SB R2, [R9] ; Add delimiter to the symbol table
+    SYS R2, 0x0003
     INC R9      ; Update SYM_CUR
+
     ; Adds location in mem to the symbol table
     LOAD R3, BIN_SIZE
     LOAD R3, [R3]
+    SYS R3, 0x0002
+    SYS R2, 0x0003
     STORE R3, [R9]
     INC R9
     INC R9
     STORE R9, SYM_CUR
     POP R9
+
+    ; Update expected bin_size
+    LOAD R2, BIN_SIZE
+    LOAD R2, [R2]
+    LOAD R3, MEM_BYTE
+    LB R3, [R3]
+    ADD R2, R3
+    STORE R2, BIN_SIZE
+    
+    JMP lexer
+update_word_bin_size:
+    LOAD R2, 0          ; Delimiter to see that the token has ended
+    CALL push_token     ; R2 is the input
+
+    SB R2, [R9] ; Add delimiter to the symbol table
+    SYS R2, 0x0003
+    INC R9      ; Update SYM_CUR
+
+    ; Adds location in mem to the symbol table
+    LOAD R3, BIN_SIZE
+    LOAD R3, [R3]
+    SYS R3, 0x0002
+    SYS R2, 0x0003
+    STORE R3, [R9]
+    INC R9
+    INC R9
+    STORE R9, SYM_CUR
+    POP R9
+
+    ; Update expected bin_size
+    LOAD R2, BIN_SIZE
+    LOAD R2, [R2]
+    LOAD R3, MEM_WORD
+    LB R3, [R3]
+    ADD R2, R3
+    STORE R2, BIN_SIZE
     
     JMP lexer
 
@@ -633,6 +682,7 @@ while_not_colon:
     JZ end_if_colon
     CALL push_token
     SB R2, [R9] ; Add char to the symbol table
+    SYS R2, 0x0005
     INC R9      ; Update SYM_CUR
     JMP while_not_colon
 end_if_colon:
@@ -643,10 +693,13 @@ end_if_colon:
     INC R1        
 
     SB R2, [R9] ; Add delimiter to the symbol table
+    SYS R2, 0x0003
     INC R9      ; Update SYM_CUR
     ; Adds location in mem to the symbol table
     LOAD R3, BIN_SIZE
     LOAD R3, [R3]
+    SYS R3, 0x0002
+    SYS R2, 0x0003
     STORE R3, [R9]
     INC R9
     INC R9
@@ -763,12 +816,50 @@ parse_operators:
     CALL push_token     ; R2 is the input
     JMP check_reg
 check_reg:
+    ; Checks if first letter is R, not enough info to know it's a register
     LOAD R4, REG
     LB R3, [R4]
     LB R2, [R1]
     CMP R2, R3 
-    JZ if_reg
     JNZ check_rbrace
+    ; Move to next char to see if it's a num
+    INC R1
+    LB R2, [R1]
+    ; Compare next char with numbers
+    LOAD R4, 48
+    CMP R2, R4
+    JL reset_then_check_rbrace
+    LOAD R4, 57
+    CMP R2, R4
+    JG reset_then_check_rbrace
+     ; Move to next char to see if it's a newline, space, comma, eol
+    INC R1
+    LB R2, [R1]
+    ; Compare next char with delimiters
+    LOAD R4, NEWLINE
+    LB R4, [R4]
+    CMP R2, R4
+    JZ reset_then_if_reg
+    LOAD R4, SPACE
+    LB R4, [R4]
+    CMP R2, R4
+    JZ reset_then_if_reg
+    LOAD R4, COMMA
+    LB R4, [R4]
+    CMP R2, R4
+    JZ reset_then_if_reg
+    LOAD R4, 0
+    CMP R2, R4
+    JZ reset_then_if_reg
+    DEC R1  ; Move back one char to the num
+    JMP reset_then_check_rbrace
+reset_then_check_rbrace:
+    DEC R1
+    JMP check_rbrace
+reset_then_if_reg:
+    DEC R1
+    DEC R1
+    JMP if_reg
 if_reg:
     LOAD R2, TOK_REGISTER
     LB R2, [R2]
@@ -907,6 +998,15 @@ parse_symbol:
     LOAD R2, TOK_SYMBOL
     LB R2, [R2]
     CALL push_token     ; R2 is the input
+
+    ; Update expected bin_size
+    LOAD R2, BIN_SIZE
+    LOAD R2, [R2]
+    LOAD R3, MEM_SYMBOL
+    LB R3, [R3]
+    ADD R2, R3
+    STORE R2, BIN_SIZE
+
 parse_symbol_loop:
     LB R2, [R1]
     CALL push_token
@@ -985,7 +1085,6 @@ push_token:
     LOAD R3, [R3]
 
     SB R2, [R3]     ; R2 - Input token
-    SYS R2, 0x0002
     INC R3
     STORE R3, LEX_CUR
 

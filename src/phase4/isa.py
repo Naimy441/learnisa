@@ -1115,25 +1115,25 @@ class ISA:
 
     # Helper methods
     def __str__(self):
-        changed_mem = {}
-        for i in range(self.MEM_SIZE):
-            if self.mem[i] != 0:
-                changed_mem[i] = self.mem[i]
+        # changed_mem = {}
+        # for i in range(self.MEM_SIZE):
+        #     if self.mem[i] != 0:
+        #         changed_mem[i] = self.mem[i]
         
-        lines = []
-        line = []
-        for addr, val in changed_mem.items():
-            if addr >= self.HEAP_START:
-                line.append(f"[{addr}]={val}")
-                if len(line) == 4:
-                    lines.append(" ".join(line))
-                    line = []
-        if line:
-            lines.append(" ".join(line))
-        changed_mem_str = "\n".join(lines)
+        # lines = []
+        # line = []
+        # for addr, val in changed_mem.items():
+        #     if addr >= self.HEAP_START:
+        #         line.append(f"[{addr}]={val}")
+        #         if len(line) == 4:
+        #             lines.append(" ".join(line))
+        #             line = []
+        # if line:
+        #     lines.append(" ".join(line))
+        # changed_mem_str = "\n".join(lines)
 
         str_out = f"running={self.running}\npc={self.pc}\nreg={self.reg}\nZ={self.is_flag_set(self.Z)}, S={self.is_flag_set(self.S)}, C={self.is_flag_set(self.C)}, O={self.is_flag_set(self.O)}\nsp={self.sp}\n"
-        str_out += changed_mem_str + '\n'
+        # str_out += changed_mem_str + '\n'
         return str_out 
 
     def reset(self):
