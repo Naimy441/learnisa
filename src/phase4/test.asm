@@ -6,9 +6,12 @@ STR_RET    = .asciiz 'RET'
 STR_HALT   = .asciiz 'HALT'
 
 .code
+; tomato:
 ; Load the value at the variable CUR_INDEX
-LOAD R1, CUR_INDEX
-LOAD R1, [R1]
-SYS R1, 0x0002
+LOAD R3, STR_HALT
+LOAD R2, [R4]
+SYS R1, 0x0231
+; JMP tomato
 
+; TODO: HALT HAS A BUG IF THERE IS NOT SPACE
 HALT

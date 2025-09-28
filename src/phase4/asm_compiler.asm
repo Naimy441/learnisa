@@ -2,37 +2,36 @@
 
 .data
 ; Global Constants
-TOK_EOF       = .byte 0
+; Token types should be outside of ASCII range to ensure no confusion in PARSER
+TOK_DATA      = .byte 128
+TOK_CODE      = .byte 129
 
-TOK_DATA      = .byte 1
-TOK_CODE      = .byte 2
+TOK_VAR       = .byte 130 ; Refers to name of a var in data directive
+TOK_BYTE      = .byte 131
+TOK_WORD      = .byte 132
+TOK_ASCIIZ    = .byte 133
 
-TOK_VAR       = .byte 3 ; Refers to name of a var in data directive
-TOK_BYTE      = .byte 4
-TOK_WORD      = .byte 5
-TOK_ASCIIZ    = .byte 6
-
-TOK_LABEL     = .byte 7 ; Refers to a label: in code directive
-TOK_SYMBOL    = .byte 8 ; Refers to a reference to a label or a var used in code directive
-TOK_OPCODE    = .byte 9
-TOK_REGISTER  = .byte 10
-TOK_IMMEDIATE = .byte 11
-TOK_ADDRESS   = .byte 12
-TOK_INDIRECT  = .byte 13
+TOK_LABEL     = .byte 134 ; Refers to a label: in code directive
+TOK_SYMBOL    = .byte 135 ; Refers to a reference to a label or a var used in code directive
+TOK_OPCODE    = .byte 136
+TOK_REGISTER  = .byte 137
+TOK_IMMEDIATE = .byte 138
+TOK_ADDRESS   = .byte 139
+TOK_INDIRECT  = .byte 140
 
 MEM_BYTE      = .byte 1
 MEM_WORD      = .byte 2
 ; MEM_ASCIIZ -> Length of string + delimiter
 
 MEM_SYMBOL    = .byte 2
-MEM_OPCODE    = .byte 1 ; Opcodes LOAD and STORE must add 1 extra byte for addressing
+MEM_OPCODE    = .byte 1 
 MEM_REGISTER  = .byte 1
 MEM_IMMEDIATE = .byte 2
 MEM_ADDRESS   = .byte 2
 MEM_INDIRECT  = .byte 1
 
 ; Opcodes with 0 operators
-CODE_NOP   = .byte 0
+CODE_NOP   = .byte 0    ; Is NOP a 00 in the assembler? Currently, we skip it
 CODE_RET   = .byte 1
 CODE_HALT  = .byte 2
 OPCODE_0_OPER = .byte 2
@@ -210,7 +209,6 @@ prepare_lexer:
     SB R0, [R1]         ; Put the newline char at R1, which contains the end memory address
 
     STORE R1, SYM_START   ; Store the end location of SRC code
-    SYS R1, 0x0002
     STORE R1, SYM_CUR     ; Store the end location of SRC code
 
     PUSH R5             ; Store total number of bytes read to STACK
@@ -394,7 +392,7 @@ parse_byte:
     CALL dec_to_int ; R0 is the OUTPUT, R1 is INPUT
     LOAD R2, R0
     CALL push_byte  ; R2 is the INPUT
-    ; SYS R2, 0x0002
+    SYS R2, 0x0002
     JMP continue_parser
 parse_word:
     ; Skip 0 delimeters
@@ -408,13 +406,13 @@ parse_word:
     CALL dec_to_int ; R0 is the OUTPUT, R1 is INPUT
     LOAD R2, R0
     CALL push_word  ; R2 is the INPUT
-    ; SYS R2, 0x0002
+    SYS R2, 0x0002
     JMP continue_parser
 parse_asciiz:
     INC R0
     LB R2, [R0]     ; Current token is in R2
     CALL push_byte  ; R2 is the INPUT
-    ; SYS R2, 0x0002
+    SYS R2, 0x0002
     ; Stop at 0 delimeter
     LOAD R3, 0
     CMP R2, R3
@@ -474,12 +472,9 @@ parse_code_opcode:
     CMP R2, R3
     JZ continue_parser
     ; Go to the first char of the string 
+    CALL print_debug
     INC R0
-    LOAD R1, R0
-    PUSH R0
-    CALL dec_to_int ; R0 is the OUTPUT, R1 is INPUT
-    LOAD R2, R0
-    POP R0
+    LB R2, [R0]     ; Opcode is already a number
     CALL push_byte  ; R2 is the INPUT
     SYS R2, 0x0002
     ; Add addressing byte if LOAD or STORE opcodes
@@ -493,9 +488,8 @@ parse_code_opcode:
     JZ parse_addressing_byte_store
     JMP continue_parser
 parse_addressing_byte_load:
-    INC R0  ; Skip first register token type
-    INC R0  ; Skip first register token value
-    INC R0  ; Stop on 2nd register token type
+    LOAD R9, 5
+    ADD R0, R9
     LB R2, [R0]     ; Current token is in R2
 
     LOAD R4, TOK_SYMBOL
@@ -530,17 +524,17 @@ parse_addressing_byte_load_symbol:
     SYS R2, 0x0002
     JMP continue_parser
 parse_addressing_byte_load_register:
-    LOAD R2, 2
+    LOAD R2, 0
     CALL push_byte  ; R2 is the INPUT
     SYS R2, 0x0002
     JMP continue_parser
 parse_addressing_byte_load_indirect:
-    LOAD R2, 4
+    LOAD R2, 3
     CALL push_byte  ; R2 is the INPUT
     SYS R2, 0x0002
     JMP continue_parser
 parse_addressing_byte_load_address:
-    LOAD R2, 3
+    LOAD R2, 2
     CALL push_byte  ; R2 is the INPUT
     SYS R2, 0x0002
     JMP continue_parser
@@ -550,9 +544,8 @@ parse_addressing_byte_load_immediate:
     SYS R2, 0x0002
     JMP continue_parser
 parse_addressing_byte_store:
-    INC R0  ; Skip first register token type
-    INC R0  ; Skip first register token value
-    INC R0  ; Stop on 2nd register token type
+    LOAD R9, 5
+    ADD R0, R9
     LB R2, [R0]     ; Current token is in R2
 
     LOAD R4, TOK_SYMBOL
@@ -572,17 +565,17 @@ parse_addressing_byte_store:
 
     JMP continue_parser
 parse_addressing_byte_store_symbol:
-    LOAD R2, 3
+    LOAD R2, 2
     CALL push_byte  ; R2 is the INPUT
     SYS R2, 0x0002
     JMP continue_parser
 parse_addressing_byte_store_address:
-    LOAD R2, 3
+    LOAD R2, 2
     CALL push_byte  ; R2 is the INPUT
     SYS R2, 0x0002
     JMP continue_parser
 parse_addressing_byte_store_indirect:
-    LOAD R2, 4
+    LOAD R2, 3
     CALL push_byte  ; R2 is the INPUT
     SYS R2, 0x0002
     JMP continue_parser
@@ -683,11 +676,13 @@ end_loop_parse_code_symbol:
     CMP R2, R4
     JNZ end_loop_parse_code_symbol
     INC R1  ; Go onto the first byte of mem addr
-    LOAD R2, [R1]
+    LB R2, [R1]
     CALL push_byte
+    SYS R2, 0x0002
     INC R1  ; Go onto the second byte of mem addr
-    LOAD R2, [R1]
+    LB R2, [R1]
     CALL push_byte
+    SYS R2, 0x0002
     JMP continue_parser
 parse_set_is_data_true:
     LOAD R4, IS_DATA
@@ -695,12 +690,9 @@ parse_set_is_data_true:
     SB R5, [R4]
     JMP parser
 
-; PARSER: Replace symbols, write binary
-;   (2nd Pass) Rewrite lexed tokens into final binary
-;   Loop through all tokens
-;   Convert addresses and numbers into actual numerical values
-;   Remove all zero delimiters, all extraneous token info
-;   For each token_type, replace delimited strings with their symbol
+; PARSER: 
+; Ensure parser actually functions properly
+; Remove old sys commands
 
 ; WRITE: Write file to .bin
 ;   Write header first with magic byte
@@ -804,17 +796,27 @@ while_not_newline1:
     LOAD R9, SYM_CUR
     LOAD R9, [R9]
 
-    JMP while_not_space
-while_not_space:
+    JMP init_while_not_space
+init_while_not_space:
     INC R5
-    LB R2, [R5]         ; LB only loads 1 byte (1 char) from HEAP at memory address R1
-    CALL push_token     ; R2 is the input
+while_not_space:
     LOAD R3, SPACE
     LB R3, [R3]
+    LB R2, [R5]         ; LB only loads 1 byte (1 char) from HEAP at memory address R1
     CMP R2, R3
-    JNZ while_not_space
+    JZ after_while_not_space
+    CALL push_token     ; R2 is the input
+    SB R2, [R9] ; Add char to the symbol table
+    SYS R2, 0x0005
+    INC R9      ; Update SYM_CUR
+    INC R5
+    JMP while_not_space
+after_while_not_space:
     LOAD R2, 0          ; Delimiter to see that the token has ended
     CALL push_token     ; R2 is the input
+    SB R2, [R9] ; Add delimiter to the symbol table
+    SYS R2, 0x0003
+    INC R9      ; Update SYM_CUR
     ; Set R1 and R5 to be both set at the period
     INC R5
 continue_until_period:
@@ -868,9 +870,6 @@ loop_while_byte:
     CMP R2, R3
     JZ update_byte_bin_size
     CALL push_token     ; R2 is the input
-    SB R2, [R9] ; Add char to the symbol table
-    SYS R2, 0x0005
-    INC R9      ; Update SYM_CUR
     JMP continue_loop_byte
 continue_loop_byte:
     INC R1
@@ -898,9 +897,6 @@ loop_while_word:
     CMP R2, R3
     JZ update_word_bin_size
     CALL push_token
-    SB R2, [R9] ; Add char to the symbol table
-    SYS R2, 0x0005
-    INC R9      ; Update SYM_CUR
     JMP continue_loop_word
 continue_loop_word:
     INC R1
@@ -922,9 +918,6 @@ loop_while_string:
     CMP R2, R3
     JZ update_asciiz_bin_size
     CALL push_token     ; R2 is the input
-    SB R2, [R9] ; Add char to the symbol table
-    SYS R2, 0x0005
-    INC R9      ; Update SYM_CUR
     INC R1
     INC R5
     INC R4
@@ -932,10 +925,6 @@ loop_while_string:
 update_asciiz_bin_size:
     LOAD R2, 0          ; Delimiter to see that the token has ended
     CALL push_token     ; R2 is the input
-
-    SB R2, [R9] ; Add delimiter to the symbol table
-    SYS R2, 0x0003
-    INC R9      ; Update SYM_CUR
 
     ; Adds location in mem to the symbol table
     LOAD R3, BIN_SIZE
@@ -960,10 +949,6 @@ update_byte_bin_size:
     LOAD R2, 0          ; Delimiter to see that the token has ended
     CALL push_token     ; R2 is the input
 
-    SB R2, [R9] ; Add delimiter to the symbol table
-    SYS R2, 0x0003
-    INC R9      ; Update SYM_CUR
-
     ; Adds location in mem to the symbol table
     LOAD R3, BIN_SIZE
     LOAD R3, [R3]
@@ -987,10 +972,6 @@ update_byte_bin_size:
 update_word_bin_size:
     LOAD R2, 0          ; Delimiter to see that the token has ended
     CALL push_token     ; R2 is the input
-
-    SB R2, [R9] ; Add delimiter to the symbol table
-    SYS R2, 0x0003
-    INC R9      ; Update SYM_CUR
 
     ; Adds location in mem to the symbol table
     LOAD R3, BIN_SIZE
