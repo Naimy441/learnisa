@@ -142,18 +142,21 @@ ERR_UNKNOWN = .asciiz 'ERROR: An uknown error occurred'
 ERR_CMD     = .asciiz 'ERROR: No command line args found'
 ERR_FREAD   = .asciiz 'ERROR: Failed to read file'
 
-HEAP_START = .word 16384
-LEX_START = .word 16448 ; 64 bytes after HEAP_START
-SRC_START = .word 16512 ; 128 bytes after HEAP_START
+HEAP_START = .word 16384  ; Reserve 64 bytes for the filename
+PARSE_START = .word 16448 ; 64 bytes after HEAP_START
+LEX_START = .word 16512 ; 64 bytes after PARSE_START
+SRC_START = .word 16576 ; 64 bytes after LEX_START
 
 MAGIC_NUM   = .word 16618     ; AN in decimal
 HEADER_LENGTH = .word 16      ; Header length       
 
 ; Global Variables
 IS_DATA = .byte 0       ; Assume code directive is true by starting with 0
-LEX_CUR = .word 16448   ; Starts at 64 bytes after HEAP_START
-SYM_START = .word 16512 ; Where symbol table will start, temp data
-SYM_CUR = .word 16512   ; Initalize with temp data
+PARSE_CUR = .word 16448 ; Starts at 64 bytes after HEAP_START
+LEX_END = .word 16512   ; Initalize with temp data
+LEX_CUR = .word 16512   ; Starts at 64 bytes after PARSE_START
+SYM_START = .word 16576 ; Where symbol table will start, temp data
+SYM_CUR = .word 16576   ; Initalize with temp data
 BIN_SIZE = .word 0      ; Initalize with temp 0
 
 DATA_OFFSET = .word 0
@@ -306,17 +309,31 @@ prepare_parser:
     LOAD R5, ENTRY_POINT
     LOAD R5, [R5]
     STORE R2, ENTRY_POINT
-parser:
-    NOP
-    JMP end
 
-; LEXER (with 1st pass)
-; As we are lexing, count expected total bytes for each token type.
-; Whenever you get to a TOK_VAR or TOK_LABEL, 
-; save a pointer to the start of the string for that token
-; and save the expected total bytes up until that point.
-; Pointer is 2 bytes, expected total bytes is 2 bytes.
-; Save these 4 bytes after SRC_END
+    ; Set LEX_END with value at LEX_CUR
+    LOAD R0, LEX_CUR
+    LOAD R0, [R0]
+    STORE R0, LEX_END
+
+    ; Reset LEX_CUR to be at LEX_START
+    LOAD R1, LEX_START
+    LOAD R1, [R1]
+    STORE R1, LEX_CUR
+parser:
+    LOAD R1, LEX_END
+    LOAD R1, [R1]
+    LOAD R0, LEX_CUR
+    LOAD R0, [R0]
+    CMP R0, R1      ; Check if we have reached the end
+    JZ end
+
+    LB R2, [R0]
+    CALL push_byte  ; R2 is the INPUT
+    SYS R2, 0x0003
+    
+    INC R0          ; Set R0 to next token
+    STORE R0, LEX_CUR
+    JMP parser
 
 ; PARSER: Replace symbols, write binary
 ;   (2nd Pass) Rewrite lexed tokens into final binary
@@ -1078,7 +1095,6 @@ print_debug:
     RET
 
 push_token:
-    ; This function has a weird bug, where if you write a function beneath it, the symbol addresses get mixed up
     PUSH R3
 
     LOAD R3, LEX_CUR
@@ -1089,4 +1105,98 @@ push_token:
     STORE R3, LEX_CUR
 
     POP R3
+    RET
+
+push_byte:
+    PUSH R3
+
+    LOAD R3, PARSE_CUR
+    LOAD R3, [R3]
+
+    SB R2, [R3]     ; R2 - Input byte
+    INC R3
+    STORE R3, PARSE_CUR
+
+    POP R3
+    RET
+
+; Take an ASCII digit, subtract 48 to get the numerical digit
+; Take an inital number 0, multiply by 10, add the digit. Repeat.
+dec_to_int:
+    ; OUTPUT - R0
+    ; INPUT - R1 is the address to start of the decimal string -> Copied into local R2
+    PUSH R5
+    LOAD R5, 0
+    PUSH R4
+    LOAD R4, 10
+    PUSH R3
+    LOAD R3, 48
+    PUSH R2
+    LOAD R2, R1 ; Save local copy of R1, aka don't operate on the pointer
+    PUSH R1
+    LOAD R0, 0
+loop_dec_to_int:
+    LB R1, [R2] ; R1 contains the ASCII value
+    CMP R1, R5  ; Check if we have reached the delimiter
+    JZ ret_dec_to_int
+    SUB R1, R3  ; Subtract R1 by 48
+    MUL R0, R4  ; Multiply R0 by 10
+    ADD R0, R1  ; Add digit into R0
+    INC R2
+    JMP loop_dec_to_int
+ret_dec_to_int:
+    POP R5
+    POP R4
+    POP R3
+    POP R2
+    POP R1
+    RET
+
+; Take an ASCII digit, subtract 48 if its a digit or subtract 55 if its an uppercase letter.
+; Take an inital number 0, multiply by 16, add the digit. Repeat.
+hex_to_int:
+    ; OUTPUT - R0
+    ; INPUT - R1 is the address to start of the hex string -> Copied into local R2
+    PUSH R7
+    LOAD R7, 57
+    PUSH R6
+    LOAD R6, 55
+    PUSH R5
+    LOAD R5, 0
+    PUSH R4
+    LOAD R4, 16
+    PUSH R3
+    LOAD R3, 48
+    PUSH R2
+    LOAD R2, R1 ; Save local copy of R1 to avoid operating on the pointer
+    PUSH R1
+    LOAD R0, 0  ; Initalize the output R0 to 0
+    INC R2      ; Skip 0
+    INC R2      ; Skip x
+loop_hex_to_int:
+    LB R1, [R2] ; R1 contains the ASCII value
+    CMP R1, R5  ; Check if we have reached the delimiter
+    JZ ret_hex_to_int
+check_digit:
+    CMP R1, R3  ; Compare to 48
+    JL check_hex
+    CMP R1, R7  ; Compare to 57
+    JG check_hex
+    SUB R1, R3  ; Subtract R1 by 48
+    JMP convert_hex
+check_hex:
+    SUB R1, R6  ; Subtract R1 by 55
+convert_hex:
+    MUL R0, R4  ; Multiply R0 by 10
+    ADD R0, R1  ; Add digit into R0
+    INC R2
+    JMP loop_hex_to_int
+ret_hex_to_int:
+    POP R7
+    POP R6
+    POP R5
+    POP R4
+    POP R3
+    POP R2
+    POP R1
     RET
