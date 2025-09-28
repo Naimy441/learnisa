@@ -155,6 +155,7 @@ IS_DATA = .byte 0       ; Assume code directive is true by starting with 0
 PARSE_CUR = .word 16448 ; Starts at 64 bytes after HEAP_START
 LEX_END = .word 16512   ; Initalize with temp data
 LEX_CUR = .word 16512   ; Starts at 64 bytes after PARSE_START
+SYM_END = .word 16576   ; Initalize with temp data
 SYM_START = .word 16576 ; Where symbol table will start, temp data
 SYM_CUR = .word 16576   ; Initalize with temp data
 BIN_SIZE = .word 0      ; Initalize with temp 0
@@ -319,6 +320,16 @@ prepare_parser:
     LOAD R1, LEX_START
     LOAD R1, [R1]
     STORE R1, LEX_CUR
+
+    ; Set SYM_END with value at SYM_CUR
+    LOAD R0, SYM_CUR
+    LOAD R0, [R0]
+    STORE R0, SYM_END
+
+    ; Reset SYM_CUR to be at SYM_START
+    LOAD R1, SYM_START
+    LOAD R1, [R1]
+    STORE R1, SYM_CUR
 
     ; Assume data is false
     LOAD R3, IS_DATA
@@ -632,9 +643,51 @@ parse_code_indirect:
     SYS R2, 0x0002
     JMP continue_parser
 parse_code_symbol:
-    ; Go to the first char of the string 
-    INC R0
-    NOP
+    ; Go to the first char of the string that we will compare to all strings in the symbol table
+    INC R0 
+    ; Reset SYM_CUR to be at SYM_START
+    LOAD R1, SYM_START
+    LOAD R1, [R1]
+    STORE R1, SYM_CUR
+loop_parse_code_symbol:
+    ; Check if we have reached the end of symbol table
+    LOAD R3, SYM_END
+    LOAD R3, [R3]
+    LOAD R1, SYM_CUR
+    LOAD R1, [R1]
+    CMP R1, R3
+    JZ continue_parser
+    ; INPUTS - R0 and R1 are starting addrs for the strings
+    CALL fullstrcmp ; OUTPUT - R2 is 1 if equal, 0 if not
+    LOAD R4, 1
+    CMP R2, R4
+    JZ end_loop_parse_code_symbol
+    ; Go the next symbol in the symbol table
+continue_loop_parse_code_symbol:
+    INC R1 
+    LB R2, [R1]
+    LOAD R4, 0
+    CMP R2, R4
+    JNZ continue_loop_parse_code_symbol
+    ; Skip memory address for the string, and start on the first char of the next string
+    INC R1
+    INC R1
+    INC R1
+    STORE R1, SYM_CUR
+    JMP loop_parse_code_symbol
+end_loop_parse_code_symbol:
+    ; R1 has SYM_CUR addr in it
+    INC R1 
+    LB R2, [R1]
+    LOAD R4, 0
+    CMP R2, R4
+    JNZ end_loop_parse_code_symbol
+    INC R1  ; Go onto the first byte of mem addr
+    LOAD R2, [R1]
+    CALL push_byte
+    INC R1  ; Go onto the second byte of mem addr
+    LOAD R2, [R1]
+    CALL push_byte
     JMP continue_parser
 parse_set_is_data_true:
     LOAD R4, IS_DATA
@@ -1369,7 +1422,7 @@ loop_strcmp:
     LB R3, [R6]
     LB R4, [R7]
 
-    ; Checks if the end of the first string is reached
+    ; Checks if the end of any string is reached
     LOAD R5, 0
     CMP R3, R5
     JZ ret_strcmp
@@ -1385,6 +1438,47 @@ loop_strcmp:
 break_strcmp:
     LOAD R2, 0
 ret_strcmp:
+    POP R7
+    POP R6
+    POP R5
+    POP R4
+    POP R3
+    RET
+
+fullstrcmp:
+    PUSH R3
+    PUSH R4
+    PUSH R5
+    PUSH R6
+    PUSH R7
+
+    LOAD R2, 1      ; R2 - Output (0 if not equal, 1 if equal)
+    LOAD R6, R0     ; R0 - Starting address of first string 
+    LOAD R7, R1     ; R1 - Starting address of second string
+loop_fullstrcmp:
+    ; Load the characters at each address
+    LB R3, [R6]
+    LB R4, [R7]
+
+    ; Checks if both strings end at the same time
+    LOAD R5, 0
+    CMP R3, R5
+    JZ check_s2_fullstrcmp
+    CMP R4, R5
+    JZ break_fullstrcmp
+
+    ; Checks if chars are equal to each other
+    CMP R3, R4
+    JNZ break_fullstrcmp
+    INC R6
+    INC R7
+    JMP loop_fullstrcmp
+check_s2_fullstrcmp:
+    CMP R4, R5
+    JZ ret_fullstrcmp
+break_fullstrcmp:
+    LOAD R2, 0
+ret_fullstrcmp:
     POP R7
     POP R6
     POP R5
