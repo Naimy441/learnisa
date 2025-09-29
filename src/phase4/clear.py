@@ -34,6 +34,11 @@ def clear_bin_files():
     
     deleted_count = 0
     for file_path in all_files:
+        # Skip asm_compiler.bin
+        if os.path.basename(file_path) == "asm_compiler.bin":
+            print(f"  Skipping: {file_path}")
+            continue
+        
         try:
             print(f"  Deleting: {file_path}")
             os.remove(file_path)
