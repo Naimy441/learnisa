@@ -111,3 +111,11 @@ With a stack-based function:
 	•	You can always use the registers you need inside the function because you save/restore the caller’s values.
 	•	Your functions become modular and reusable.
 	•	It’s much easier to maintain and extend your program.
+
+./isa.py asm_compiler asm_compiler2.asm 
+
+cmp -l asm_compiler.bin asm_compiler2.bin
+
+hexdump -C asm_compiler.bin > file1.hex
+hexdump -C asm_compiler2.bin > file2.hex
+diff file1.hex file2.hex

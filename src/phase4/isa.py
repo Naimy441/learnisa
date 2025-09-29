@@ -844,7 +844,7 @@ class ISA:
                 debug_buf[:0] = [header_buf]
                 with open(f"{output_fn}.hex", "w") as h:
                     for arr in debug_buf:
-                        h.write(" ".join(f"{b:02X}" for b in arr) + "\n") # Formats as 2 digit hexadecimal
+                        h.write(" ".join(f"{b:02X}" for b in arr) + "") # Formats as 2 digit hexadecimal
                 
                 with open(f"{output_fn}.dbg", "w") as t:
                     t.write(f"{'ADDRESS':<10} {'INSTRUCTION':<35} {'HEX'}\n")
