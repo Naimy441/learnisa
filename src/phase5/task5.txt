@@ -280,6 +280,192 @@ So:
 
 Do you want your custom assembly language to behave more like “raw assembly” (unsigned base + signed/unsigned instructions), or more like “C” (registers themselves have a signedness)?
 
+Here’s a practical tiny C subset you could use for bootstrapping a compiler in assembly. This is historically close to what Ritchie used and keeps it manageable while still letting your compiler rewrite itself.
+
+⸻
+
+1. Types
+	•	int (signed integers only)
+	•	Pointers (int *)
+	•	Arrays (optional, just int arr[10] style)
+	•	No structs, no floats, no enums, no bitfields
+
+⸻
+
+2. Expressions
+	•	Arithmetic: + - * / %
+	•	Comparisons: < > <= >= == !=
+	•	Logical operators: && || ! (optional at first, can emulate with bit ops)
+	•	Assignment: =
+	•	Parentheses for grouping (a + b) * c
+
+⸻
+
+3. Statements
+	•	if, else
+	•	while (or for — pick one)
+	•	return
+	•	Expression statements: x = y + 1;
+	•	Compound statements: { ... }
+
+⸻
+
+4. Functions
+	•	Declaration and definition:
+
+int foo(int x) { return x + 1; }
+
+
+	•	Function calls:
+
+int y = foo(5);
+
+
+	•	Parameters & local variables only (no varargs, no nested functions)
+
+⸻
+
+5. Minimal Runtime / I/O
+	•	exit(int)
+	•	printf or very simple putchar wrapper
+	•	malloc / free (optional, can stub or inline memory)
+
+⸻
+
+6. Limitations
+	•	No structs or unions
+	•	No char, short, long, or floating point
+	•	No preprocessor (#define, #include) at first
+	•	No switch, goto, do/while
+	•	No standard library beyond minimal system calls
+
+⸻
+
+✅ Why this works for bootstrapping
+	•	Everything is expressible in machine instructions with a simple stack-frame model.
+	•	You can write the compiler in this subset and compile it with your assembly compiler.
+	•	Later you can incrementally add features (structs, arrays, standard library, preprocessor).
+
+⸻
+
+Perfect — since you already have an assembly compiler in assembly, you’ve got the basic infrastructure for reading text, parsing tokens, and emitting machine code. Moving to a Tiny-C subset adds layers, but the core principles are similar. Here’s a practical breakdown:
+
+⸻
+
+1. Lexical Analysis (Tokenizer)
+
+Goal: convert source code into tokens.
+	•	Reuse your assembly compiler’s input routines.
+	•	Recognize:
+	•	Keywords: int, if, else, while, return
+	•	Identifiers: [a-zA-Z_][a-zA-Z0-9_]*
+	•	Numbers: decimal integers
+	•	Symbols: + - * / % = ; ( ) { } < > <= >= == !=
+
+Implementation in assembly:
+	•	Use a simple state machine:
+	•	State: start → letter → identifier
+	•	State: start → digit → number
+	•	State: start → symbol → operator or multi-char operator
+	•	Store tokens in a linear array or buffer.
+
+⸻
+
+2. Parser (Syntax Analysis)
+
+Goal: convert tokens into a structure representing the program — typically an AST (Abstract Syntax Tree).
+	•	Since this is Tiny-C, you can do recursive-descent parsing.
+
+Example structure in assembly:
+	1.	Expression:
+	•	parse_expression() → recursively parse terms and operators
+	•	Handle operator precedence: * / % > + - > comparisons
+	2.	Statement:
+	•	parse_statement() → check token type:
+	•	if → parse condition + then/else block
+	•	while → parse condition + loop body
+	•	return → parse expression
+	•	{ → parse compound statement
+	3.	Function:
+	•	parse_function() → return type + name + parameters + body
+
+Implementation in assembly:
+	•	Each function is a routine in assembly.
+	•	Maintain token pointer (current token index).
+	•	Recursively call subroutines for nested expressions/statements.
+	•	You don’t need a full AST in memory; for Tiny-C you can emit machine code as you parse (recursive codegen).
+
+⸻
+
+3. Semantic Analysis
+	•	Track variables & functions:
+	•	Maintain a symbol table in memory (arrays in assembly).
+	•	Store: name, type (int or pointer), stack offset.
+	•	Check:
+	•	Variables are declared before use
+	•	Function calls match number of parameters
+
+Assembly implementation:
+	•	Simple hash table or linear search in memory for names.
+	•	Store offsets relative to BP (base pointer).
+
+⸻
+
+4. Code Generation
+	•	Emit machine code while parsing (or buffer it).
+
+Expressions:
+	•	Convert arithmetic expressions to stack-based evaluation or registers.
+
+int x = a + b * c;
+
+	•	LOAD R0, a
+	•	LOAD R1, b
+	•	MUL R1, c
+	•	ADD R0, R1
+	•	STORE R0, x
+
+Control flow:
+	•	if / while → labels + conditional jumps
+
+CMP R0, 0
+JE  else_label
+; then block
+JMP end_label
+else_label:
+; else block
+end_label:
+
+
+
+Functions:
+	•	Stack frame setup:
+	•	Push caller’s BP, set new BP
+	•	Reserve space for locals
+	•	Handle parameters
+	•	Return: restore BP, pop stack, jump to caller
+
+⸻
+
+5. Optional optimizations (later)
+	•	Constant folding (compute 2 + 3 at compile-time)
+	•	Dead code elimination
+	•	Register allocation
+
+⸻
+
+Summary of method in assembly
+	1.	Lexical Analysis: state machine → tokens buffer
+	2.	Parsing: recursive descent → parse expressions/statements/functions
+	3.	Semantic Analysis: symbol table → type/offset checks
+	4.	Codegen: emit machine instructions immediately or into a buffer
+	5.	Control flow: labels + jumps
+	6.	Functions: stack frame management
+
+Since your assembler is already parsing and generating code, the main jump is moving from line-based instruction mapping → tree/recursive parsing and stack-based expression evaluation. Everything else (token buffers, symbol tables, code emission) can mostly reuse your existing routines.
+
+⸻
+
 For the C language you develop, write some simple programs to help with memory:
 - Implement malloc(), free(), sizeof()
 - Implement simple string library strcpy(), strcat(), etc.
