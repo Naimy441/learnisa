@@ -14,32 +14,37 @@ class Opcode(Enum):
     SHR   = (7, 2)  # SHR Rx          - Bit shifts Rx to the right           - 1 + 1 = 2 bytes
     PUSH  = (8, 2)  # PUSH Rx         - Pushes Rx onto the stack             - 1 + 1 = 2 bytes
     POP   = (9, 2)  # POP Rx          - Pops from the stack, stores in Rx    - 1 + 1 = 2 bytes
-    # 2 Operators
+    # 2 Operators (LOAD/STORE)
     LB    = (10, 3) # LB Rx, [Ry]     - Loads 1 byte at [Ry] into Rx         - 1 + 1 + 1 = 3 bytes
-    SB    = (11, 3) # SB Rx, [Ry]     - Stores 1 bytes at [Ry] into Rx       - 1 + 1 + 1 = 3 bytes
-    MOV   = (12, 3) # MOV Rx, Ry      - Puts the value in Ry into Rx         - 1 + 1 + 1 = 3 bytes
-    ADD   = (13, 3) # ADD Rx, Ry      - Puts the value of Rx + Ry into Rx    - 1 + 1 + 1 = 3 bytes
-    SUB   = (14, 3) # SUB Rx, Ry      - Puts the value of Rx - Ry into Rx    - 1 + 1 + 1 = 3 bytes
-    MUL   = (15, 3) # MUL Rx, Ry      - Puts the value of Rx * Ry into Rx    - 1 + 1 + 1 = 3 bytes
-    DIV   = (16, 3) # DIV Rx, Ry      - Puts the value of Rx // Ry into Rx   - 1 + 1 + 1 = 3 bytes
-    AND   = (17, 3) # AND Rx, Ry      - Puts the value of Rx & Ry into Rx    - 1 + 1 + 1 = 3 bytes 
-    OR    = (18, 3) # OR Rx, Ry       - Puts the value of Rx | Ry into Rx    - 1 + 1 + 1 = 3 bytes 
-    XOR   = (19, 3) # XOR Rx, Ry      - Puts the value of Rx ^ Ry into Rx    - 1 + 1 + 1 = 3 bytes 
-    CMP   = (20, 3) # CMP Rx, Ry      - Computes Rx - Ry, updates flags      - 1 + 1 + 1 = 3 bytes
-    SYS   = (21, 4) # SYS Rx, Port    - Runs kernel level instruction        - 1 + 1 + 2 = 4 bytes
-    LOAD  = (22, 4) # LOAD Rx, Oper   - Puts Oper into Rx                    - 4 or 5 bytes (incld. addr byte)
-    STORE = (23, 4) # STORE Rx, Oper  - Puts the value in Rx into Oper       - 4 or 5 bytes (incld. addr byte)
+    LH    = (11, 4) # LH Rx, Oper     - Puts Oper into Rx                    - 4 or 5 bytes (incld. addr byte)
+    LW    = (12, 4) # LW Rx, Oper     - Puts Oper into Rx                    - 4 or 7 bytes (incld. addr byte)
+    LD    = (13, 4) # LD Rx, Oper     - Puts Oper into Rx                    - 4 or 11 bytes (incld. addr byte)
+    SB    = (14, 3) # SB Rx, [Ry]     - Stores 1 bytes at [Ry] into Rx       - 1 + 1 + 1 = 3 bytes
+    SH    = (15, 4) # SH Rx, Oper     - Puts the value in Rx into Oper       - 4 or 5 bytes (incld. addr byte)
+    SW    = (16, 4) # SW Rx, Oper     - Puts the value in Rx into Oper       - 4 or 7 bytes (incld. addr byte)
+    SD    = (17, 4) # SD Rx, Oper     - Puts the value in Rx into Oper       - 4 or 11 bytes (incld. addr byte)
+    # 2 Operators
+    MOV   = (18, 3) # MOV Rx, Ry      - Puts the value in Ry into Rx         - 1 + 1 + 1 = 3 bytes
+    ADD   = (19, 3) # ADD Rx, Ry      - Puts the value of Rx + Ry into Rx    - 1 + 1 + 1 = 3 bytes
+    SUB   = (20, 3) # SUB Rx, Ry      - Puts the value of Rx - Ry into Rx    - 1 + 1 + 1 = 3 bytes
+    MUL   = (21, 3) # MUL Rx, Ry      - Puts the value of Rx * Ry into Rx    - 1 + 1 + 1 = 3 bytes
+    DIV   = (22, 3) # DIV Rx, Ry      - Puts the value of Rx // Ry into Rx   - 1 + 1 + 1 = 3 bytes
+    AND   = (23, 3) # AND Rx, Ry      - Puts the value of Rx & Ry into Rx    - 1 + 1 + 1 = 3 bytes 
+    OR    = (24, 3) # OR Rx, Ry       - Puts the value of Rx | Ry into Rx    - 1 + 1 + 1 = 3 bytes 
+    XOR   = (25, 3) # XOR Rx, Ry      - Puts the value of Rx ^ Ry into Rx    - 1 + 1 + 1 = 3 bytes 
+    CMP   = (26, 3) # CMP Rx, Ry      - Computes Rx - Ry, updates flags      - 1 + 1 + 1 = 3 bytes
+    SYS   = (27, 4) # SYS Rx, Port    - Runs kernel level instruction        - 1 + 1 + 2 = 4 bytes
     # Labels
-    CALL  = (24, 3) # CALL Addr       - Jumps to Addr, saves Addr to stack   - 1 + 2 = 3 bytes
-    JMP   = (25, 3) # JMP Addr        - Sets PC to instr Addr                - 1 + 2 = 3 bytes            - Limits code to 64kb, needs segmentation/paging to fix
-    JZ    = (26, 3) # JZ Addr         - Sets PC to instr Addr if Z           - 1 + 2 = 3 bytes
-    JNZ   = (27, 3) # JNZ Addr        - Sets PC to instr Addr if ~Z          - 1 + 2 = 3 bytes
-    JC    = (28, 3) # JC Addr         - Sets PC to instr Addr if C           - 1 + 2 = 3 bytes
-    JNC   = (29, 3) # JNC Addr        - Sets PC to instr Addr if ~C          - 1 + 2 = 3 bytes
-    JL    = (30, 3) # JL Addr         - Sets PC to instr Addr if S!=O        - 1 + 2 = 3 bytes
-    JLE   = (31, 3) # JLE Addr        - Sets PC to instr Addr if Z=1|S!=O    - 1 + 2 = 3 bytes
-    JG    = (32, 3) # JG Addr         - Sets PC to instr Addr if Z=0&S=O     - 1 + 2 = 3 bytes
-    JGE   = (33, 3) # JGE Addr        - Sets PC to instr Addr if S=O         - 1 + 2 = 3 bytes
+    CALL  = (28, 3) # CALL Addr       - Jumps to Addr, saves Addr to stack   - 1 + 2 = 3 bytes
+    JMP   = (29, 3) # JMP Addr        - Sets PC to instr Addr                - 1 + 2 = 3 bytes            - Limits code to 64kb, needs segmentation/paging to fix
+    JZ    = (30, 3) # JZ Addr         - Sets PC to instr Addr if Z           - 1 + 2 = 3 bytes
+    JNZ   = (31, 3) # JNZ Addr        - Sets PC to instr Addr if ~Z          - 1 + 2 = 3 bytes
+    JC    = (32, 3) # JC Addr         - Sets PC to instr Addr if C           - 1 + 2 = 3 bytes
+    JNC   = (33, 3) # JNC Addr        - Sets PC to instr Addr if ~C          - 1 + 2 = 3 bytes
+    JL    = (34, 3) # JL Addr         - Sets PC to instr Addr if S!=O        - 1 + 2 = 3 bytes
+    JLE   = (35, 3) # JLE Addr        - Sets PC to instr Addr if Z=1|S!=O    - 1 + 2 = 3 bytes
+    JG    = (36, 3) # JG Addr         - Sets PC to instr Addr if Z=0&S=O     - 1 + 2 = 3 bytes
+    JGE   = (37, 3) # JGE Addr        - Sets PC to instr Addr if S=O         - 1 + 2 = 3 bytes
     
     def __new__(cls, code, length):
         obj = object.__new__(cls)
