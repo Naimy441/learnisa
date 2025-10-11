@@ -1,5 +1,9 @@
 ; ./isa.py asm_compiler asm_compiler.asm
 
+; TODO: Update to 64 bit architecture in little-endian, 
+; TODO: Refactor logic for LOAD -> LH, STORE -> SH
+; TODO: Add support for LW, LD, SW, SD
+
 .data
 ; Global Constants
 ; Token types should be outside of ASCII range to ensure no confusion in PARSER

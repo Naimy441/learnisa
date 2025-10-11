@@ -29,7 +29,13 @@
     {
       "name": "comment.line.semicolon.customasm",
       "begin": ";",
-      "end": "$"
+      "end": "$",
+      "patterns": [
+        {
+          "name": "keyword.todo.customasm",
+          "match": "\\b(TODO|NOTE|HACK|BUG|INFO|XXX)\\b:?"
+        }
+      ]
     }
   ]
 }
