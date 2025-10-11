@@ -1,4 +1,4 @@
-LOAD R1, 123
+LH R1, 123
 MOV R0, R1
 HALT
 ; Expected: R1 = 123, R0 = 123

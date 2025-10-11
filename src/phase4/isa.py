@@ -98,8 +98,8 @@ class ISA:
         else:
             self.clear_flag(self.S)
 
-        # Checks if result is longer than 64 bits
-        if res > self.DW_MASK or res < 0:
+        # Checks if result is longer than 64 bits (unsigned overflow)
+        if res > self.DW_MASK:
             self.set_flag(self.C)
         else:
             self.clear_flag(self.C)
@@ -124,10 +124,10 @@ class ISA:
         elif mode == 1:
             self.reg[rx] = operand & self.HW_MASK
         elif mode == 2:
-            self.reg[rx] = self.mem[operand + 1] << 8 | self.mem[operand]
+            self.reg[rx] = self.mem[operand] | self.mem[operand + 1] << 8
         elif mode == 3:
             addr = self.reg[operand]
-            self.reg[rx] = self.mem[addr + 1] << 8 | self.mem[addr]
+            self.reg[rx] = self.mem[addr] | self.mem[addr + 1] << 8
     
 
     def LW(self, rx, operand, mode):
@@ -142,18 +142,18 @@ class ISA:
             self.reg[rx] = operand & self.W_MASK
         elif mode == 2:
             self.reg[rx] = (
-                self.mem[operand + 3] << 24 |
-                self.mem[operand + 2] << 16 |
+                self.mem[operand] |
                 self.mem[operand + 1] << 8 |
-                self.mem[operand]
+                self.mem[operand + 2] << 16 |
+                self.mem[operand + 3] << 24
             )
         elif mode == 3:
             addr = self.reg[operand]
             self.reg[rx] = (
-                self.mem[addr + 3] << 24 |
-                self.mem[addr + 2] << 16 |
+                self.mem[addr] |
                 self.mem[addr + 1] << 8 |
-                self.mem[addr]
+                self.mem[addr + 2] << 16 |
+                self.mem[addr + 3] << 24
             )
 
     def LD(self, rx, operand, mode):
@@ -168,26 +168,26 @@ class ISA:
             self.reg[rx] = operand & self.DW_MASK
         elif mode == 2:
             self.reg[rx] = (
-                self.mem[operand + 7] << 56 |
-                self.mem[operand + 6] << 48 |
-                self.mem[operand + 5] << 40 |
-                self.mem[operand + 4] << 32 |
-                self.mem[operand + 3] << 24 |
-                self.mem[operand + 2] << 16 |
+                self.mem[operand] |
                 self.mem[operand + 1] << 8 |
-                self.mem[operand]
+                self.mem[operand + 2] << 16 |
+                self.mem[operand + 3] << 24 |
+                self.mem[operand + 4] << 32 |
+                self.mem[operand + 5] << 40 |
+                self.mem[operand + 6] << 48 |
+                self.mem[operand + 7] << 56
             )
         elif mode == 3:
             addr = self.reg[operand]
             self.reg[rx] = (
-                self.mem[addr + 7] << 56 |
-                self.mem[addr + 6] << 48 |
-                self.mem[addr + 5] << 40 |
-                self.mem[addr + 4] << 32 |
-                self.mem[addr + 3] << 24 |
-                self.mem[addr + 2] << 16 |
+                self.mem[addr] |
                 self.mem[addr + 1] << 8 |
-                self.mem[addr]
+                self.mem[addr + 2] << 16 |
+                self.mem[addr + 3] << 24 |
+                self.mem[addr + 4] << 32 |
+                self.mem[addr + 5] << 40 |
+                self.mem[addr + 6] << 48 |
+                self.mem[addr + 7] << 56
             )
 
     def SB(self, rx, ry):
@@ -258,6 +258,12 @@ class ISA:
             self.set_flag(self.O)
         else:
             self.clear_flag(self.O)
+        
+        # Carry occurs if res is greater than 64 bits
+        if res > self.DW_MASK:
+            self.set_flag(self.C)
+        else:
+            self.clear_flag(self.C)
         
         self.reg[rx] = res & self.DW_MASK
 
@@ -433,14 +439,14 @@ class ISA:
     def POP(self, rx):
         if self.sp + 8 <= self.MEM_SIZE:
             self.reg[rx] = (
-                self.mem[self.sp + 7] << 56 |
-                self.mem[self.sp + 6] << 48 |
-                self.mem[self.sp + 5] << 40 |
-                self.mem[self.sp + 4] << 32 |
-                self.mem[self.sp + 3] << 24 |
-                self.mem[self.sp + 2] << 16 |
+                self.mem[self.sp] |
                 self.mem[self.sp + 1] << 8 |
-                self.mem[self.sp]
+                self.mem[self.sp + 2] << 16 |
+                self.mem[self.sp + 3] << 24 |
+                self.mem[self.sp + 4] << 32 |
+                self.mem[self.sp + 5] << 40 |
+                self.mem[self.sp + 6] << 48 |
+                self.mem[self.sp + 7] << 56
             ) & self.DW_MASK
             self.mem[self.sp + 7] = 0
             self.mem[self.sp + 6] = 0
@@ -544,14 +550,14 @@ class ISA:
     def RET(self, opcode):
         if self.sp + 8 <= self.MEM_SIZE:
             addr = (
-                self.mem[self.sp + 7] << 56 |
-                self.mem[self.sp + 6] << 48 |
-                self.mem[self.sp + 5] << 40 |
-                self.mem[self.sp + 4] << 32 |
-                self.mem[self.sp + 3] << 24 |
-                self.mem[self.sp + 2] << 16 |
+                self.mem[self.sp] |
                 self.mem[self.sp + 1] << 8 |
-                self.mem[self.sp]
+                self.mem[self.sp + 2] << 16 |
+                self.mem[self.sp + 3] << 24 |
+                self.mem[self.sp + 4] << 32 |
+                self.mem[self.sp + 5] << 40 |
+                self.mem[self.sp + 6] << 48 |
+                self.mem[self.sp + 7] << 56
             ) & self.DW_MASK
             self.mem[self.sp + 7] = 0
             self.mem[self.sp + 6] = 0
@@ -580,19 +586,29 @@ class ISA:
     def decode_rx_addr(self, cinstr):
         rx = cinstr[1]
         addr = (
-            cinstr[2 + 7] << 56 |
-            cinstr[2 + 6] << 48 |
-            cinstr[2 + 5] << 40 |
-            cinstr[2 + 4] << 32 |
-            cinstr[2 + 3] << 24 |
-            cinstr[2 + 2] << 16 |
+            cinstr[2] |
             cinstr[2 + 1] << 8 |
-            cinstr[2]
+            cinstr[2 + 2] << 16 |
+            cinstr[2 + 3] << 24 |
+            cinstr[2 + 4] << 32 |
+            cinstr[2 + 5] << 40 |
+            cinstr[2 + 6] << 48 |
+            cinstr[2 + 7] << 56
         ) & self.DW_MASK
         if rx >= 0 and rx < self.MAX_REG:
             if (addr >= 0 and addr < self.MEM_SIZE - 1):
                 return rx, addr
         raise ValueError(f"Invalid register ({rx}) or address ({addr})")
+
+    def decode_rx_port(self, cinstr):
+        rx = cinstr[1]
+        port = (
+            cinstr[2] |
+            cinstr[2 + 1] << 8
+        ) & self.HW_MASK
+        if rx >= 0 and rx < self.MAX_REG:
+            return rx, port
+        raise ValueError(f"Invalid register ({rx}) or port ({port})")
 
     def decode_rx(self, cinstr):
         rx = cinstr[1]
@@ -602,14 +618,14 @@ class ISA:
 
     def decode_addr(self, cinstr):
         addr = (
-            cinstr[2 + 7] << 56 |
-            cinstr[2 + 6] << 48 |
-            cinstr[2 + 5] << 40 |
-            cinstr[2 + 4] << 32 |
-            cinstr[2 + 3] << 24 |
-            cinstr[2 + 2] << 16 |
-            cinstr[2 + 1] << 8 |
-            cinstr[2]
+            cinstr[1 + 7] << 56 |
+            cinstr[1 + 6] << 48 |
+            cinstr[1 + 5] << 40 |
+            cinstr[1 + 4] << 32 |
+            cinstr[1 + 3] << 24 |
+            cinstr[1 + 2] << 16 |
+            cinstr[1 + 1] << 8 |
+            cinstr[1]
         ) & self.DW_MASK
         if (addr >= 0 and addr < self.MEM_SIZE):
             return addr
@@ -622,11 +638,11 @@ class ISA:
             mgcn = b.read(len(self.MAGIC_NUM))
             if mgcn[0] == self.MAGIC_NUM[0] and mgcn[1] == self.MAGIC_NUM[1]:
                 bytearr = b.read(self.HEADER_LENGTH - len(self.MAGIC_NUM))
-                DATA_OFFSET = (bytearr[0] << 8 | bytearr[1]) & self.HW_MASK
-                DATA_LENGTH = (bytearr[2] << 8 | bytearr[3]) & self.HW_MASK
-                CODE_OFFSET = (bytearr[4] << 8 | bytearr[5]) & self.HW_MASK
-                CODE_LENGTH = (bytearr[6] << 8 | bytearr[7]) & self.HW_MASK
-                ENTRY_POINT = (bytearr[8] << 8 | bytearr[9]) & self.HW_MASK
+                DATA_OFFSET = (bytearr[1] << 8 | bytearr[0]) & self.HW_MASK
+                DATA_LENGTH = (bytearr[3] << 8 | bytearr[2]) & self.HW_MASK
+                CODE_OFFSET = (bytearr[5] << 8 | bytearr[4]) & self.HW_MASK
+                CODE_LENGTH = (bytearr[7] << 8 | bytearr[6]) & self.HW_MASK
+                ENTRY_POINT = (bytearr[9] << 8 | bytearr[8]) & self.HW_MASK
 
                 TOTAL_LENGTH = DATA_LENGTH + CODE_LENGTH
                 if  TOTAL_LENGTH <= self.MEM_SIZE: 
@@ -716,8 +732,8 @@ class ISA:
                         rx = cinstr[1]
                         if rx >= 0 and rx < self.MAX_REG:
                             val = (
-                                cinstr[2 + 1] << 8 |
-                                cinstr[2]
+                                cinstr[2] |
+                                cinstr[2 + 1] << 8
                             )
                             self.LH(rx, val, 1)
                     elif mode == 0x02:  # Register-to-register
@@ -728,8 +744,8 @@ class ISA:
                     elif mode == 0x03:  # Absolute address
                         rx = cinstr[1]
                         addr = (
-                            cinstr[2 + 1] << 8 |
-                            cinstr[2]
+                            cinstr[2] |
+                            cinstr[2 + 1] << 8
                         ) & self.HW_MASK
                         if rx >= 0 and rx < self.MAX_REG and addr >= 0 and addr < self.MEM_SIZE - 1:
                             self.LH(rx, addr, 2)
@@ -749,10 +765,10 @@ class ISA:
                         rx = cinstr[1]
                         if rx >= 0 and rx < self.MAX_REG:
                             val = (
-                                cinstr[2 + 3] << 24 |
-                                cinstr[2 + 2] << 16 |
+                                cinstr[2] |
                                 cinstr[2 + 1] << 8 |
-                                cinstr[2]
+                                cinstr[2 + 2] << 16 |
+                                cinstr[2 + 3] << 24
                             )
                             self.LW(rx, val, 1)
                     elif mode == 0x02:  # Register-to-register
@@ -763,10 +779,10 @@ class ISA:
                     elif mode == 0x03:  # Absolute address
                         rx = cinstr[1]
                         addr = (
-                            cinstr[2 + 3] << 24 |
-                            cinstr[2 + 2] << 16 |
+                            cinstr[2] |
                             cinstr[2 + 1] << 8 |
-                            cinstr[2]
+                            cinstr[2 + 2] << 16 |
+                            cinstr[2 + 3] << 24
                         ) & self.W_MASK
                         if rx >= 0 and rx < self.MAX_REG and addr >= 0 and addr < self.MEM_SIZE - 1:
                             self.LW(rx, addr, 2)
@@ -786,14 +802,14 @@ class ISA:
                         rx = cinstr[1]
                         if rx >= 0 and rx < self.MAX_REG:
                             val = (
-                                cinstr[2 + 7] << 56 |
-                                cinstr[2 + 6] << 48 |
-                                cinstr[2 + 5] << 40 |
-                                cinstr[2 + 4] << 32 |
-                                cinstr[2 + 3] << 24 |
-                                cinstr[2 + 2] << 16 |
+                                cinstr[2] |
                                 cinstr[2 + 1] << 8 |
-                                cinstr[2]
+                                cinstr[2 + 2] << 16 |
+                                cinstr[2 + 3] << 24 |
+                                cinstr[2 + 4] << 32 |
+                                cinstr[2 + 5] << 40 |
+                                cinstr[2 + 6] << 48 |
+                                cinstr[2 + 7] << 56
                             )
                             self.LD(rx, val, 1)
                     elif mode == 0x02:  # Register-to-register
@@ -804,14 +820,14 @@ class ISA:
                     elif mode == 0x03:  # Absolute address
                         rx = cinstr[1]
                         addr = (
-                            cinstr[2 + 7] << 56 |
-                            cinstr[2 + 6] << 48 |
-                            cinstr[2 + 5] << 40 |
-                            cinstr[2 + 4] << 32 |
-                            cinstr[2 + 3] << 24 |
-                            cinstr[2 + 2] << 16 |
+                            cinstr[2] |
                             cinstr[2 + 1] << 8 |
-                            cinstr[2]
+                            cinstr[2 + 2] << 16 |
+                            cinstr[2 + 3] << 24 |
+                            cinstr[2 + 4] << 32 |
+                            cinstr[2 + 5] << 40 |
+                            cinstr[2 + 6] << 48 |
+                            cinstr[2 + 7] << 56
                         ) & self.DW_MASK
                         if rx >= 0 and rx < self.MAX_REG and addr >= 0 and addr < self.MEM_SIZE - 1:
                             self.LD(rx, addr, 2)
@@ -847,10 +863,10 @@ class ISA:
                     if mode == 0x03:  # Absolute address
                         rx = cinstr[1]
                         addr = (
-                            cinstr[2 + 3] << 24 |
-                            cinstr[2 + 2] << 16 |
+                            cinstr[2] |
                             cinstr[2 + 1] << 8 |
-                            cinstr[2]
+                            cinstr[2 + 2] << 16 |
+                            cinstr[2 + 3] << 24
                         ) & self.W_MASK
                         if rx >= 0 and rx < self.MAX_REG and addr >= 0 and addr < self.MEM_SIZE - 1:
                             self.SW(rx, addr, 2)
@@ -869,14 +885,14 @@ class ISA:
                     if mode == 0x03:  # Absolute address
                         rx = cinstr[1]
                         addr = (
-                            cinstr[2 + 7] << 56 |
-                            cinstr[2 + 6] << 48 |
-                            cinstr[2 + 5] << 40 |
-                            cinstr[2 + 4] << 32 |
-                            cinstr[2 + 3] << 24 |
-                            cinstr[2 + 2] << 16 |
+                            cinstr[2] |
                             cinstr[2 + 1] << 8 |
-                            cinstr[2]
+                            cinstr[2 + 2] << 16 |
+                            cinstr[2 + 3] << 24 |
+                            cinstr[2 + 4] << 32 |
+                            cinstr[2 + 5] << 40 |
+                            cinstr[2 + 6] << 48 |
+                            cinstr[2 + 7] << 56
                         ) & self.DW_MASK
                         if rx >= 0 and rx < self.MAX_REG and addr >= 0 and addr < self.MEM_SIZE - 1:
                             self.SD(rx, addr, 2)
@@ -981,7 +997,7 @@ class ISA:
                     self.POP(rx)
                     self.pc += opcode.length
                 case Opcode.SYS:
-                    rx, port = self.decode_rx_addr(cinstr)
+                    rx, port = self.decode_rx_port(cinstr)
                     if (port in self.ports):
                         self.SYS(rx, port)
                     self.pc += opcode.length
@@ -1023,7 +1039,7 @@ class ISA:
 
     def reset(self):
         self.reg = [0] * self.MAX_REG # 32 registers, 64 bits per register
-        self.mem = bytearray(64 * self.KILOBYTE) # 4 MB memory
+        self.mem = bytearray(self.MEM_SIZE) # 4 MB memory
         self.pc = 0
         self.sp = self.STACK_END
         self.flags = 0b00000000 

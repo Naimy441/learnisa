@@ -1,8 +1,8 @@
-LOAD R0, 1
+LH R0, 1
 CALL func
-LOAD R0, 3
+LH R0, 3
 HALT
 func:
-LOAD R0, 2
+LH R0, 2
 RET
 ; Expected: R0 = 3 (function call and return)

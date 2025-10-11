@@ -14,7 +14,7 @@ def clear_bin_files():
     os.chdir(script_dir)
     
     # File patterns to delete
-    patterns = ["**/*.bin", "**/*.hex", "**/*.dbg", "**/*.symbols", "**/debug_log.txt"]
+    patterns = ["**/*.bin", "**/*.hex", "**/*.dbg", "**/*.symbols", "**/debug_log.txt", "**/test_file.txt"]
     all_files = []
     counts = {}
 

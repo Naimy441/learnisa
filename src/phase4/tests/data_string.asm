@@ -1,9 +1,9 @@
 .data
-msg = .byte 'H' 'e' 'l' 'l' 'o' 0
+msg = .asciiz 'Hello'
 
 .code
-LOAD R0, msg
-LOAD R1, 0
+LH R0, msg
+LH R1, 0
 loop:
 LB R2, [R0]
 CMP R2, R1

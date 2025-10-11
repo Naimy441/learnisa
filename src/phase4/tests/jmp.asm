@@ -1,6 +1,6 @@
-LOAD R0, 1
+LH R0, 1
 JMP end
-LOAD R0, 2
+LH R0, 2
 end:
 HALT
-; Expected: R0 = 1 (second LOAD skipped)
+; Expected: R0 = 1 (second LH skipped)

@@ -7,6 +7,7 @@ import sys
 import os
 import io
 from isa import ISA
+from assembler import Assembler
 
 class TestRunner:
     def __init__(self):
@@ -29,9 +30,13 @@ class TestRunner:
         """Run a single ISA test and return output"""
         def test_execution():
             try:
-                isa = ISA(f"tests/{test_name}")
-                isa.assemble(f"tests/{test_name}", False)
-                isa.run(f"tests/{test_name}", False)
+                # First assemble the .asm file to .bin
+                assembler = Assembler(f"tests/{test_name}.asm")
+                assembler.assemble(f"tests/{test_name}.bin")
+                
+                # Then run the .bin file
+                isa = ISA()
+                isa.run(f"tests/{test_name}.bin", False)
             except Exception as e:
                 print(f"Error: {e}")
         
@@ -41,10 +46,14 @@ class TestRunner:
         """Run a single ISA test with command line arguments and return output"""
         def test_execution():
             try:
-                isa = ISA(f"tests/{test_name}")
-                isa.assemble(f"tests/{test_name}", False)
+                # First assemble the .asm file to .bin
+                assembler = Assembler(f"tests/{test_name}.asm")
+                assembler.assemble(f"tests/{test_name}.bin")
+                
+                # Then run the .bin file with arguments
+                isa = ISA()
                 argc = len(args)
-                isa.run(f"tests/{test_name}", False, argc, args)
+                isa.run(f"tests/{test_name}.bin", debug_mode=False, step_mode=False, argc=argc, argv=args)
             except Exception as e:
                 print(f"Error: {e}")
         
@@ -53,9 +62,13 @@ class TestRunner:
     def verify_register_state(self, test_name, expected_reg_values):
         """Verify final register state for tests that don't produce output"""
         try:
-            isa = ISA(f"tests/{test_name}")
-            isa.assemble(f"tests/{test_name}", False)
-            isa.run(f"tests/{test_name}", False)
+            # First assemble the .asm file to .bin
+            assembler = Assembler(f"tests/{test_name}.asm")
+            assembler.assemble(f"tests/{test_name}.bin")
+            
+            # Then run the .bin file
+            isa = ISA()
+            isa.run(f"tests/{test_name}.bin", False)
             
             for reg, expected_val in expected_reg_values.items():
                 actual_val = isa.reg[reg]
@@ -147,7 +160,7 @@ class TestRunner:
             ("and", {0: 7, 1: 7}),
             ("or", {0: 12, 1: 4}),
             ("xor", {0: 9, 1: 5}),
-            ("not", {0: 65365}),
+            ("not", {0: 18446744073709551445}),
             ("shl", {0: 10}),
             ("shr", {0: 4}),
             ("jmp", {0: 1}),

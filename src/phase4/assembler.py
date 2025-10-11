@@ -6,9 +6,16 @@ import sys
 from opcode import Opcode
 
 class Assembler:
-    MAX_REG = 10
-    KILOBYTE = 1024 # A kilobyte has 1024 bytes
-    MEM_SIZE = 64 * KILOBYTE # MEM_SIZE and memory-addressable instruction space are the same
+    MAX_REG = 32
+    MEM_SIZE = 4 * 1024 * 1024 # 4 MB
+
+    B_MASK       = 0xFF
+    HW_MASK      = 0xFFFF
+    W_MASK       = 0xFFFFFFFF
+    DW_MASK      = 0xFFFFFFFFFFFFFFFF
+    OVERFLOW_BIT = 0x7FFFFFFFFFFFFFFF
+    SIGN_BIT     = 0x8000000000000000
+
 
     HEADER_LENGTH = 16
     MAGIC_NUM = (0x41, 0x4E)
@@ -27,44 +34,101 @@ class Assembler:
         ry = int(line[2][1])
         if rx >= 0 and rx < self.MAX_REG and ry >= 0 and ry < self.MAX_REG:
             return [
-                opcode.value & 0xFF,
-                rx & 0xFF,
-                ry & 0xFF
+                opcode.value & self.B_MASK,
+                rx & self.B_MASK,
+                ry & self.B_MASK
             ]
         else:
             raise ValueError(f"Invalid register (0 <= rx,ry < {self.MAX_REG}): rx={rx}, ry={ry}")
 
-    def validate_rx_addr(self, opcode, line, is_symbol):
+    def validate_rx_addr(self, opcode, line, is_symbol, word_type=4):
         rx = int(line[1][1])
         if rx >= 0 and rx < self.MAX_REG:
             addr = int(line[2], 0)
             lower_bound = 0 if is_symbol else self.DATA_LENGTH
             if (addr >= lower_bound and addr < self.MEM_SIZE - 1):
-                return [
-                    opcode.value & 0xFF,
-                    rx & 0xFF,
-                    (addr >> 8) & 0xFF,
-                    addr & 0xFF
-                ]
+                if word_type == 1:
+                    return [
+                        opcode.value & self.B_MASK,
+                        rx & self.B_MASK,
+                        addr & self.B_MASK
+                    ]
+                elif word_type == 2:
+                    return [
+                        opcode.value & self.B_MASK,
+                        rx & self.B_MASK,
+                        addr & self.B_MASK,
+                        (addr >> 8) & self.B_MASK
+                    ]
+                elif word_type == 3:
+                    return [
+                        opcode.value & self.B_MASK,
+                        rx & self.B_MASK,
+                        addr & self.B_MASK,
+                        (addr >> 8) & self.B_MASK,
+                        (addr >> 16) & self.B_MASK,
+                        (addr >> 24) & self.B_MASK
+                    ]
+                elif word_type == 4:
+                    return [
+                        opcode.value & self.B_MASK,
+                        rx & self.B_MASK,
+                        addr & self.B_MASK,
+                        (addr >> 8) & self.B_MASK,
+                        (addr >> 16) & self.B_MASK,
+                        (addr >> 24) & self.B_MASK,
+                        (addr >> 32) & self.B_MASK,
+                        (addr >> 40) & self.B_MASK,
+                        (addr >> 48) & self.B_MASK,
+                        (addr >> 56) & self.B_MASK
+                    ]
             else:
                 raise ValueError(f"Invalid address ({lower_bound} <= addr < {self.MEM_SIZE - 1}): {addr}")
         else:
             raise ValueError(f"Invalid register (0 <= rx < {self.MAX_REG}): rx={rx}")
 
-    def validate_rx_val(self, opcode, line, is_symbol):
+    def validate_rx_val(self, opcode, line, is_symbol, word_type=4):
         rx = int(line[1][1])
         if rx >= 0 and rx < self.MAX_REG:
             val = int(line[2], 0)
-            # For immediate values, allow full 16-bit range (0-65535)
-            if (val >= 0 and val <= 0xFFFF):
-                return [
-                    opcode.value & 0xFF,
-                    rx & 0xFF,
-                    (val >> 8) & 0xFF,
-                    val & 0xFF
-                ]
-            else:
-                raise ValueError(f"Invalid value (0 <= val <= 65535): {val}")
+            if word_type == 2:
+                if (val >= 0 and val <= self.HW_MASK):
+                    return [
+                        opcode.value & self.B_MASK,
+                        rx & self.B_MASK,
+                        val & self.B_MASK,
+                        (val >> 8) & self.B_MASK
+                    ]
+                else:
+                    raise ValueError(f"Invalid value (0 <= val <= Half Word): {val}")
+            elif word_type == 3:
+                if (val >= 0 and val <= self.W_MASK):
+                    return [
+                        opcode.value & self.B_MASK,
+                        rx & self.B_MASK,
+                        val & self.B_MASK,
+                        (val >> 8) & self.B_MASK,
+                        (val >> 16) & self.B_MASK,
+                        (val >> 24) & self.B_MASK
+                    ]
+                else:
+                    raise ValueError(f"Invalid value (0 <= val <= Word): {val}")
+            elif word_type == 4: 
+                if (val >= 0 and val <= self.DW_MASK):
+                    return [
+                        opcode.value & self.B_MASK,
+                        rx & self.B_MASK,
+                        val & self.B_MASK,
+                        (val >> 8) & self.B_MASK,
+                        (val >> 16) & self.B_MASK,
+                        (val >> 24) & self.B_MASK,
+                        (val >> 32) & self.B_MASK,
+                        (val >> 40) & self.B_MASK,
+                        (val >> 48) & self.B_MASK,
+                        (val >> 56) & self.B_MASK
+                    ]
+                else:
+                    raise ValueError(f"Invalid double word value (0 <= val <= Double Word): {val}")
         else:
             raise ValueError(f"Invalid register (0 <= rx < {self.MAX_REG}): rx={rx}")
 
@@ -73,9 +137,9 @@ class Assembler:
         ry = int(line[2][2:-1])
         if rx >= 0 and rx < self.MAX_REG and ry >= 0 and ry < self.MAX_REG:
             return [
-                opcode.value & 0xFF,
-                rx & 0xFF,
-                ry & 0xFF
+                opcode.value & self.B_MASK,
+                rx & self.B_MASK,
+                ry & self.B_MASK
             ]
         else:
             raise ValueError(f"Invalid register ({self.DATA_LENGTH} <= rx, ry < {self.MAX_REG}): rx={rx}, ry={ry}")
@@ -84,8 +148,8 @@ class Assembler:
         rx = int(line[1][1])
         if rx >= 0 and rx < self.MAX_REG:
             return [
-                opcode.value & 0xFF,
-                rx & 0xFF
+                opcode.value & self.B_MASK,
+                rx & self.B_MASK
             ]
         else:
             raise ValueError(f"Invalid register (0 <= rx < {self.MAX_REG}): rx={rx}")
@@ -95,12 +159,54 @@ class Assembler:
         lower_bound = 0 if is_symbol else self.DATA_LENGTH
         if (addr >= lower_bound and addr < self.MEM_SIZE - 1):
             return [
-                opcode.value & 0xFF,
-                (addr >> 8) & 0xFF,
-                addr & 0xFF
+                opcode.value & self.B_MASK,
+                addr & self.B_MASK,
+                (addr >> 8) & self.B_MASK,
+                (addr >> 16) & self.B_MASK,
+                (addr >> 24) & self.B_MASK,
+                (addr >> 32) & self.B_MASK,
+                (addr >> 40) & self.B_MASK,
+                (addr >> 48) & self.B_MASK,
+                (addr >> 56) & self.B_MASK
             ]
         else:
             raise ValueError(f"Invalid address ({lower_bound} <= addr < {self.MEM_SIZE - 1}): {addr}")
+
+    def handle_load_byte_arr(self, line, opcode, is_symbol, word_type):
+        if line[2].startswith('R') and not is_symbol:
+            bytearr = self.validate_rx_ry(opcode, line)
+            bytearr.insert(1, 0x02) # Register
+            return bytearr
+        elif line[2].startswith('[R') and line[2].endswith(']') and not is_symbol:
+            bytearr = self.validate_rx_indr(opcode, line)
+            bytearr.insert(1, 0x04) # Indirect
+            return bytearr
+        elif is_symbol:
+            bytearr = self.validate_rx_val(opcode, line, is_symbol, word_type)
+            bytearr.insert(1, 0x01) # Immediate
+            return bytearr
+        elif line[2].lower().startswith('0x'):
+            bytearr = self.validate_rx_addr(opcode, line, is_symbol, word_type)
+            bytearr.insert(1, 0x03) # Absolute addr
+            return bytearr
+        else:
+            bytearr = self.validate_rx_val(opcode, line, is_symbol, word_type)
+            bytearr.insert(1, 0x01) # Immediate
+            return bytearr
+    
+    def handle_store_byte_arr(self, line, opcode, is_symbol, word_type):
+        if is_symbol:
+            bytearr = self.validate_rx_val(opcode, line, is_symbol, word_type)
+            bytearr.insert(1, 0x03) # Absolute addr
+            return bytearr
+        elif line[2].lower().startswith('0x'):
+            bytearr = self.validate_rx_addr(opcode, line, is_symbol, word_type)
+            bytearr.insert(1, 0x03) # Absolute addr
+            return bytearr 
+        else:
+            bytearr = self.validate_rx_indr(opcode, line)
+            bytearr.insert(1, 0x04) # Indirect
+            return bytearr
 
     def get_byte_array(self, opcode, line):
         is_symbol = False
@@ -110,41 +216,19 @@ class Assembler:
                 is_symbol = True
         match opcode:
             case Opcode.NOP | Opcode.RET | Opcode.HALT:
-                return [opcode.value & 0xFF]
-            case Opcode.LOAD:
-                if line[2].startswith('R') and not is_symbol:
-                    bytearr = self.validate_rx_ry(opcode, line)
-                    bytearr.insert(1, 0x02) # Register
-                    return bytearr
-                elif line[2].startswith('[R') and line[2].endswith(']') and not is_symbol:
-                    bytearr = self.validate_rx_indr(opcode, line)
-                    bytearr.insert(1, 0x04) # Indirect
-                    return bytearr
-                elif is_symbol:
-                    bytearr = self.validate_rx_val(opcode, line, is_symbol)
-                    bytearr.insert(1, 0x01) # Immediate
-                    return bytearr
-                elif line[2].lower().startswith('0x'):
-                    bytearr = self.validate_rx_addr(opcode, line, is_symbol)
-                    bytearr.insert(1, 0x03) # Absolute addr
-                    return bytearr
-                else:
-                    bytearr = self.validate_rx_val(opcode, line, is_symbol)
-                    bytearr.insert(1, 0x01) # Immediate
-                    return bytearr
-            case Opcode.STORE:
-                if is_symbol:
-                    bytearr = self.validate_rx_val(opcode, line, is_symbol)
-                    bytearr.insert(1, 0x03) # Absolute addr
-                    return bytearr
-                elif line[2].lower().startswith('0x'):
-                    bytearr = self.validate_rx_addr(opcode, line, is_symbol)
-                    bytearr.insert(1, 0x03) # Absolute addr
-                    return bytearr 
-                else:
-                    bytearr = self.validate_rx_indr(opcode, line)
-                    bytearr.insert(1, 0x04) # Indirect
-                    return bytearr
+                return [opcode.value & self.B_MASK]
+            case Opcode.LH:
+                return self.handle_load_byte_arr(line, opcode, is_symbol, 2)
+            case Opcode.LW:
+                return self.handle_load_byte_arr(line, opcode, is_symbol, 3)
+            case Opcode.LD:
+                return self.handle_load_byte_arr(line, opcode, is_symbol, 4)
+            case Opcode.SH:
+                return self.handle_store_byte_arr(line, opcode, is_symbol, 2)
+            case Opcode.SW:
+                return self.handle_store_byte_arr(line, opcode, is_symbol, 3)
+            case Opcode.SD:
+                return self.handle_store_byte_arr(line, opcode, is_symbol, 4)
             case Opcode.LB | Opcode.SB:
                 return self.validate_rx_indr(opcode, line)
             case Opcode.INC | Opcode.DEC | Opcode.NOT | Opcode.PUSH | Opcode.POP | Opcode.SHL | Opcode.SHR:
@@ -154,7 +238,7 @@ class Assembler:
             case Opcode.JMP | Opcode.JZ | Opcode.JNZ | Opcode.JC | Opcode.JNC | Opcode.JL | Opcode.JLE | Opcode.JG | Opcode.JGE | Opcode.CALL:
                 return self.validate_addr(opcode, line, is_symbol)
             case Opcode.SYS:
-                return self.validate_rx_addr(opcode, line, True)
+                return self.validate_rx_addr(opcode, line, True, 2)
             case _:
                 raise ValueError(f"Unknown opcode: {opcode}")
 
@@ -187,7 +271,7 @@ class Assembler:
                     if line[1] == '.byte':
                         memory_addr += len(line[2:]) 
                     elif line[1] == '.word':
-                        memory_addr += (len(line[2:]) * 2)
+                        memory_addr += (len(line[2:]) * 4) # Each word takes 4 bytes
                     elif line[1] == '.asciiz':
                         # Len of a string, without the quotation marks, with the 0 delimiter added
                         memory_addr += len(" ".join(line[2:]).replace('\'', '')) + 1 
@@ -200,12 +284,11 @@ class Assembler:
                 if line[0] in self.symbols:
                     raise ValueError(f"Data or label '{line[0]}' already defined")
                 self.symbols[line[0][:-1]] = len_bytes + memory_addr
-
             else:
                 opcode_name = line[0]
                 opcode = Opcode[opcode_name]
                 # Check for variable-length instructions including ADDRESSING BYTE
-                if opcode_name == 'LOAD':
+                if opcode_name == 'LH' or opcode_name == 'LW' or opcode_name == 'LD':
                     operand = line[2]
                     is_symbol = operand in self.symbols
                     if operand.startswith('R') and not is_symbol:
@@ -213,21 +296,41 @@ class Assembler:
                     elif operand.startswith('[R') and operand.endswith(']') and not is_symbol:
                         len_bytes += 4  
                     elif operand in self.symbols:
-                        len_bytes += 5         
+                        len_bytes += 5
+                        if opcode_name == 'LW':
+                            len_bytes += 2
+                        elif opcode_name == 'LD':
+                            len_bytes += 6         
                     elif operand.lower().startswith('0x'): 
                         len_bytes += 5
+                        if opcode_name == 'LW':
+                            len_bytes += 2
+                        elif opcode_name == 'LD':
+                            len_bytes += 6         
                     else:
                         try:
                             int(operand, 0) 
                             len_bytes += 5   # Immediate
+                            if opcode_name == 'LW':
+                                len_bytes += 2
+                            elif opcode_name == 'LD':
+                                len_bytes += 6      
                         except ValueError:
                             raise ValueError(f"Impossible instruction {opcode_name} {operand}")
-                elif opcode_name == 'STORE':
+                elif opcode_name == 'SH' or opcode_name == 'SW' or opcode_name == 'SD':
                     operand = line[2]         
                     if operand in self.symbols:
                         len_bytes += 5   
+                        if opcode_name == 'SW':
+                            len_bytes += 2
+                        elif opcode_name == 'SD':
+                            len_bytes += 6      
                     elif operand.lower().startswith('0x'): 
                         len_bytes += 5
+                        if opcode_name == 'SW':
+                            len_bytes += 2
+                        elif opcode_name == 'SD':
+                            len_bytes += 6      
                     else:
                         len_bytes += 4
                 else:
@@ -246,11 +349,11 @@ class Assembler:
         RESERVED = [0x00, 0x00, 0x00, 0x00]
 
         header_buf[0:2] = [self.MAGIC_NUM[0], self.MAGIC_NUM[1]]
-        header_buf[2:4] = [DATA_OFFSET >> 8 & 0xFF, DATA_OFFSET & 0xFF]
-        header_buf[4:6] = [DATA_LENGTH >> 8 & 0xFF, DATA_LENGTH & 0xFF]
-        header_buf[6:8] = [CODE_OFFSET >> 8 & 0xFF, CODE_OFFSET & 0xFF]
-        header_buf[8:10] = [CODE_LENGTH >> 8 & 0xFF, CODE_LENGTH & 0xFF]
-        header_buf[10:12] = [ENTRY_POINT >> 8 & 0xFF, ENTRY_POINT & 0xFF]
+        header_buf[2:4] = [DATA_OFFSET & self.B_MASK, DATA_OFFSET >> 8 & self.B_MASK]
+        header_buf[4:6] = [DATA_LENGTH & self.B_MASK, DATA_LENGTH >> 8 & self.B_MASK]
+        header_buf[6:8] = [CODE_OFFSET & self.B_MASK, CODE_OFFSET >> 8 & self.B_MASK]
+        header_buf[8:10] = [CODE_LENGTH & self.B_MASK, CODE_LENGTH >> 8 & self.B_MASK]
+        header_buf[10:12] = [ENTRY_POINT & self.B_MASK, ENTRY_POINT >> 8 & self.B_MASK]
         header_buf[12:16] = RESERVED
 
         return header_buf
@@ -289,10 +392,10 @@ class Assembler:
                             bytearr = []
                             for e in line[2:]:
                                 if len(e) == 3 and e.startswith("'") and e.endswith("'"):
-                                    bytearr.append(ord(e[1:-1]) & 0xFF)
+                                    bytearr.append(ord(e[1:-1]) & self.B_MASK)
                                 else:
                                     try:
-                                        bytearr.append(int(e, 0) & 0xFF)
+                                        bytearr.append(int(e, 0) & self.B_MASK)
                                     except ValueError():
                                         raise ValueError(f"Invalid element in .byte directive: {e}")
                             data_buf.extend(bytearr)
@@ -309,8 +412,10 @@ class Assembler:
                                 try:
                                     val = int(e, 0)
                                     bytearr.extend([
-                                        (val >> 8) & 0xFF,
-                                        val & 0xFF
+                                        val & self.B_MASK,
+                                        (val >> 8) & self.B_MASK,
+                                        (val >> 16) & self.B_MASK,
+                                        (val >> 24) & self.B_MASK
                                     ])
                                 except ValueError():
                                     raise ValueError(f"Invalid element in .byte directive: {e}")
@@ -327,7 +432,7 @@ class Assembler:
                             bytearr = []
                             for c in string:
                                 try:
-                                    bytearr.append(ord(c) & 0xFF)
+                                    bytearr.append(ord(c) & self.B_MASK)
                                 except ValueError():
                                     raise ValueError(f"Invalid element in .asciiz directive: {c}")
                             data_buf.extend(bytearr)
@@ -342,8 +447,14 @@ class Assembler:
                             val = int(line[1], 0)
                             if (val >= 0 and val < self.MEM_SIZE):
                                 bytearr = [
-                                    (val >> 8) & 0xFF,
-                                    val & 0xFF
+                                    val & self.B_MASK,
+                                    (val >> 8) & self.B_MASK,
+                                    (val >> 16) & self.B_MASK,
+                                    (val >> 24) & self.B_MASK,
+                                    (val >> 32) & self.B_MASK,
+                                    (val >> 40) & self.B_MASK,
+                                    (val >> 48) & self.B_MASK,
+                                    (val >> 56) & self.B_MASK
                                 ]
                                 data_buf.extend(bytearr)
                             if debug_mode:

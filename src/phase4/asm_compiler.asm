@@ -44,35 +44,40 @@ CODE_SHR   = .byte 7
 CODE_PUSH  = .byte 8
 CODE_POP   = .byte 9
 OPCODE_1_OPER = .byte 9
-; Opcodes with 2 operators
+; Opcodes with 2 operators (LOAD/STORE)
 CODE_LB    = .byte 10
-CODE_SB    = .byte 11
-CODE_MOV   = .byte 12
-CODE_ADD   = .byte 13
-CODE_SUB   = .byte 14
-CODE_MUL   = .byte 15
-CODE_DIV   = .byte 16
-CODE_AND   = .byte 17
-CODE_OR    = .byte 18
-CODE_XOR   = .byte 19
-CODE_CMP   = .byte 20
-CODE_SYS   = .byte 21
-CODE_LOAD  = .byte 22
-CODE_STORE = .byte 23
-OPCODE_2_OPER = .byte 23
+CODE_LH    = .byte 11
+CODE_LW    = .byte 12
+CODE_LD    = .byte 13
+CODE_SB    = .byte 14
+CODE_SH    = .byte 15
+CODE_SW    = .byte 16
+CODE_SD    = .byte 17
+; Opcodes with 2 operators
+CODE_MOV   = .byte 18
+CODE_ADD   = .byte 19
+CODE_SUB   = .byte 20
+CODE_MUL   = .byte 21
+CODE_DIV   = .byte 22
+CODE_AND   = .byte 23
+CODE_OR    = .byte 24
+CODE_XOR   = .byte 25
+CODE_CMP   = .byte 26
+CODE_SYS   = .byte 27
+OPCODE_2_OPER = .byte 27
 ; Opcodes with labels
-CODE_CALL  = .byte 24
-CODE_JMP   = .byte 25
-CODE_JZ    = .byte 26
-CODE_JNZ   = .byte 27
-CODE_JC    = .byte 28
-CODE_JNC   = .byte 29
-CODE_JL    = .byte 30
-CODE_JLE   = .byte 31
-CODE_JG    = .byte 32
-CODE_JGE   = .byte 33
-OPCODE_LABEL_OPER = .byte 33
-OPCODE_END = .byte 33
+CODE_CALL  = .byte 28
+CODE_JMP   = .byte 29
+CODE_JZ    = .byte 30
+CODE_JNZ   = .byte 31
+CODE_JC    = .byte 32
+CODE_JNC   = .byte 33
+CODE_JL    = .byte 34
+CODE_JLE   = .byte 35
+CODE_JG    = .byte 36
+CODE_JGE   = .byte 37
+OPCODE_LABEL_OPER = .byte 37
+OPCODE_END = .byte 37
 
 STR_NOP    = .asciiz 'NOP'
 STR_RET    = .asciiz 'RET'
@@ -87,7 +92,14 @@ STR_PUSH   = .asciiz 'PUSH'
 STR_POP    = .asciiz 'POP'
 
 STR_LB     = .asciiz 'LB'
+STR_LH     = .asciiz 'LH'
+STR_LW     = .asciiz 'LW'
+STR_LD     = .asciiz 'LD'
 STR_SB     = .asciiz 'SB'
+STR_SH     = .asciiz 'SH'
+STR_SW     = .asciiz 'SW'
+STR_SD     = .asciiz 'SD'
+
 STR_MOV    = .asciiz 'MOV'
 STR_ADD    = .asciiz 'ADD'
 STR_SUB    = .asciiz 'SUB'
@@ -98,8 +110,6 @@ STR_OR     = .asciiz 'OR'
 STR_XOR    = .asciiz 'XOR'
 STR_CMP    = .asciiz 'CMP'
 STR_SYS    = .asciiz 'SYS'
-STR_LOAD   = .asciiz 'LOAD'
-STR_STORE  = .asciiz 'STORE'
 
 STR_CALL   = .asciiz 'CALL'
 STR_JMP    = .asciiz 'JMP'
@@ -169,34 +179,34 @@ ENTRY_POINT = .word 0
 .code
 start:
     POP R0             ; Loads the number of CMD line arguments
-    LOAD R1, 1
+    LH R1, 1
     CMP R0, R1
     JZ open_file        ; IF CMD line arg exists, load_file
 
-    LOAD R7, 0          ; ERROR CODE = 0
+    LH R7, 0          ; ERROR CODE = 0
     JNZ err
 
 open_file:
     POP R0              ; Loads the pointer to file name, CMD line argument
     PUSH R0
-    LOAD R1, 0          ; Open file in READ mode
+    LH R1, 0          ; Open file in READ mode
     SYS R0, 0x0100      ; Calls FILE_OPEN, R0 contains File Descriptor
-    LOAD R1, 3
+    LH R1, 3
     CMP R0, R1
     JZ prepare_read_file
 
-    LOAD R7, 1          ; ERROR CODE = 1
+    LH R7, 1          ; ERROR CODE = 1
     JNZ err
 
 prepare_read_file:
-    LOAD R1, SRC_START  ; Memory address after start of HEAP
-    LOAD R1, [R1]
-    LOAD R2, 4096        ; Num bytes to READ
+    LH R1, SRC_START  ; Memory address after start of HEAP
+    LH R1, [R1]
+    LH R2, 4096        ; Num bytes to READ
     JMP read_file
 
 read_file:
     SYS R3, 0x0101      ; READ bytes into HEAP, R3 contains length of bytes read
-    LOAD R4, 0
+    LH R4, 0
     CMP R3, R4          ; Check if there are no more bytes to read
     JZ prepare_lexer
     ADD R1, R3          ; New starting position for the rest of the code
@@ -207,46 +217,46 @@ prepare_lexer:
     SYS R0, 0x0103      ; Close the input file, file descriptor in R0
     
     ; Add a few new line characters at the very end
-    LOAD R0, 10         ; 10 is \n
+    LH R0, 10         ; 10 is \n
     SB R0, [R1]         ; Put the newline char at R1, which contains the end memory address
     INC R1
-    LOAD R0, 10         ; 10 is \n
+    LH R0, 10         ; 10 is \n
     SB R0, [R1]         ; Put the newline char at R1, which contains the end memory address
 
-    STORE R1, SYM_START   ; Store the end location of SRC code
-    STORE R1, SYM_CUR     ; Store the end location of SRC code
+    SH R1, SYM_START   ; Store the end location of SRC code
+    SH R1, SYM_CUR     ; Store the end location of SRC code
 
-    LOAD R1, SRC_START  ; Memory address where SRC code was loaded
-    LOAD R1, [R1]
+    LH R1, SRC_START  ; Memory address where SRC code was loaded
+    LH R1, [R1]
 
-    LOAD R5, R1         ; Copy as starting index
-    LOAD R8, R1         ; Copy as current index
+    LH R5, R1         ; Copy as starting index
+    LH R8, R1         ; Copy as current index
     JMP lexer
 lexer:
     LB R2, [R1]         ; LB only loads 1 byte (1 char) from HEAP at memory address R1
-    LOAD R3, 0          ; Check EOF
+    LH R3, 0          ; Check EOF
     CMP R2, R3
     JNZ lexer_proceed_until_delim
     JZ prepare_parser
 lexer_proceed_until_delim:
-    LOAD R0, IS_DATA
+    LH R0, IS_DATA
     LB R0, [R0]  ; Load the number at the start of heap, which is 0 if it's code directive and 1 if data directive
-    LOAD R6, 1
+    LH R6, 1
     CMP R0, R6      ; Check data directive, this is set from the lexer_if_period function
     JZ handle_data
     JNZ handle_code
 handle_data:
-    LOAD R4, SEMICOLON
+    LH R4, SEMICOLON
     LB R3, [R4]
     CMP R2, R3
     JZ lexer_if_semicolon
     
-    LOAD R4, PERIOD
+    LH R4, PERIOD
     LB R3, [R4]
     CMP R2, R3
     JZ lexer_if_period
 
-    LOAD R4, EQ_SIGN
+    LH R4, EQ_SIGN
     LB R3, [R4]
     CMP R2, R3 
     JZ lexer_if_eq_sign
@@ -254,27 +264,27 @@ handle_data:
     INC R1              ; Increment to next memory address (skips tabs, newlines)
     JMP lexer
 handle_code:
-    LOAD R4, SEMICOLON
+    LH R4, SEMICOLON
     LB R3, [R4]
     CMP R2, R3
     JZ lexer_if_semicolon
 
-    LOAD R4, PERIOD
+    LH R4, PERIOD
     LB R3, [R4]
     CMP R2, R3
     JZ lexer_if_period
 
-    LOAD R4, COLON
+    LH R4, COLON
     LB R3, [R4]
     CMP R2, R3
     JZ lexer_if_colon
 
-    LOAD R4, SPACE
+    LH R4, SPACE
     LB R3, [R4]
     CMP R2, R3 
     JZ lexer_if_space
 
-    LOAD R4, NEWLINE
+    LH R4, NEWLINE
     LB R3, [R4]
     CMP R2, R3 
     JZ lexer_if_space
@@ -284,71 +294,71 @@ handle_code:
 
 prepare_parser:
     ; Set LEX_END with value at LEX_CUR
-    LOAD R0, LEX_CUR
-    LOAD R0, [R0]
-    STORE R0, LEX_END
+    LH R0, LEX_CUR
+    LH R0, [R0]
+    SH R0, LEX_END
 
     ; Reset LEX_CUR to be at LEX_START
-    LOAD R1, LEX_START
-    LOAD R1, [R1]
-    STORE R1, LEX_CUR
+    LH R1, LEX_START
+    LH R1, [R1]
+    SH R1, LEX_CUR
 
     ; Set SYM_END with value at SYM_CUR
-    LOAD R0, SYM_CUR
-    LOAD R0, [R0]
-    STORE R0, SYM_END
+    LH R0, SYM_CUR
+    LH R0, [R0]
+    SH R0, SYM_END
 
     ; Reset SYM_CUR to be at SYM_START
-    LOAD R1, SYM_START
-    LOAD R1, [R1]
-    STORE R1, SYM_CUR
+    LH R1, SYM_START
+    LH R1, [R1]
+    SH R1, SYM_CUR
 
     ; Assume data is false
-    LOAD R3, IS_DATA
-    LOAD R2, 0
+    LH R3, IS_DATA
+    LH R2, 0
     SB R2, [R3]
 parser:
     ; Check if we have reached the end
-    LOAD R1, LEX_END
-    LOAD R1, [R1]
-    LOAD R0, LEX_CUR
-    LOAD R0, [R0]
+    LH R1, LEX_END
+    LH R1, [R1]
+    LH R0, LEX_CUR
+    LH R0, [R0]
     CMP R0, R1
     JZ prepare_write_file
     ; Load the current token into R2
     LB R2, [R0]
     ; Check if we should parse as data or code
-    LOAD R4, IS_DATA
+    LH R4, IS_DATA
     LB R4, [R4]
-    LOAD R5, 1
+    LH R5, 1
     CMP R4, R5
     JZ parse_data
     JNZ parse_code
 continue_parser:
-    LOAD R0, LEX_CUR
-    LOAD R0, [R0]
+    LH R0, LEX_CUR
+    LH R0, [R0]
     INC R0          ; Set R0 to next token
-    STORE R0, LEX_CUR
+    SH R0, LEX_CUR
     JMP parser
 
 parse_data:
     ; Check if we have finished reading all data
-    LOAD R4, TOK_CODE
+    LH R4, TOK_CODE
     LB R4, [R4]
     CMP R2, R4
     JZ parse_set_is_data_false
 
-    LOAD R4, TOK_BYTE
+    LH R4, TOK_BYTE
     LB R4, [R4]
     CMP R2, R4
     JZ parse_byte
     
-    LOAD R4, TOK_WORD
+    LH R4, TOK_WORD
     LB R4, [R4]
     CMP R2, R4
     JZ parse_word
 
-    LOAD R4, TOK_ASCIIZ
+    LH R4, TOK_ASCIIZ
     LB R4, [R4]
     CMP R2, R4
     JZ parse_asciiz
@@ -357,28 +367,28 @@ parse_data:
 parse_byte:
     ; Skip 0 delimeters
     LB R2, [R0]     ; Current token is in R2
-    LOAD R3, 0
+    LH R3, 0
     CMP R2, R3
     JZ continue_parser
     ; Go to the first char of the string 
     INC R0
-    LOAD R1, R0
+    LH R1, R0
     CALL dec_to_int ; R0 is the OUTPUT, R1 is INPUT
-    LOAD R2, R0
+    LH R2, R0
     CALL push_byte  ; R2 is the INPUT
     ; SYS R2, 0x0002
     JMP continue_parser
 parse_word:
     ; Skip 0 delimeters
     LB R2, [R0]     ; Current token is in R2
-    LOAD R3, 0
+    LH R3, 0
     CMP R2, R3
     JZ continue_parser
     ; Go to the first char of the string 
     INC R0
-    LOAD R1, R0
+    LH R1, R0
     CALL dec_to_int ; R0 is the OUTPUT, R1 is INPUT
-    LOAD R2, R0
+    LH R2, R0
     CALL push_word  ; R2 is the INPUT
     ; SYS R2, 0x0002
     JMP continue_parser
@@ -388,49 +398,49 @@ parse_asciiz:
     CALL push_byte  ; R2 is the INPUT
     ; SYS R2, 0x0002
     ; Stop at 0 delimeter
-    LOAD R3, 0
+    LH R3, 0
     CMP R2, R3
     JNZ parse_asciiz
     JMP continue_parser
 parse_set_is_data_false:
-    LOAD R4, IS_DATA
-    LOAD R5, 0
+    LH R4, IS_DATA
+    LH R5, 0
     SB R5, [R4]
     JMP parser
 
 parse_code:
     ; Check if we should read data first
-    LOAD R4, TOK_DATA
+    LH R4, TOK_DATA
     LB R4, [R4]
     CMP R2, R4
     JZ parse_set_is_data_true
 
-    LOAD R4, TOK_OPCODE
+    LH R4, TOK_OPCODE
     LB R4, [R4]
     CMP R2, R4
     JZ parse_code_opcode
     
-    LOAD R4, TOK_REGISTER
+    LH R4, TOK_REGISTER
     LB R4, [R4]
     CMP R2, R4
     JZ parse_code_register
 
-    LOAD R4, TOK_IMMEDIATE
+    LH R4, TOK_IMMEDIATE
     LB R4, [R4]
     CMP R2, R4
     JZ parse_code_immediate
 
-    LOAD R4, TOK_ADDRESS
+    LH R4, TOK_ADDRESS
     LB R4, [R4]
     CMP R2, R4
     JZ parse_code_address
     
-    LOAD R4, TOK_INDIRECT
+    LH R4, TOK_INDIRECT
     LB R4, [R4]
     CMP R2, R4
     JZ parse_code_indirect
 
-    LOAD R4, TOK_SYMBOL
+    LH R4, TOK_SYMBOL
     LB R4, [R4]
     CMP R2, R4
     JZ parse_code_symbol
@@ -439,7 +449,7 @@ parse_code:
 parse_code_opcode:
     ; Skip 0 delimeters
     LB R2, [R0]     ; Current token is in R2
-    LOAD R3, 0
+    LH R3, 0
     CMP R2, R3
     JZ continue_parser
     ; Go to the first char of the string 
@@ -447,161 +457,161 @@ parse_code_opcode:
     LB R2, [R0]     ; Opcode is already a number
     CALL push_byte  ; R2 is the INPUT
     ; SYS R2, 0x0002
-    ; Add addressing byte if LOAD or STORE opcodes
-    LOAD R3, CODE_LOAD
+    ; Add addressing byte if LH or SH opcodes
+    LH R3, CODE_LH
     LB R3, [R3]
     CMP R2, R3
     JZ parse_addressing_byte_load
-    LOAD R3, CODE_STORE
+    LH R3, CODE_SH
     LB R3, [R3]
     CMP R2, R3
     JZ parse_addressing_byte_store
     JMP continue_parser
 parse_addressing_byte_load:
-    LOAD R9, 5
+    LH R9, 5
     ADD R0, R9
     LB R2, [R0]     ; Current token is in R2
 
-    LOAD R4, TOK_SYMBOL
+    LH R4, TOK_SYMBOL
     LB R4, [R4]
     CMP R2, R4
     JZ parse_addressing_byte_load_symbol
 
-    LOAD R4, TOK_REGISTER
+    LH R4, TOK_REGISTER
     LB R4, [R4]
     CMP R2, R4
     JZ parse_addressing_byte_load_register
 
-    LOAD R4, TOK_INDIRECT
+    LH R4, TOK_INDIRECT
     LB R4, [R4]
     CMP R2, R4
     JZ parse_addressing_byte_load_indirect
 
-    LOAD R4, TOK_ADDRESS
+    LH R4, TOK_ADDRESS
     LB R4, [R4]
     CMP R2, R4
     JZ parse_addressing_byte_load_address
 
-    LOAD R4, TOK_IMMEDIATE
+    LH R4, TOK_IMMEDIATE
     LB R4, [R4]
     CMP R2, R4
     JZ parse_addressing_byte_load_immediate
 
     JMP continue_parser
 parse_addressing_byte_load_symbol:
-    LOAD R2, 1
+    LH R2, 1
     CALL push_byte  ; R2 is the INPUT
     ; SYS R2, 0x0002
     JMP continue_parser
 parse_addressing_byte_load_register:
-    LOAD R2, 2
+    LH R2, 2
     CALL push_byte  ; R2 is the INPUT
     ; SYS R2, 0x0002
     JMP continue_parser
 parse_addressing_byte_load_indirect:
-    LOAD R2, 4
+    LH R2, 4
     CALL push_byte  ; R2 is the INPUT
     ; SYS R2, 0x0002
     JMP continue_parser
 parse_addressing_byte_load_address:
-    LOAD R2, 3
+    LH R2, 3
     CALL push_byte  ; R2 is the INPUT
     ; SYS R2, 0x0002
     JMP continue_parser
 parse_addressing_byte_load_immediate:
-    LOAD R2, 1
+    LH R2, 1
     CALL push_byte  ; R2 is the INPUT
     ; SYS R2, 0x0002
     JMP continue_parser
 parse_addressing_byte_store:
-    LOAD R9, 5
+    LH R9, 5
     ADD R0, R9
     LB R2, [R0]     ; Current token is in R2
 
-    LOAD R4, TOK_SYMBOL
+    LH R4, TOK_SYMBOL
     LB R4, [R4]
     CMP R2, R4
     JZ parse_addressing_byte_store_symbol
    
-    LOAD R4, TOK_ADDRESS
+    LH R4, TOK_ADDRESS
     LB R4, [R4]
     CMP R2, R4
     JZ parse_addressing_byte_store_address
 
-    LOAD R4, TOK_INDIRECT
+    LH R4, TOK_INDIRECT
     LB R4, [R4]
     CMP R2, R4
     JZ parse_addressing_byte_store_indirect
 
     JMP continue_parser
 parse_addressing_byte_store_symbol:
-    LOAD R2, 3
+    LH R2, 3
     CALL push_byte  ; R2 is the INPUT
     ; SYS R2, 0x0002
     JMP continue_parser
 parse_addressing_byte_store_address:
-    LOAD R2, 3
+    LH R2, 3
     CALL push_byte  ; R2 is the INPUT
     ; SYS R2, 0x0002
     JMP continue_parser
 parse_addressing_byte_store_indirect:
-    LOAD R2, 4
+    LH R2, 4
     CALL push_byte  ; R2 is the INPUT
     ; SYS R2, 0x0002
     JMP continue_parser
 parse_code_register:
     ; Skip 0 delimeters
     LB R2, [R0]     ; Current token is in R2
-    LOAD R3, 0
+    LH R3, 0
     CMP R2, R3
     JZ continue_parser
     ; Go to the first char of the string 
     INC R0
-    LOAD R1, R0
+    LH R1, R0
     CALL dec_to_int ; R0 is the OUTPUT, R1 is INPUT
-    LOAD R2, R0
+    LH R2, R0
     CALL push_byte  ; R2 is the INPUT
     ; SYS R2, 0x0002
     JMP continue_parser
 parse_code_immediate:
     ; Skip 0 delimeters
     LB R2, [R0]     ; Current token is in R2
-    LOAD R3, 0
+    LH R3, 0
     CMP R2, R3
     JZ continue_parser
     ; Go to the first char of the string 
     INC R0
-    LOAD R1, R0
+    LH R1, R0
     CALL dec_to_int ; R0 is the OUTPUT, R1 is INPUT
-    LOAD R2, R0
+    LH R2, R0
     CALL push_word  ; R2 is the INPUT
     ; SYS R2, 0x0002
     JMP continue_parser
 parse_code_address:
     ; Skip 0 delimeters
     LB R2, [R0]     ; Current token is in R2
-    LOAD R3, 0
+    LH R3, 0
     CMP R2, R3
     JZ continue_parser
     ; Go to the first char of the string 
     INC R0
-    LOAD R1, R0
+    LH R1, R0
     CALL hex_to_int ; R0 is the OUTPUT, R1 is INPUT
-    LOAD R2, R0
+    LH R2, R0
     CALL push_word  ; R2 is the INPUT
     ; SYS R2, 0x0002
     JMP continue_parser
 parse_code_indirect:
     ; Skip 0 delimeters
     LB R2, [R0]     ; Current token is in R2
-    LOAD R3, 0
+    LH R3, 0
     CMP R2, R3
     JZ continue_parser
     ; Go to the first char of the string 
     INC R0
-    LOAD R1, R0
+    LH R1, R0
     CALL dec_to_int ; R0 is the OUTPUT, R1 is INPUT
-    LOAD R2, R0
+    LH R2, R0
     CALL push_byte  ; R2 is the INPUT
     ; SYS R2, 0x0002
     JMP continue_parser
@@ -609,40 +619,40 @@ parse_code_symbol:
     ; Go to the first char of the string that we will compare to all strings in the symbol table
     INC R0 
     ; Reset SYM_CUR to be at SYM_START
-    LOAD R1, SYM_START
-    LOAD R1, [R1]
-    STORE R1, SYM_CUR
+    LH R1, SYM_START
+    LH R1, [R1]
+    SH R1, SYM_CUR
 loop_parse_code_symbol:
     ; Check if we have reached the end of symbol table
-    LOAD R3, SYM_END
-    LOAD R3, [R3]
-    LOAD R1, SYM_CUR
-    LOAD R1, [R1]
+    LH R3, SYM_END
+    LH R3, [R3]
+    LH R1, SYM_CUR
+    LH R1, [R1]
     CMP R1, R3
     JZ continue_parser
     ; INPUTS - R0 and R1 are starting addrs for the strings
     CALL fullstrcmp ; OUTPUT - R2 is 1 if equal, 0 if not
-    LOAD R4, 1
+    LH R4, 1
     CMP R2, R4
     JZ end_loop_parse_code_symbol
     ; Go the next symbol in the symbol table
 continue_loop_parse_code_symbol:
     INC R1 
     LB R2, [R1]
-    LOAD R4, 0
+    LH R4, 0
     CMP R2, R4
     JNZ continue_loop_parse_code_symbol
     ; Skip memory address for the string, and start on the first char of the next string
     INC R1
     INC R1
     INC R1
-    STORE R1, SYM_CUR
+    SH R1, SYM_CUR
     JMP loop_parse_code_symbol
 end_loop_parse_code_symbol:
     ; R1 has SYM_CUR addr in it
     INC R1 
     LB R2, [R1]
-    LOAD R4, 0
+    LH R4, 0
     CMP R2, R4
     JNZ end_loop_parse_code_symbol
     INC R1  ; Go onto the first byte of mem addr
@@ -655,35 +665,35 @@ end_loop_parse_code_symbol:
     ; SYS R2, 0x0002
     JMP continue_parser
 parse_set_is_data_true:
-    LOAD R4, IS_DATA
-    LOAD R5, 1
+    LH R4, IS_DATA
+    LH R5, 1
     SB R5, [R4]
     JMP parser
 
 prepare_write_file:
     ; Prepare data used in header
-    LOAD R0, HEADER_LENGTH
-    LOAD R0, [R0]
-    STORE R0, DATA_OFFSET
+    LH R0, HEADER_LENGTH
+    LH R0, [R0]
+    SH R0, DATA_OFFSET
 
-    LOAD R2, DATA_LENGTH
-    LOAD R2, [R2]
+    LH R2, DATA_LENGTH
+    LH R2, [R2]
     ADD R2, R0
-    STORE R2, CODE_OFFSET
+    SH R2, CODE_OFFSET
 
-    LOAD R5, ENTRY_POINT
-    LOAD R5, [R5]
-    STORE R2, ENTRY_POINT
+    LH R5, ENTRY_POINT
+    LH R5, [R5]
+    SH R2, ENTRY_POINT
 
-    LOAD R6, BIN_SIZE
-    LOAD R6, [R6]
+    LH R6, BIN_SIZE
+    LH R6, [R6]
     ADD R6, R0
     SUB R6, R2  ; Calculate the size of code (total - code_offset)
-    STORE R6, CODE_LENGTH
+    SH R6, CODE_LENGTH
     
     POP R0      ; Load memory address of file name
     PUSH R0
-    LOAD R2, PERIOD
+    LH R2, PERIOD
     LB R2, [R2]
     JMP loop_prepare_fn
 loop_prepare_fn:
@@ -694,87 +704,87 @@ loop_prepare_fn:
     JMP loop_prepare_fn
 rewrite_file_ext:
     INC R0
-    LOAD R2, 98  ; Replace a with b
+    LH R2, 98  ; Replace a with b
     SB R2, [R0]
     INC R0
-    LOAD R2, 105 ; Replace s with i
+    LH R2, 105 ; Replace s with i
     SB R2, [R0]
     INC R0
-    LOAD R2, 110 ; Replace m with n
+    LH R2, 110 ; Replace m with n
     SB R2, [R0]
     JMP open_output_file
 open_output_file:
     POP R0       ; Load memory address of file name
-    LOAD R1, 1   ; Open in write mode
+    LH R1, 1   ; Open in write mode
     SYS R0, 0x0100  ; R0 has file descriptor after this
-    LOAD R9, R0
+    LH R9, R0
     JMP write_header
 write_header:    
     ; Load data used in header
-    LOAD R3, DATA_OFFSET
-    LOAD R4, DATA_LENGTH
-    LOAD R5, CODE_OFFSET
-    LOAD R6, CODE_LENGTH
-    LOAD R7, ENTRY_POINT
+    LH R3, DATA_OFFSET
+    LH R4, DATA_LENGTH
+    LH R5, CODE_OFFSET
+    LH R6, CODE_LENGTH
+    LH R7, ENTRY_POINT
     
-    LOAD R2, 2   ; Num of bytes to write
-    LOAD R1, MAGIC_NUM
+    LH R2, 2   ; Num of bytes to write
+    LH R1, MAGIC_NUM
     SYS R0, 0x0102
-    LOAD R0, R9
-    LOAD R1, DATA_OFFSET
+    LH R0, R9
+    LH R1, DATA_OFFSET
     SYS R0, 0x0102
-    LOAD R0, R9
-    LOAD R1, DATA_LENGTH
+    LH R0, R9
+    LH R1, DATA_LENGTH
     SYS R0, 0x0102
-    LOAD R0, R9
-    LOAD R1, CODE_OFFSET
+    LH R0, R9
+    LH R1, CODE_OFFSET
     SYS R0, 0x0102
-    LOAD R0, R9
-    LOAD R1, CODE_LENGTH
+    LH R0, R9
+    LH R1, CODE_LENGTH
     SYS R0, 0x0102
-    LOAD R0, R9
-    LOAD R1, ENTRY_POINT
+    LH R0, R9
+    LH R1, ENTRY_POINT
     SYS R0, 0x0102
-    LOAD R0, R9
-    LOAD R1, RESERVED ; Write 4 bytes of reserved space for the header
+    LH R0, R9
+    LH R1, RESERVED ; Write 4 bytes of reserved space for the header
     SYS R0, 0x0102
-    LOAD R0, R9
+    LH R0, R9
     SYS R0, 0x0102
-    LOAD R0, R9
+    LH R0, R9
     JMP write_bin
 write_bin:
-    LOAD R1, PARSE_START
-    LOAD R1, [R1]
-    LOAD R2, PARSE_CUR  ; PARSE_CUR contains the last parser mem addr 
-    LOAD R2, [R2]
+    LH R1, PARSE_START
+    LH R1, [R1]
+    LH R2, PARSE_CUR  ; PARSE_CUR contains the last parser mem addr 
+    LH R2, [R2]
     SUB R2, R1          ; R2 contains number of bytes to write
     SYS R0, 0x0102      ; Write out the .bin file
-    LOAD R0, R9
+    LH R0, R9
     SYS R0, 0x0103      ; Close the file
     JMP end
 
 err:
     ; IF ERROR CODE = 0, ERR_CMD
-    LOAD R6, 0
+    LH R6, 0
     CMP R7, R6
     JZ err_cmd
 
-    LOAD R6, 1
+    LH R6, 1
     CMP R7, R6
     JZ err_fread
 
     JNZ err_unknown
 
 err_unknown:
-    LOAD R0, ERR_UNKNOWN
+    LH R0, ERR_UNKNOWN
 
 err_cmd:
-    LOAD R0, ERR_CMD
+    LH R0, ERR_CMD
     SYS R0, 0x0006
     JMP end
 
 err_fread:
-    LOAD R0, ERR_FREAD
+    LH R0, ERR_FREAD
     SYS R0, 0x0006
     JMP end
 
@@ -784,78 +794,78 @@ end:
 ; Check data and code directives
 lexer_if_period:
     INC R1  ; Move off the period and onto the first letter
-    LOAD R3, 1
+    LH R3, 1
 
-    LOAD R0, DATA
+    LH R0, DATA
     CALL strcmp ; Returns R2 as 1 if equal, 0 if not
     CMP R2, R3
     JZ data_is_true
-    LOAD R0, CODE
+    LH R0, CODE
     CALL strcmp ; Returns R2 as 1 if equal, 0 if not
-    LOAD R3, 1
+    LH R3, 1
     CMP R2, R3
     JZ code_is_true
     JMP lexer
 data_is_true:
     ; Move onto first letter after data directive
-    LOAD R0, 4
+    LH R0, 4
     ADD R1, R0
-    LOAD R5, R1
-    LOAD R0, 1  ; data directive is true
-    LOAD R3, IS_DATA 
+    LH R5, R1
+    LH R0, 1  ; data directive is true
+    LH R3, IS_DATA 
     SB R0, [R3]  ; Add num to start of HEAP
-    LOAD R2, TOK_DATA
+    LH R2, TOK_DATA
     LB R2, [R2]
     CALL push_token
-    LOAD R2, 0          ; Delimiter to see that the token has ended
+    LH R2, 0          ; Delimiter to see that the token has ended
     CALL push_token     ; R2 is the input
 
     JMP lexer
 code_is_true:
     ; Move onto first letter after code directive
-    LOAD R0, 4
+    LH R0, 4
     ADD R1, R0
-    LOAD R5, R1
-    LOAD R0, 0  ; code directive is true
-    LOAD R3, IS_DATA 
+    LH R5, R1
+    LH R0, 0  ; code directive is true
+    LH R3, IS_DATA 
     SB R0, [R3]  ; Add num to start of HEAP
-    LOAD R2, TOK_CODE
+    LH R2, TOK_CODE
     LB R2, [R2]
     CALL push_token
-    LOAD R2, 0          ; Delimiter to see that the token has ended
+    LH R2, 0          ; Delimiter to see that the token has ended
     CALL push_token     ; R2 is the input
 
     ; Update DATA_LENGTH
-    LOAD R2, BIN_SIZE
-    LOAD R2, [R2]
-    STORE R2, DATA_LENGTH
+    LH R2, BIN_SIZE
+    LH R2, [R2]
+    SH R2, DATA_LENGTH
 
     JMP lexer
 
 ; Handle lines in data directive
 lexer_if_eq_sign:
-    LOAD R5, R1
+    LH R5, R1
 while_not_newline1:
     DEC R5
-    LOAD R3, NEWLINE
+    LH R3, NEWLINE
     LB R3, [R3]
     LB R2, [R5]         ; LB only loads 1 byte (1 char) from HEAP at memory address R1
     CMP R2, R3
     JNZ while_not_newline1
-    LOAD R2, TOK_VAR
+    LH R2, TOK_VAR
     LB R2, [R2]
     CALL push_token     ; R2 is the input
 
     ; Load SYM_CUR
     PUSH R9
-    LOAD R9, SYM_CUR
-    LOAD R9, [R9]
+    LH R9, SYM_CUR
+    LH R9, [R9]
 
     JMP init_while_not_space
 init_while_not_space:
     INC R5
 while_not_space:
-    LOAD R3, SPACE
+    LH R3, SPACE
     LB R3, [R3]
     LB R2, [R5]         ; LB only loads 1 byte (1 char) from HEAP at memory address R1
     CMP R2, R3
@@ -867,7 +877,7 @@ while_not_space:
     INC R5
     JMP while_not_space
 after_while_not_space:
-    LOAD R2, 0          ; Delimiter to see that the token has ended
+    LH R2, 0          ; Delimiter to see that the token has ended
     CALL push_token     ; R2 is the input
     SB R2, [R9] ; Add delimiter to the symbol table
     ; SYS R2, 0x0003
@@ -877,7 +887,7 @@ after_while_not_space:
 continue_until_period:
     INC R5
     INC R1
-    LOAD R3, PERIOD
+    LH R3, PERIOD
     LB R3, [R3]
     LB R2, [R1]
     CMP R2, R3
@@ -887,44 +897,44 @@ continue_until_period:
     INC R1
     JMP handle_data_type
 handle_data_type:
-    LOAD R3, 1
+    LH R3, 1
 
-    LOAD R0, BYTE
+    LH R0, BYTE
     CALL strcmp ; Returns R2 as 1 if equal, 0 if not
     CMP R2, R3
     JZ data_is_byte
-    LOAD R0, WORD
+    LH R0, WORD
     CALL strcmp ; Returns R2 as 1 if equal, 0 if not
     CMP R2, R3
     JZ data_is_word
-    LOAD R0, ASCIIZ
+    LH R0, ASCIIZ
     CALL strcmp ; Returns R2 as 1 if equal, 0 if not
     CMP R2, R3
     JZ data_is_asciiz
     JMP lexer
 data_is_byte:
     ; .byte will only support numbers for now, does not support chars
-    LOAD R0, 5
+    LH R0, 5
     ADD R5, R0
     ADD R1, R0
-    LOAD R2, TOK_BYTE
+    LH R2, TOK_BYTE
     LB R2, [R2]
     CALL push_token     ; R2 is the input
 loop_while_byte:
     LB R2, [R1]
-    LOAD R3, SEMICOLON
+    LH R3, SEMICOLON
     LB R3, [R3]
     CMP R2, R3
     JZ update_byte_bin_size
-    LOAD R3, COMMA
+    LH R3, COMMA
     LB R3, [R3]
     CMP R2, R3
     JZ continue_loop_byte
-    LOAD R3, NEWLINE
+    LH R3, NEWLINE
     LB R3, [R3]
     CMP R2, R3
     JZ update_byte_bin_size
-    LOAD R3, SPACE
+    LH R3, SPACE
     LB R3, [R3]
     CMP R2, R3
     JZ continue_loop_byte
@@ -935,27 +945,27 @@ continue_loop_byte:
     INC R5
     JMP loop_while_byte
 data_is_word:
-    LOAD R0, 5
+    LH R0, 5
     ADD R5, R0
     ADD R1, R0
-    LOAD R2, TOK_WORD
+    LH R2, TOK_WORD
     LB R2, [R2]
     CALL push_token     ; R2 is the input
 loop_while_word:
     LB R2, [R1]
-    LOAD R3, SEMICOLON
+    LH R3, SEMICOLON
     LB R3, [R3]
     CMP R2, R3
     JZ update_word_bin_size
-    LOAD R3, COMMA
+    LH R3, COMMA
     LB R3, [R3]
     CMP R2, R3
     JZ continue_loop_word
-    LOAD R3, NEWLINE
+    LH R3, NEWLINE
     LB R3, [R3]
     CMP R2, R3
     JZ update_word_bin_size
-    LOAD R3, SPACE
+    LH R3, SPACE
     LB R3, [R3]
     CMP R2, R3
     JZ continue_loop_word
@@ -966,17 +976,17 @@ continue_loop_word:
     INC R5
     JMP loop_while_word
 data_is_asciiz:
-    LOAD R0, 8
+    LH R0, 8
     ADD R5, R0
     ADD R1, R0
-    LOAD R2, TOK_ASCIIZ
+    LH R2, TOK_ASCIIZ
     LB R2, [R2]
     CALL push_token     ; R2 is the input
     ; Track expected bin_size
-    LOAD R4, 0      ; R4 will track the size of the string
+    LH R4, 0      ; R4 will track the size of the string
 loop_while_string:
     LB R2, [R1]
-    LOAD R3, STR
+    LH R3, STR
     LB R3, [R3]
     CMP R2, R3
     JZ update_asciiz_bin_size
@@ -986,74 +996,74 @@ loop_while_string:
     INC R4
     JMP loop_while_string
 update_asciiz_bin_size:
-    LOAD R2, 0          ; Delimiter to see that the token has ended
+    LH R2, 0          ; Delimiter to see that the token has ended
     CALL push_token     ; R2 is the input
 
     ; Adds location in mem to the symbol table
-    LOAD R3, BIN_SIZE
-    LOAD R3, [R3]
+    LH R3, BIN_SIZE
+    LH R3, [R3]
     ; SYS R3, 0x0002
     ; SYS R2, 0x0003
-    STORE R3, [R9]
+    SH R3, [R9]
     INC R9
     INC R9
-    STORE R9, SYM_CUR
+    SH R9, SYM_CUR
     POP R9
 
     ; Update expected bin_size
     INC R4      ; Add 1 for the delimiter 0
-    LOAD R2, BIN_SIZE
-    LOAD R2, [R2]
+    LH R2, BIN_SIZE
+    LH R2, [R2]
     ADD R2, R4
-    STORE R2, BIN_SIZE
+    SH R2, BIN_SIZE
     
     JMP lexer
 update_byte_bin_size:
-    LOAD R2, 0          ; Delimiter to see that the token has ended
+    LH R2, 0          ; Delimiter to see that the token has ended
     CALL push_token     ; R2 is the input
 
     ; Adds location in mem to the symbol table
-    LOAD R3, BIN_SIZE
-    LOAD R3, [R3]
+    LH R3, BIN_SIZE
+    LH R3, [R3]
     ; SYS R3, 0x0002
     ; SYS R2, 0x0003
-    STORE R3, [R9]
+    SH R3, [R9]
     INC R9
     INC R9
-    STORE R9, SYM_CUR
+    SH R9, SYM_CUR
     POP R9
 
     ; Update expected bin_size
-    LOAD R2, BIN_SIZE
-    LOAD R2, [R2]
-    LOAD R3, MEM_BYTE
+    LH R2, BIN_SIZE
+    LH R2, [R2]
+    LH R3, MEM_BYTE
     LB R3, [R3]
     ADD R2, R3
-    STORE R2, BIN_SIZE
+    SH R2, BIN_SIZE
     
     JMP lexer
 update_word_bin_size:
-    LOAD R2, 0          ; Delimiter to see that the token has ended
+    LH R2, 0          ; Delimiter to see that the token has ended
     CALL push_token     ; R2 is the input
 
     ; Adds location in mem to the symbol table
-    LOAD R3, BIN_SIZE
-    LOAD R3, [R3]
+    LH R3, BIN_SIZE
+    LH R3, [R3]
     ; SYS R3, 0x0002
     ; SYS R2, 0x0003
-    STORE R3, [R9]
+    SH R3, [R9]
     INC R9
     INC R9
-    STORE R9, SYM_CUR
+    SH R9, SYM_CUR
     POP R9
 
     ; Update expected bin_size
-    LOAD R2, BIN_SIZE
-    LOAD R2, [R2]
-    LOAD R3, MEM_WORD
+    LH R2, BIN_SIZE
+    LH R2, [R2]
+    LH R3, MEM_WORD
     LB R3, [R3]
     ADD R2, R3
-    STORE R2, BIN_SIZE
+    SH R2, BIN_SIZE
     
     JMP lexer
 
@@ -1062,7 +1072,7 @@ lexer_if_semicolon:
     ; Skip all chars until next new line
     INC R1
     INC R5
-    LOAD R4, NEWLINE
+    LH R4, NEWLINE
     LB R3, [R4]
     LB R2, [R1]         ; LB only loads 1 byte (1 char) from HEAP at memory address R1
     CMP R2, R3
@@ -1073,21 +1083,21 @@ lexer_if_semicolon:
 lexer_if_colon:
     ; Load SYM_CUR
     PUSH R9
-    LOAD R9, SYM_CUR
-    LOAD R9, [R9]
+    LH R9, SYM_CUR
+    LH R9, [R9]
 
     ; Get all chars before the colon but after the newline char
-    LOAD R5, R1
-    LOAD R2, TOK_LABEL
+    LH R5, R1
+    LH R2, TOK_LABEL
     LB R2, [R2]
     CALL push_token     ; R2 is the input
 while_not_newline:
     DEC R5
-    LOAD R3, SRC_START
-    LOAD R3, [R3]  ; We want to ensure we don't go past the beginning of SRC
+    LH R3, SRC_START
+    LH R3, [R3]  ; We want to ensure we don't go past the beginning of SRC
     CMP R5, R3
     JZ if_label_at_start
-    LOAD R3, NEWLINE
+    LH R3, NEWLINE
     LB R3, [R3]
     LB R2, [R5]         ; LB only loads 1 byte (1 char) from HEAP at memory address R1
     CMP R2, R3
@@ -1107,7 +1117,7 @@ while_not_colon:
     INC R9      ; Update SYM_CUR
     JMP while_not_colon
 end_if_colon:
-    LOAD R2, 0
+    LH R2, 0
     CALL push_token     ; R2 is the input
     ; Set R1 and R5 to be at the char after the colon
     INC R5
@@ -1117,14 +1127,14 @@ end_if_colon:
     ; SYS R2, 0x0003
     INC R9      ; Update SYM_CUR
     ; Adds location in mem to the symbol table
-    LOAD R3, BIN_SIZE
-    LOAD R3, [R3]
+    LH R3, BIN_SIZE
+    LH R3, [R3]
     ; SYS R3, 0x0002
     ; SYS R2, 0x0003
-    STORE R3, [R9]
+    SH R3, [R9]
     INC R9
     INC R9
-    STORE R9, SYM_CUR
+    SH R9, SYM_CUR
     POP R9
 
     JMP lexer
@@ -1143,52 +1153,52 @@ lexer_if_space_valid:
     PUSH R4
     PUSH R6
     PUSH R7
-    LOAD R2, TOK_OPCODE
+    LH R2, TOK_OPCODE
     LB R2, [R2]
     CALL push_token     ; R2 is the input
 
-    LOAD R8, 0             ; R8 is a counter for which opcode we are on
-    LOAD R0, STR_NOP       ; Opcodes are in contigiuous mem, 1st opcode is NOP
+    LH R8, 0             ; R8 is a counter for which opcode we are on
+    LH R0, STR_NOP       ; Opcodes are in contigiuous mem, 1st opcode is NOP
 lexer_loop_space:
     ; Check if we have checked all available opcodes
-    LOAD R7, OPCODE_END
+    LH R7, OPCODE_END
     CMP R7, R8
     JZ end_lexer_if_space
     ; Compare opcode string to current string
     PUSH R1
-    LOAD R1, R5 ; R5 is the starting address
+    LH R1, R5 ; R5 is the starting address
     CALL opcode_strcmp ; Outputs to R2
     POP R1
-    LOAD R4, 1
+    LH R4, 1
     CMP R2, R4
     JNZ loop_until_next_opcode
     ; Opcode found
-    LOAD R2, R8         ; R8 contains the opcode 
+    LH R2, R8         ; R8 contains the opcode 
     CALL push_token
     ; Update expected bin_size
-    LOAD R2, BIN_SIZE
-    LOAD R2, [R2]
-    LOAD R3, MEM_OPCODE
+    LH R2, BIN_SIZE
+    LH R2, [R2]
+    LH R3, MEM_OPCODE
     LB R3, [R3]
     ADD R2, R3
-    ; If opcode is LOAD or STORE, add 1 more for addressing
-    LOAD R3, CODE_LOAD
+    ; If opcode is LH or SH, add 1 more for addressing
+    LH R3, CODE_LH
     LB R3, [R3]
     CMP R8, R3
     JZ add_addressing_byte
-    LOAD R3, CODE_STORE
+    LH R3, CODE_SH
     LB R3, [R3]
     CMP R8, R3
     JZ add_addressing_byte
     JMP store_bin_size
 store_bin_size:
-    STORE R2, BIN_SIZE
+    SH R2, BIN_SIZE
     JMP get_operators   ; The addr in R1 is on a space at this point
 add_addressing_byte:
     INC R2
     JMP store_bin_size
 loop_until_next_opcode:
-    LOAD R4, 0 
+    LH R4, 0 
     LB R3, [R0]     ; Loads the current char
     INC R0
     CMP R3, R4      ; Check if we have reached the opcode
@@ -1208,37 +1218,37 @@ end_lexer_if_space:
 
 get_operators:
     INC R1 ; Go from the space to the first letter of the first operator
-    LOAD R9, 0  ; Counting var for operator
-    LOAD R2, OPCODE_0_OPER
+    LH R9, 0  ; Counting var for operator
+    LH R2, OPCODE_0_OPER
     LB R2, [R2]
     CMP R8, R2  ; Compare smaller value first since JLE is signed comparison (we need it to act signed)
     JLE finish_parse_oper
     INC R9
-    LOAD R2, OPCODE_1_OPER
+    LH R2, OPCODE_1_OPER
     LB R2, [R2]
     CMP R8, R2
     JLE parse_operators
     INC R9
-    LOAD R2, OPCODE_2_OPER
+    LH R2, OPCODE_2_OPER
     LB R2, [R2]
     CMP R8, R2
     JLE parse_operators
-    LOAD R9, 0  ; Immediately go to parse_symbol and then end
-    LOAD R2, OPCODE_LABEL_OPER
+    LH R9, 0  ; Immediately go to parse_symbol and then end
+    LH R2, OPCODE_LABEL_OPER
     LB R2, [R2]
     CMP R8, R2
     JLE parse_symbol
 parse_operators:
-    LOAD R4, 0
+    LH R4, 0
     CMP R9, R4
     JZ finish_parse_oper
     DEC R9
-    LOAD R2, 0          ; Delimiter to see that the token has ended
+    LH R2, 0          ; Delimiter to see that the token has ended
     CALL push_token     ; R2 is the input
     JMP check_reg
 check_reg:
     ; Checks if first letter is R, not enough info to know it's a register
-    LOAD R4, REG
+    LH R4, REG
     LB R3, [R4]
     LB R2, [R1]
     CMP R2, R3 
@@ -1247,29 +1257,29 @@ check_reg:
     INC R1
     LB R2, [R1]
     ; Compare next char with numbers
-    LOAD R4, 48
+    LH R4, 48
     CMP R2, R4
     JL reset_then_check_rbrace
-    LOAD R4, 57
+    LH R4, 57
     CMP R2, R4
     JG reset_then_check_rbrace
      ; Move to next char to see if it's a newline, space, comma, eol
     INC R1
     LB R2, [R1]
     ; Compare next char with delimiters
-    LOAD R4, NEWLINE
+    LH R4, NEWLINE
     LB R4, [R4]
     CMP R2, R4
     JZ reset_then_if_reg
-    LOAD R4, SPACE
+    LH R4, SPACE
     LB R4, [R4]
     CMP R2, R4
     JZ reset_then_if_reg
-    LOAD R4, COMMA
+    LH R4, COMMA
     LB R4, [R4]
     CMP R2, R4
     JZ reset_then_if_reg
-    LOAD R4, 0
+    LH R4, 0
     CMP R2, R4
     JZ reset_then_if_reg
     DEC R1  ; Move back one char to the num
@@ -1282,7 +1292,7 @@ reset_then_if_reg:
     DEC R1
     JMP if_reg
 if_reg:
-    LOAD R2, TOK_REGISTER
+    LH R2, TOK_REGISTER
     LB R2, [R2]
     CALL push_token     ; R2 is the input
 
@@ -1293,27 +1303,27 @@ if_reg:
     INC R1  ; space
 
     ; Update expected bin_size
-    LOAD R2, BIN_SIZE
-    LOAD R2, [R2]
-    LOAD R3, MEM_REGISTER
+    LH R2, BIN_SIZE
+    LH R2, [R2]
+    LH R3, MEM_REGISTER
     LB R3, [R3]
     ADD R2, R3
-    STORE R2, BIN_SIZE
+    SH R2, BIN_SIZE
 
     ; Skip 1 more char only if we still need to get one more operator
-    LOAD R4, 1
+    LH R4, 1
     CMP R9, R4
     JNZ parse_operators
     INC R1  ; Next operator first char
     JMP parse_operators
 check_rbrace:
-    LOAD R4, RBRACE
+    LH R4, RBRACE
     LB R3, [R4]
     CMP R2, R3 
     JZ if_rbrace
     JNZ check_addr
 if_rbrace:
-    LOAD R2, TOK_INDIRECT
+    LH R2, TOK_INDIRECT
     LB R2, [R2]
     CALL push_token     ; R2 is the input
 
@@ -1325,22 +1335,22 @@ if_rbrace:
     INC R1  ; space
 
     ; Update expected bin_size
-    LOAD R2, BIN_SIZE
-    LOAD R2, [R2]
-    LOAD R3, MEM_INDIRECT
+    LH R2, BIN_SIZE
+    LH R2, [R2]
+    LH R3, MEM_INDIRECT
     LB R3, [R3]
     ADD R2, R3
-    STORE R2, BIN_SIZE
+    SH R2, BIN_SIZE
 
     JMP parse_operators
 check_addr:
-    LOAD R4, ADDR1
+    LH R4, ADDR1
     LB R3, [R4]
     CMP R2, R3 
     JZ if_addr
     JNZ check_num
 if_addr:
-    LOAD R4, ADDR2
+    LH R4, ADDR2
     LB R3, [R4]
     ; Check if the second letter is x
     INC R1
@@ -1352,20 +1362,20 @@ if_addr:
     LB R2, [R1]
     JMP check_num
 init_loop_if_addr:
-    LOAD R4, 6
-    LOAD R6, 0
+    LH R4, 6
+    LH R6, 0
     DEC R1
-    LOAD R2, TOK_ADDRESS
+    LH R2, TOK_ADDRESS
     LB R2, [R2]
     CALL push_token     ; R2 is the input
 
     ; Update expected bin_size
-    LOAD R2, BIN_SIZE
-    LOAD R2, [R2]
-    LOAD R3, MEM_ADDRESS
+    LH R2, BIN_SIZE
+    LH R2, [R2]
+    LH R3, MEM_ADDRESS
     LB R3, [R3]
     ADD R2, R3
-    STORE R2, BIN_SIZE
+    SH R2, BIN_SIZE
 
     JMP loop_if_addr
 loop_if_addr:
@@ -1379,25 +1389,25 @@ loop_if_addr:
 check_num:  
     ; Checks if the char is an ascii val from 48-57, which are the digits 0-9
     LB R2, [R1]
-    LOAD R3, 48
+    LH R3, 48
     CMP R2, R3
     JL parse_symbol
-    LOAD R3, 57
+    LH R3, 57
     CMP R2, R3
     JG parse_symbol
     JMP else_num
 else_num:
-    LOAD R2, TOK_IMMEDIATE
+    LH R2, TOK_IMMEDIATE
     LB R2, [R2]
     CALL push_token     ; R2 is the input
 
     ; Update expected bin_size
-    LOAD R2, BIN_SIZE
-    LOAD R2, [R2]
-    LOAD R3, MEM_IMMEDIATE
+    LH R2, BIN_SIZE
+    LH R2, [R2]
+    LH R3, MEM_IMMEDIATE
     LB R3, [R3]
     ADD R2, R3
-    STORE R2, BIN_SIZE
+    SH R2, BIN_SIZE
 
     JMP else_num_loop
 else_num_loop:
@@ -1406,27 +1416,27 @@ else_num_loop:
     CALL push_token     ; R2 is the input
     INC R1
     LB R2, [R1]         ; LB only loads 1 byte (1 char) from HEAP at memory address R1
-    LOAD R4, SPACE
+    LH R4, SPACE
     LB R3, [R4]
     CMP R2, R3
     JZ parse_operators
-    LOAD R4, NEWLINE
+    LH R4, NEWLINE
     LB R3, [R4]
     CMP R2, R3
     JZ parse_operators
     JNZ else_num_loop
 parse_symbol:
-    LOAD R2, TOK_SYMBOL
+    LH R2, TOK_SYMBOL
     LB R2, [R2]
     CALL push_token     ; R2 is the input
 
     ; Update expected bin_size
-    LOAD R2, BIN_SIZE
-    LOAD R2, [R2]
-    LOAD R3, MEM_SYMBOL
+    LH R2, BIN_SIZE
+    LH R2, [R2]
+    LH R3, MEM_SYMBOL
     LB R3, [R3]
     ADD R2, R3
-    STORE R2, BIN_SIZE
+    SH R2, BIN_SIZE
 
 parse_symbol_loop:
     LB R2, [R1]
@@ -1434,20 +1444,20 @@ parse_symbol_loop:
     INC R1
 
     LB R2, [R1]         ; LB only loads 1 byte (1 char) from HEAP at memory address R1
-    LOAD R4, SPACE
+    LH R4, SPACE
     LB R3, [R4]
     CMP R2, R3
     JZ parse_operators
 
-    LOAD R4, NEWLINE
+    LH R4, NEWLINE
     LB R3, [R4]
     CMP R2, R3
     JZ parse_operators
     JNZ parse_symbol_loop
 finish_parse_oper:
-    LOAD R2, 0          ; Delimiter to see that the token has ended
+    LH R2, 0          ; Delimiter to see that the token has ended
     CALL push_token     ; R2 is the input
-    LOAD R5, R1 ; Copy as the new starting index
+    LH R5, R1 ; Copy as the new starting index
     JMP end_lexer_if_space
 
 ; Well-defined, self-contained functions
@@ -1458,16 +1468,16 @@ strcmp:
     PUSH R6
     PUSH R7
 
-    LOAD R2, 1      ; R2 - Output (0 if not equal, 1 if equal)
-    LOAD R6, R0     ; R0 - Starting address of first string 
-    LOAD R7, R1     ; R1 - Starting address of second string
+    LH R2, 1      ; R2 - Output (0 if not equal, 1 if equal)
+    LH R6, R0     ; R0 - Starting address of first string 
+    LH R7, R1     ; R1 - Starting address of second string
 loop_strcmp:
     ; Load the characters at each address
     LB R3, [R6]
     LB R4, [R7]
 
     ; Checks if the end of any string is reached
-    LOAD R5, 0
+    LH R5, 0
     CMP R3, R5
     JZ ret_strcmp
     CMP R4, R5
@@ -1480,7 +1490,7 @@ loop_strcmp:
     INC R7
     JMP loop_strcmp
 break_strcmp:
-    LOAD R2, 0
+    LH R2, 0
 ret_strcmp:
     POP R7
     POP R6
@@ -1496,16 +1506,16 @@ fullstrcmp:
     PUSH R6
     PUSH R7
 
-    LOAD R2, 1      ; R2 - Output (0 if not equal, 1 if equal)
-    LOAD R6, R0     ; R0 - Starting address of first string 
-    LOAD R7, R1     ; R1 - Starting address of second string
+    LH R2, 1      ; R2 - Output (0 if not equal, 1 if equal)
+    LH R6, R0     ; R0 - Starting address of first string 
+    LH R7, R1     ; R1 - Starting address of second string
 loop_fullstrcmp:
     ; Load the characters at each address
     LB R3, [R6]
     LB R4, [R7]
 
     ; Checks if both strings end at the same time
-    LOAD R5, 0
+    LH R5, 0
     CMP R3, R5
     JZ check_s2_fullstrcmp
     CMP R4, R5
@@ -1521,7 +1531,7 @@ check_s2_fullstrcmp:
     CMP R4, R5
     JZ ret_fullstrcmp
 break_fullstrcmp:
-    LOAD R2, 0
+    LH R2, 0
 ret_fullstrcmp:
     POP R7
     POP R6
@@ -1537,22 +1547,22 @@ opcode_strcmp:
     PUSH R6
     PUSH R7
 
-    LOAD R2, 1      ; R2 - Output (0 if not equal, 1 if equal)
-    LOAD R6, R0     ; R0 - Starting address of first string 
-    LOAD R7, R1     ; R1 - Starting address of second string
+    LH R2, 1      ; R2 - Output (0 if not equal, 1 if equal)
+    LH R6, R0     ; R0 - Starting address of first string 
+    LH R7, R1     ; R1 - Starting address of second string
 loop_opcode_strcmp:
     ; Load the characters at each address
     LB R3, [R6]
     LB R4, [R7]
 
     ; Checks if both strings end at the same time
-    LOAD R5, 0
+    LH R5, 0
     CMP R3, R5
     JZ check_s2_opcode_strcmp
-    LOAD R5, 32
+    LH R5, 32
     CMP R3, R5
     JZ check_s2_opcode_strcmp
-    LOAD R5, 10
+    LH R5, 10
     CMP R3, R5
     JZ check_s2_opcode_strcmp
 
@@ -1563,18 +1573,18 @@ loop_opcode_strcmp:
     INC R7
     JMP loop_opcode_strcmp
 check_s2_opcode_strcmp:
-    LOAD R5, 32
+    LH R5, 32
     CMP R4, R5
     JZ ret_opcode_strcmp
-    LOAD R5, 0
+    LH R5, 0
     CMP R4, R5
     JZ ret_opcode_strcmp
-    LOAD R5, 10
+    LH R5, 10
     CMP R4, R5
     JZ ret_opcode_strcmp
     JMP break_opcode_strcmp
 break_opcode_strcmp:
-    LOAD R2, 0
+    LH R2, 0
 ret_opcode_strcmp:
     POP R7
     POP R6
@@ -1586,7 +1596,7 @@ ret_opcode_strcmp:
 print_debug:
     PUSH R3
 
-    LOAD R3, DEBUG
+    LH R3, DEBUG
     SYS R3, 0x0006
     
     POP R3
@@ -1595,12 +1605,12 @@ print_debug:
 push_token:
     PUSH R3
 
-    LOAD R3, LEX_CUR
-    LOAD R3, [R3]
+    LH R3, LEX_CUR
+    LH R3, [R3]
 
     SB R2, [R3]     ; R2 - Input token
     INC R3
-    STORE R3, LEX_CUR
+    SH R3, LEX_CUR
 
     POP R3
     RET
@@ -1608,12 +1618,12 @@ push_token:
 push_byte:
     PUSH R3
 
-    LOAD R3, PARSE_CUR
-    LOAD R3, [R3]
+    LH R3, PARSE_CUR
+    LH R3, [R3]
 
     SB R2, [R3]     ; R2 - Input byte
     INC R3
-    STORE R3, PARSE_CUR
+    SH R3, PARSE_CUR
 
     POP R3
     RET
@@ -1621,13 +1631,13 @@ push_byte:
 push_word:
     PUSH R3
 
-    LOAD R3, PARSE_CUR
-    LOAD R3, [R3]
+    LH R3, PARSE_CUR
+    LH R3, [R3]
 
-    STORE R2, [R3]     ; R2 - Input word
+    SH R2, [R3]     ; R2 - Input word
     INC R3
     INC R3
-    STORE R3, PARSE_CUR
+    SH R3, PARSE_CUR
 
     POP R3
     RET
@@ -1638,15 +1648,15 @@ dec_to_int:
     ; OUTPUT - R0
     ; INPUT - R1 is the address to start of the decimal string -> Copied into local R2
     PUSH R5
-    LOAD R5, 0
+    LH R5, 0
     PUSH R4
-    LOAD R4, 10
+    LH R4, 10
     PUSH R3
-    LOAD R3, 48
+    LH R3, 48
     PUSH R2
-    LOAD R2, R1 ; Save local copy of R1, aka don't operate on the pointer
+    LH R2, R1 ; Save local copy of R1, aka don't operate on the pointer
     PUSH R1
-    LOAD R0, 0
+    LH R0, 0
 loop_dec_to_int:
     LB R1, [R2] ; R1 contains the ASCII value
     CMP R1, R5  ; Check if we have reached the delimiter
@@ -1670,19 +1680,19 @@ hex_to_int:
     ; OUTPUT - R0
     ; INPUT - R1 is the address to start of the hex string -> Copied into local R2
     PUSH R7
-    LOAD R7, 57
+    LH R7, 57
     PUSH R6
-    LOAD R6, 55
+    LH R6, 55
     PUSH R5
-    LOAD R5, 0
+    LH R5, 0
     PUSH R4
-    LOAD R4, 16
+    LH R4, 16
     PUSH R3
-    LOAD R3, 48
+    LH R3, 48
     PUSH R2
-    LOAD R2, R1 ; Save local copy of R1 to avoid operating on the pointer
+    LH R2, R1 ; Save local copy of R1 to avoid operating on the pointer
     PUSH R1
-    LOAD R0, 0  ; Initalize the output R0 to 0
+    LH R0, 0  ; Initalize the output R0 to 0
     INC R2      ; Skip 0
     INC R2      ; Skip x
 loop_hex_to_int:

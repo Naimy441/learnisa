@@ -473,3 +473,6 @@ For the C language you develop, write some simple programs to help with memory:
 - Structs should be padded
 - Declaring functions and defining functions so we can call functions before they are defined
 - Make C runtime libraries and linkers to use them with #include
+
+Implement the goto keyword in C with labels with basic if statements and basic C data handling.
+This will be the first way to get out of Assembly, and allow you to quickly rewrite the assembler very quickly.

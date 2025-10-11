@@ -35,16 +35,16 @@ class Opcode(Enum):
     CMP   = (26, 3) # CMP Rx, Ry      - Computes Rx - Ry, updates flags      - 1 + 1 + 1 = 3 bytes
     SYS   = (27, 4) # SYS Rx, Port    - Runs kernel level instruction        - 1 + 1 + 2 = 4 bytes
     # Labels
-    CALL  = (28, 3) # CALL Addr       - Jumps to Addr, saves Addr to stack   - 1 + 2 = 3 bytes
-    JMP   = (29, 3) # JMP Addr        - Sets PC to instr Addr                - 1 + 2 = 3 bytes            - Limits code to 64kb, needs segmentation/paging to fix
-    JZ    = (30, 3) # JZ Addr         - Sets PC to instr Addr if Z           - 1 + 2 = 3 bytes
-    JNZ   = (31, 3) # JNZ Addr        - Sets PC to instr Addr if ~Z          - 1 + 2 = 3 bytes
-    JC    = (32, 3) # JC Addr         - Sets PC to instr Addr if C           - 1 + 2 = 3 bytes
-    JNC   = (33, 3) # JNC Addr        - Sets PC to instr Addr if ~C          - 1 + 2 = 3 bytes
-    JL    = (34, 3) # JL Addr         - Sets PC to instr Addr if S!=O        - 1 + 2 = 3 bytes
-    JLE   = (35, 3) # JLE Addr        - Sets PC to instr Addr if Z=1|S!=O    - 1 + 2 = 3 bytes
-    JG    = (36, 3) # JG Addr         - Sets PC to instr Addr if Z=0&S=O     - 1 + 2 = 3 bytes
-    JGE   = (37, 3) # JGE Addr        - Sets PC to instr Addr if S=O         - 1 + 2 = 3 bytes
+    CALL  = (28, 9) # CALL Addr       - Jumps to Addr, saves Addr to stack   - 1 + 8 = 9 bytes
+    JMP   = (29, 9) # JMP Addr        - Sets PC to instr Addr                - 1 + 8 = 9 bytes            - Limits code to 64kb, needs segmentation/paging to fix
+    JZ    = (30, 9) # JZ Addr         - Sets PC to instr Addr if Z           - 1 + 8 = 9 bytes
+    JNZ   = (31, 9) # JNZ Addr        - Sets PC to instr Addr if ~Z          - 1 + 8 = 9 bytes
+    JC    = (32, 9) # JC Addr         - Sets PC to instr Addr if C           - 1 + 8 = 9 bytes
+    JNC   = (33, 9) # JNC Addr        - Sets PC to instr Addr if ~C          - 1 + 8 = 9 bytes
+    JL    = (34, 9) # JL Addr         - Sets PC to instr Addr if S!=O        - 1 + 8 = 9 bytes
+    JLE   = (35, 9) # JLE Addr        - Sets PC to instr Addr if Z=1|S!=O    - 1 + 8 = 9 bytes
+    JG    = (36, 9) # JG Addr         - Sets PC to instr Addr if Z=0&S=O     - 1 + 8 = 9 bytes
+    JGE   = (37, 9) # JGE Addr        - Sets PC to instr Addr if S=O         - 1 + 8 = 9 bytes
     
     def __new__(cls, code, length):
         obj = object.__new__(cls)

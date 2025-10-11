@@ -1,10 +1,10 @@
-LOAD R0, 65535
+LD R0, 18446744073709551615
 INC R0
 JC carry_branch
-LOAD R0, 1
+LD R0, 1
 JMP end
 carry_branch:
-LOAD R0, 99
+LD R0, 99
 end:
 HALT
 ; Expected: R0 = 99 (jump taken because carry flag set)

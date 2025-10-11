@@ -11,7 +11,7 @@ main:
     POP R2                ; R2 = argc
     
     ; Check if we have at least 2 arguments
-    LOAD R3, 2
+    LH R3, 2
     CMP R2, R3
     JC insufficient_args  ; Jump if argc < 2
     
@@ -22,9 +22,9 @@ main:
     POP R5                ; R5 = pointer to arg2
     
     ; Copy first string to result buffer
-    LOAD R0, result_buffer ; R0 = destination pointer
+    LH R0, result_buffer ; R0 = destination pointer
     MOV R1, R4            ; R1 = source pointer (arg1)
-    LOAD R2, 0            ; R2 = null terminator for comparison
+    LH R2, 0            ; R2 = null terminator for comparison
     
 copy_first_string:
     LB R3, [R1]           ; Load byte from source
@@ -49,8 +49,8 @@ copy_second_loop:
     
 print_result:
     ; Print the concatenated result
-    LOAD R0, result_buffer ; R0 = result buffer pointer
-    LOAD R1, 0            ; R1 = null terminator for comparison
+    LH R0, result_buffer ; R0 = result buffer pointer
+    LH R1, 0            ; R1 = null terminator for comparison
     
 print_loop:
     LB R2, [R0]           ; Load byte from result
@@ -61,21 +61,21 @@ print_loop:
     JMP print_loop        ; Continue printing
 
 print_newline:
-    LOAD R0, 10           ; ASCII code for newline '\n'
+    LH R0, 10           ; ASCII code for newline '\n'
     SYS R0, 0x0005        ; Print newline
     JMP end_program       ; Exit
     
 insufficient_args:
     ; Print error message for insufficient arguments
-    LOAD R0, 69           ; 'E'
+    LH R0, 69           ; 'E'
     SYS R0, 0x0005
-    LOAD R0, 114          ; 'r'
+    LH R0, 114          ; 'r'
     SYS R0, 0x0005
-    LOAD R0, 114          ; 'r'
+    LH R0, 114          ; 'r'
     SYS R0, 0x0005
-    LOAD R0, 111          ; 'o'
+    LH R0, 111          ; 'o'
     SYS R0, 0x0005
-    LOAD R0, 114          ; 'r'
+    LH R0, 114          ; 'r'
     SYS R0, 0x0005
     JMP end_program
     

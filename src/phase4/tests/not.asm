@@ -1,4 +1,4 @@
-LOAD R0, 170
+LD R0, 170
 NOT R0
 HALT
-; Expected: R0 = 65365
+; Expected: R0 = 18446744073709551445 (64-bit NOT of 170)
