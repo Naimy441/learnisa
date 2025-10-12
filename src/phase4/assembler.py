@@ -30,8 +30,8 @@ class Assembler:
     
     # Turn Assembly into Binary Executeable
     def validate_rx_ry(self, opcode, line):
-        rx = int(line[1][1])
-        ry = int(line[2][1])
+        rx = int(line[1][1:])
+        ry = int(line[2][1:])
         if rx >= 0 and rx < self.MAX_REG and ry >= 0 and ry < self.MAX_REG:
             return [
                 opcode.value & self.B_MASK,
@@ -42,7 +42,7 @@ class Assembler:
             raise ValueError(f"Invalid register (0 <= rx,ry < {self.MAX_REG}): rx={rx}, ry={ry}")
 
     def validate_rx_addr(self, opcode, line, is_symbol, word_type=4):
-        rx = int(line[1][1])
+        rx = int(line[1][1:])
         if rx >= 0 and rx < self.MAX_REG:
             addr = int(line[2], 0)
             lower_bound = 0 if is_symbol else self.DATA_LENGTH
@@ -88,7 +88,7 @@ class Assembler:
             raise ValueError(f"Invalid register (0 <= rx < {self.MAX_REG}): rx={rx}")
 
     def validate_rx_val(self, opcode, line, is_symbol, word_type=4):
-        rx = int(line[1][1])
+        rx = int(line[1][1:])
         if rx >= 0 and rx < self.MAX_REG:
             val = int(line[2], 0)
             if word_type == 2:
@@ -133,7 +133,7 @@ class Assembler:
             raise ValueError(f"Invalid register (0 <= rx < {self.MAX_REG}): rx={rx}")
 
     def validate_rx_indr(self, opcode, line):
-        rx = int(line[1][1])
+        rx = int(line[1][1:])
         ry = int(line[2][2:-1])
         if rx >= 0 and rx < self.MAX_REG and ry >= 0 and ry < self.MAX_REG:
             return [
@@ -145,7 +145,7 @@ class Assembler:
             raise ValueError(f"Invalid register ({self.DATA_LENGTH} <= rx, ry < {self.MAX_REG}): rx={rx}, ry={ry}")
 
     def validate_rx(self, opcode, line):
-        rx = int(line[1][1])
+        rx = int(line[1][1:])
         if rx >= 0 and rx < self.MAX_REG:
             return [
                 opcode.value & self.B_MASK,

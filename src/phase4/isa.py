@@ -848,8 +848,15 @@ class ISA:
                     mode = cinstr.pop(1)
 
                     if mode == 0x03:  # Absolute address
-                        rx, addr = self.decode_rx_addr(cinstr)
-                        self.SH(rx, addr, 2)
+                        rx = cinstr[1]
+                        addr = (
+                            cinstr[2] |
+                            cinstr[2 + 1] << 8
+                        ) & self.HW_MASK
+                        if rx >= 0 and rx < self.MAX_REG and addr >= 0 and addr < self.MEM_SIZE - 1:
+                            self.SH(rx, addr, 2)
+                        else:
+                            raise ValueError(f"Invalid register ({rx}) or address ({addr})")
                     elif mode == 0x04:  # Indirect
                         rx = cinstr[1]
                         ry = cinstr[2]

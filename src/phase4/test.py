@@ -176,6 +176,26 @@ class TestRunner:
             ("call", {0: 3}),
             ("ret", {0: 42}),
             ("halt", {0: 1}),
+            # Comprehensive load/store test - checking key registers from final state
+            ("64bit", {
+                0: 0x9ABCDEF0,      # Cross-size test: word from doubleword
+                1: 0xDEF0,          # Cross-size test: halfword from doubleword  
+                2: 0xF0,            # Cross-size test: byte from doubleword
+                4: 0xFF,            # LB test with max value
+                5: 0x1234,          # LH immediate test
+                7: 0x1234,          # LH absolute address test
+                10: 0x5678,         # LH indirect test
+                11: 0x12345678,     # LW immediate test
+                13: 0x12345678,     # LW absolute address test
+                16: 0x9ABCDEF0,     # LW indirect test
+                17: 0x123456789ABCDEF0,  # LD immediate test
+                19: 0x123456789ABCDEF0,  # LD absolute address test
+                22: 0x1122334455667788,  # LD indirect test
+                26: 0x78,           # Endianness test: first byte
+                27: 0x56,           # Endianness test: second byte
+                28: 0x34,           # Endianness test: third byte
+                29: 0x12,           # Endianness test: fourth byte
+            }),
         ]
         
         # Tests that produce output
