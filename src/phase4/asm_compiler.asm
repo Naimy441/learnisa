@@ -1,9 +1,5 @@
 ; ./isa.py asm_compiler.bin asm_compiler.asm
 
-; TODO: Update to 64 bit architecture in little-endian
-; TODO: Refactor logic for LOAD -> LD, STORE -> SD
-; TODO: Add support for LW, LD, SW, SD
-
 .data
 ; Global Constants
 ; Token types should be outside of ASCII range to ensure no confusion in PARSER
@@ -174,7 +170,8 @@ LEX_CUR   = .dword 1050624 ; LEX_CUR
 SYM_END   = .dword 1051648 ; SRC_START
 SYM_START = .dword 1051648 ; Where symbol table will start, SRC_START
 SYM_CUR   = .dword 1051648 ; SRC_START
-BIN_SIZE  = .dword 0       ; Initalize with temp 0
+BIN_SIZE  = .dword 0
+LAST_TOK  = .byte 0        ; Stores the last type of TOK LH-W, SH-D
 
 ; Header Variables
 MAGIC_NUM     = .dword 5207843797212976193 ; ABDULLAH in decimal
@@ -363,11 +360,21 @@ parse_data:
     LB R4, [R4]
     CMP R2, R4
     JZ parse_byte
+
+    LD R4, TOK_HWORD
+    LB R4, [R4]
+    CMP R2, R4
+    JZ parse_hword
     
     LD R4, TOK_WORD
     LB R4, [R4]
     CMP R2, R4
     JZ parse_word
+
+    LD R4, TOK_DWORD
+    LB R4, [R4]
+    CMP R2, R4
+    JZ parse_dword
 
     LD R4, TOK_ASCIIZ
     LB R4, [R4]
@@ -389,6 +396,20 @@ parse_byte:
     CALL push_byte  ; R2 is the INPUT
     ; SYS R2, 0x0002
     JMP continue_parser
+parse_hword:
+    ; Skip 0 delimeters
+    LB R2, [R0]     ; Current token is in R2
+    LD R3, 0
+    CMP R2, R3
+    JZ continue_parser
+    ; Go to the first char of the string 
+    INC R0
+    LD R1, R0
+    CALL dec_to_int ; R0 is the OUTPUT, R1 is INPUT
+    LD R2, R0
+    CALL push_hword  ; R2 is the INPUT
+    ; SYS R2, 0x0002
+    JMP continue_parser
 parse_word:
     ; Skip 0 delimeters
     LB R2, [R0]     ; Current token is in R2
@@ -401,6 +422,20 @@ parse_word:
     CALL dec_to_int ; R0 is the OUTPUT, R1 is INPUT
     LD R2, R0
     CALL push_word  ; R2 is the INPUT
+    ; SYS R2, 0x0002
+    JMP continue_parser
+parse_dword:
+    ; Skip 0 delimeters
+    LB R2, [R0]     ; Current token is in R2
+    LD R3, 0
+    CMP R2, R3
+    JZ continue_parser
+    ; Go to the first char of the string 
+    INC R0
+    LD R1, R0
+    CALL dec_to_int ; R0 is the OUTPUT, R1 is INPUT
+    LD R2, R0
+    CALL push_dword  ; R2 is the INPUT
     ; SYS R2, 0x0002
     JMP continue_parser
 parse_asciiz:
@@ -473,12 +508,33 @@ parse_code_opcode:
     LB R3, [R3]
     CMP R2, R3
     JZ parse_addressing_byte_load
+    LD R3, CODE_LW
+    LB R3, [R3]
+    CMP R2, R3
+    JZ parse_addressing_byte_load
+    LD R3, CODE_LD
+    LB R3, [R3]
+    CMP R2, R3
+    JZ parse_addressing_byte_load
     LD R3, CODE_SH
+    LB R3, [R3]
+    CMP R2, R3
+    JZ parse_addressing_byte_store
+    LD R3, CODE_SW
+    LB R3, [R3]
+    CMP R2, R3
+    JZ parse_addressing_byte_store
+    LD R3, CODE_SD
     LB R3, [R3]
     CMP R2, R3
     JZ parse_addressing_byte_store
     JMP continue_parser
 parse_addressing_byte_load:
+    ; Store CODE_LOAD into LAST_TOK for later use
+    LD R10, LAST_TOK
+    SB R2, [R10]
+
+    ; Continue parsing addr byte
     LD R9, 5
     ADD R0, R9
     LB R2, [R0]     ; Current token is in R2
@@ -535,6 +591,11 @@ parse_addressing_byte_load_immediate:
     ; SYS R2, 0x0002
     JMP continue_parser
 parse_addressing_byte_store:
+    ; Store CODE_STORE into LAST_TOK for later use
+    LD R10, LAST_TOK
+    SB R2, [R10]
+
+    ; Continue parsing addr byte
     LD R9, 5
     ADD R0, R9
     LB R2, [R0]     ; Current token is in R2
@@ -595,7 +656,7 @@ parse_code_immediate:
     LD R1, R0
     CALL dec_to_int ; R0 is the OUTPUT, R1 is INPUT
     LD R2, R0
-    CALL push_word  ; R2 is the INPUT
+    CALL push_dword  ; R2 is the INPUT
     ; SYS R2, 0x0002
     JMP continue_parser
 parse_code_address:
@@ -608,9 +669,46 @@ parse_code_address:
     INC R0
     LD R1, R0
     CALL hex_to_int ; R0 is the OUTPUT, R1 is INPUT
+    
     LD R2, R0
-    CALL push_word  ; R2 is the INPUT
+    ; Add addressing byte if LD or SD opcodes
+    LD R10, LAST_TOK
+    LB R10, [R10]
+    LD R3, CODE_LH
+    LB R3, [R3]
+    CMP R10, R3
+    JZ call_push_hword
+    LD R3, CODE_LW
+    LB R3, [R3]
+    CMP R10, R3
+    JZ call_push_word
+    LD R3, CODE_LD
+    LB R3, [R3]
+    CMP R10, R3
+    JZ call_push_dword
+    LD R3, CODE_SH
+    LB R3, [R3]
+    CMP R10, R3
+    JZ call_push_hword
+    LD R3, CODE_SW
+    LB R3, [R3]
+    CMP R10, R3
+    JZ call_push_word
+    LD R3, CODE_SD
+    LB R3, [R3]
+    CMP R10, R3
+    JZ call_push_dword
+    CALL push_dword  ; R2 is the INPUT
     ; SYS R2, 0x0002
+    JMP continue_parser
+call_push_hword:
+    CALL push_hword
+    JMP continue_parser
+call_push_word:
+    CALL push_word
+    JMP continue_parser
+call_push_dword:
+    CALL push_dword
     JMP continue_parser
 parse_code_indirect:
     ; Skip 0 delimeters
@@ -1078,8 +1176,8 @@ update_asciiz_bin_size:
     ; SYS R3, 0x0002
     ; SYS R2, 0x0003
     SD R3, [R9]
-    INC R9
-    INC R9
+    LH R10, 8     ; Update by number of bytes for an address
+    ADD R9, R10
     SD R9, SYM_CUR
     POP R9
 
@@ -1101,8 +1199,8 @@ update_byte_bin_size:
     ; SYS R3, 0x0002
     ; SYS R2, 0x0003
     SD R3, [R9]
-    INC R9
-    INC R9
+    LH R10, 8     ; Update by number of bytes for an address
+    ADD R9, R10
     SD R9, SYM_CUR
     POP R9
 
@@ -1125,8 +1223,8 @@ update_halfword_bin_size:
     ; SYS R3, 0x0002
     ; SYS R2, 0x0003
     SD R3, [R9]
-    INC R9
-    INC R9
+    LH R10, 8     ; Update by number of bytes for an address
+    ADD R9, R10
     SD R9, SYM_CUR
     POP R9
 
@@ -1149,8 +1247,8 @@ update_word_bin_size:
     ; SYS R3, 0x0002
     ; SYS R2, 0x0003
     SD R3, [R9]
-    INC R9
-    INC R9
+    LH R10, 8     ; Update by number of bytes for an address
+    ADD R9, R10
     SD R9, SYM_CUR
     POP R9
 
@@ -1173,8 +1271,8 @@ update_doubleword_bin_size:
     ; SYS R3, 0x0002
     ; SYS R2, 0x0003
     SD R3, [R9]
-    INC R9
-    INC R9
+    LH R10, 8     ; Update by number of bytes for an address
+    ADD R9, R10
     SD R9, SYM_CUR
     POP R9
 
@@ -1815,17 +1913,49 @@ push_byte:
     POP R3
     RET
 
-push_word:
+push_hword:
     PUSH R3
 
     LD R3, PARSE_CUR
     LD R3, [R3]
 
-    SW R2, [R3]     ; R2 - Input word
+    SH R2, [R3]     ; R2 - Input word
     INC R3
     INC R3
     SD R3, PARSE_CUR
 
+    POP R3
+    RET
+
+push_word:
+    PUSH R3
+    PUSH R4
+
+    LD R3, PARSE_CUR
+    LD R3, [R3]
+
+    SW R2, [R3]     ; R2 - Input word
+    LH R4, 4
+    ADD R3, R4
+    SD R3, PARSE_CUR
+
+    POP R4
+    POP R3
+    RET
+
+push_dword:
+    PUSH R3
+    PUSH R4
+
+    LD R3, PARSE_CUR
+    LD R3, [R3]
+
+    SD R2, [R3]     ; R2 - Input word
+    LH R4, 8
+    ADD R3, R4
+    SD R3, PARSE_CUR
+
+    POP R4
     POP R3
     RET
 
