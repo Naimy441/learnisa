@@ -17,8 +17,8 @@ class Assembler:
     SIGN_BIT     = 0x8000000000000000
 
 
-    HEADER_LENGTH = 16
-    MAGIC_NUM = (0x41, 0x4E)
+    HEADER_LENGTH = 64
+    MAGIC_NUM = (0x41, 0x42, 0x44, 0x55, 0x4C, 0x4C, 0x41, 0x48)
 
     def __init__(self, input_fn):
         # Assembler
@@ -270,8 +270,12 @@ class Assembler:
                     self.symbols[line[0]] = memory_addr
                     if line[1] == '.byte':
                         memory_addr += len(line[2:]) 
+                    elif line[1] == '.hword':
+                        memory_addr += (len(line[2:]) * 2) # Each halfword takes 2 bytes
                     elif line[1] == '.word':
                         memory_addr += (len(line[2:]) * 4) # Each word takes 4 bytes
+                    elif line[1] == '.dword':
+                        memory_addr += (len(line[2:]) * 8) # Each doubleword takes 8 bytes
                     elif line[1] == '.asciiz':
                         # Len of a string, without the quotation marks, with the 0 delimiter added
                         memory_addr += len(" ".join(line[2:]).replace('\'', '')) + 1 
@@ -346,15 +350,66 @@ class Assembler:
         CODE_OFFSET = self.HEADER_LENGTH + DATA_LENGTH
         CODE_LENGTH = code_buf_len
         ENTRY_POINT = CODE_OFFSET
-        RESERVED = [0x00, 0x00, 0x00, 0x00]
+        RESERVED = [0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00]
 
-        header_buf[0:2] = [self.MAGIC_NUM[0], self.MAGIC_NUM[1]]
-        header_buf[2:4] = [DATA_OFFSET & self.B_MASK, DATA_OFFSET >> 8 & self.B_MASK]
-        header_buf[4:6] = [DATA_LENGTH & self.B_MASK, DATA_LENGTH >> 8 & self.B_MASK]
-        header_buf[6:8] = [CODE_OFFSET & self.B_MASK, CODE_OFFSET >> 8 & self.B_MASK]
-        header_buf[8:10] = [CODE_LENGTH & self.B_MASK, CODE_LENGTH >> 8 & self.B_MASK]
-        header_buf[10:12] = [ENTRY_POINT & self.B_MASK, ENTRY_POINT >> 8 & self.B_MASK]
-        header_buf[12:16] = RESERVED
+        header_buf[0:8] = self.MAGIC_NUM
+
+        header_buf[8:16] = [
+            DATA_OFFSET        & self.B_MASK,
+            (DATA_OFFSET >> 8) & self.B_MASK,
+            (DATA_OFFSET >> 16) & self.B_MASK,
+            (DATA_OFFSET >> 24) & self.B_MASK,
+            (DATA_OFFSET >> 32) & self.B_MASK,
+            (DATA_OFFSET >> 40) & self.B_MASK,
+            (DATA_OFFSET >> 48) & self.B_MASK,
+            (DATA_OFFSET >> 56) & self.B_MASK,
+        ]
+
+        header_buf[16:24] = [
+            DATA_LENGTH        & self.B_MASK,
+            (DATA_LENGTH >> 8) & self.B_MASK,
+            (DATA_LENGTH >> 16) & self.B_MASK,
+            (DATA_LENGTH >> 24) & self.B_MASK,
+            (DATA_LENGTH >> 32) & self.B_MASK,
+            (DATA_LENGTH >> 40) & self.B_MASK,
+            (DATA_LENGTH >> 48) & self.B_MASK,
+            (DATA_LENGTH >> 56) & self.B_MASK,
+        ]
+
+        header_buf[24:32] = [
+            CODE_OFFSET        & self.B_MASK,
+            (CODE_OFFSET >> 8) & self.B_MASK,
+            (CODE_OFFSET >> 16) & self.B_MASK,
+            (CODE_OFFSET >> 24) & self.B_MASK,
+            (CODE_OFFSET >> 32) & self.B_MASK,
+            (CODE_OFFSET >> 40) & self.B_MASK,
+            (CODE_OFFSET >> 48) & self.B_MASK,
+            (CODE_OFFSET >> 56) & self.B_MASK,
+        ]
+
+        header_buf[32:40] = [
+            CODE_LENGTH        & self.B_MASK,
+            (CODE_LENGTH >> 8) & self.B_MASK,
+            (CODE_LENGTH >> 16) & self.B_MASK,
+            (CODE_LENGTH >> 24) & self.B_MASK,
+            (CODE_LENGTH >> 32) & self.B_MASK,
+            (CODE_LENGTH >> 40) & self.B_MASK,
+            (CODE_LENGTH >> 48) & self.B_MASK,
+            (CODE_LENGTH >> 56) & self.B_MASK,
+        ]
+
+        header_buf[40:48] = [
+            ENTRY_POINT        & self.B_MASK,
+            (ENTRY_POINT >> 8) & self.B_MASK,
+            (ENTRY_POINT >> 16) & self.B_MASK,
+            (ENTRY_POINT >> 24) & self.B_MASK,
+            (ENTRY_POINT >> 32) & self.B_MASK,
+            (ENTRY_POINT >> 40) & self.B_MASK,
+            (ENTRY_POINT >> 48) & self.B_MASK,
+            (ENTRY_POINT >> 56) & self.B_MASK,
+        ]
+
+        header_buf[48:64] = RESERVED
 
         return header_buf
 
@@ -406,6 +461,25 @@ class Assembler:
                                     'hex': ' '.join(f'{b:02X}' for b in bytearr),
                                     'addr': len(data_buf) - len(bytearr)
                                 })
+                        elif line[1] == '.hword':
+                            bytearr = []
+                            for e in line[2:]:
+                                try:
+                                    val = int(e, 0)
+                                    bytearr.extend([
+                                        val & self.B_MASK,
+                                        (val >> 8) & self.B_MASK,
+                                    ])
+                                except ValueError():
+                                    raise ValueError(f"Invalid element in .byte directive: {e}")
+                            data_buf.extend(bytearr)
+                            if debug_mode:
+                                debug_buf.append(bytearr)
+                                debug_info.append({
+                                    'instr': ' '.join(line),
+                                    'hex': ' '.join(f'{b:02X}' for b in bytearr),
+                                    'addr': len(data_buf) - len(bytearr)
+                                })
                         elif line[1] == '.word':
                             bytearr = []
                             for e in line[2:]:
@@ -416,6 +490,31 @@ class Assembler:
                                         (val >> 8) & self.B_MASK,
                                         (val >> 16) & self.B_MASK,
                                         (val >> 24) & self.B_MASK
+                                    ])
+                                except ValueError():
+                                    raise ValueError(f"Invalid element in .byte directive: {e}")
+                            data_buf.extend(bytearr)
+                            if debug_mode:
+                                debug_buf.append(bytearr)
+                                debug_info.append({
+                                    'instr': ' '.join(line),
+                                    'hex': ' '.join(f'{b:02X}' for b in bytearr),
+                                    'addr': len(data_buf) - len(bytearr)
+                                })
+                        elif line[1] == '.dword':
+                            bytearr = []
+                            for e in line[2:]:
+                                try:
+                                    val = int(e, 0)
+                                    bytearr.extend([
+                                        val & self.B_MASK,
+                                        (val >> 8) & self.B_MASK,
+                                        (val >> 16) & self.B_MASK,
+                                        (val >> 24) & self.B_MASK,
+                                        (val >> 36) & self.B_MASK,
+                                        (val >> 40) & self.B_MASK,
+                                        (val >> 48) & self.B_MASK,
+                                        (val >> 56) & self.B_MASK
                                     ])
                                 except ValueError():
                                     raise ValueError(f"Invalid element in .byte directive: {e}")

@@ -17,8 +17,8 @@ class ISA:
     MAX_REG = 32
     MEM_SIZE = 4 * 1024 * 1024 # 4 MB
 
-    HEADER_LENGTH = 16
-    MAGIC_NUM = (0x41, 0x4E)
+    HEADER_LENGTH = 64
+    MAGIC_NUM = (0x41, 0x42, 0x44, 0x55, 0x4C, 0x4C, 0x41, 0x48)
 
     # Memory Map Guidelines (4 MB)
     # 0x000000 - 0x0FFFFF : Code + global/static data (1 MB)
@@ -636,24 +636,41 @@ class ISA:
 
         with open(f"{input_fn}", "rb") as b:
             mgcn = b.read(len(self.MAGIC_NUM))
-            if mgcn[0] == self.MAGIC_NUM[0] and mgcn[1] == self.MAGIC_NUM[1]:
+            if tuple(mgcn) == self.MAGIC_NUM:   
                 bytearr = b.read(self.HEADER_LENGTH - len(self.MAGIC_NUM))
-                DATA_OFFSET = (bytearr[1] << 8 | bytearr[0]) & self.HW_MASK
-                DATA_LENGTH = (bytearr[3] << 8 | bytearr[2]) & self.HW_MASK
-                CODE_OFFSET = (bytearr[5] << 8 | bytearr[4]) & self.HW_MASK
-                CODE_LENGTH = (bytearr[7] << 8 | bytearr[6]) & self.HW_MASK
-                ENTRY_POINT = (bytearr[9] << 8 | bytearr[8]) & self.HW_MASK
+
+                def read_dword(offset):
+                    return (
+                        bytearr[offset + 0]
+                        | (bytearr[offset + 1] << 8)
+                        | (bytearr[offset + 2] << 16)
+                        | (bytearr[offset + 3] << 24)
+                        | (bytearr[offset + 4] << 32)
+                        | (bytearr[offset + 5] << 40)
+                        | (bytearr[offset + 6] << 48)
+                        | (bytearr[offset + 7] << 56)
+                    ) & self.DW_MASK
+
+                DATA_OFFSET  = read_dword(0)
+                DATA_LENGTH  = read_dword(8)
+                CODE_OFFSET  = read_dword(16)
+                CODE_LENGTH  = read_dword(24)
+                ENTRY_POINT  = read_dword(32)
 
                 TOTAL_LENGTH = DATA_LENGTH + CODE_LENGTH
-                if  TOTAL_LENGTH <= self.MEM_SIZE: 
+                if TOTAL_LENGTH <= self.MEM_SIZE:
                     b.seek(DATA_OFFSET)
                     self.mem[0:TOTAL_LENGTH] = b.read(TOTAL_LENGTH)
                     self.pc = ENTRY_POINT - self.HEADER_LENGTH
                 else:
-                    raise OverflowError(f"Binary instructions exceed memory size: {TOTAL_LENGTH} bytes >= {self.MEM_SIZE} bytes")
+                    raise OverflowError(
+                        f"Binary instructions exceed memory size: {TOTAL_LENGTH} bytes >= {self.MEM_SIZE} bytes"
+                    )
             else:
-                raise ValueError(f"Magic number ({mgcn[0]} {mgcn[1]}) does not match expected signature: {self.MAGIC_NUM[0]} {self.MAGIC_NUM[1]}")
-
+                raise ValueError(
+                    f"Magic number mismatch: file=({list(mgcn)}), expected={list(self.MAGIC_NUM)}"
+                )
+    
     def load_argv_into_mem(self, argc, argv):
         if argc != 0 and argv is not None:
             offset = 0
