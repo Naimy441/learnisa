@@ -7,7 +7,7 @@
     },
     {
       "name": "keyword.directive.customasm",
-      "match": "\\.(data|byte|word|asciiz|code)\\b"
+      "match": "\\.(data|byte|hword|word|dword|asciiz|code)\\b"
     },
     {
       "name": "string.quoted.single.customasm",
