@@ -1,136 +1,422 @@
-"""
-from enum import Enum
-class Opcode(Enum):
-    # Opcode                      - Instruction
-    HALT  = 0  # HALT             - Ends program
-    NOT   = 1  # NOT              - Set Ra = ~Ra
-    SHL   = 2  # SHL              - Set Ra = Ra << 1
-    SHR   = 3  # SHR              - Set Ra = Ra >> 1
-    PUSH  = 4  # PUSH             - Pushes Ra onto the stack
-    POP   = 5  # POP              - Pops from the stack, stores in Ra   
-    RET   = 6  # RET              - Pops <addr> in stack, jumps to <addr+1>
-    ADD   = 7  # ADD Rx           - Set Ra = Ra + Rx
-    ADC   = 8 # ADC Rx           - Set Ra = Ra + Rx + carry_bit
-    SUB   = 9 # SUB Rx           - Set Ra = Ra - Rx into Ra
-    SBC   = 10 # SBC Rx           - Set Ra = Ra - Rx - carry_bit     
-    CMP   = 11 # CMP Rx           - Compute Ra - Rx, update flags
-    AND   = 12 # AND Rx           - Set Ra = Ra & Rx
-    OR    = 13 # OR Rx            - Set Ra = Ra | Rx
-    XOR   = 14 # XOR Rx           - Set Ra = Ra ^ Rx
-    # Labels
-    CALL  = 15 # CALL <addr>      - Jumps to <addr>, saves PC to stack   
-    JMP   = 16 # JMP <addr>       - Sets PC to <addr>        
-    JZ    = 17 # JZ <addr>        - Sets PC to <addr> if Z=1      
-    JNZ   = 18 # JNZ <addr>       - Sets PC to <addr> if Z=0
-    JC    = 19 # JC <addr>        - Sets PC to <addr> if C=1 (JLO, unsigned)
-    JNC   = 20 # JNC <addr>       - Sets PC to <addr> if C=0 (JHS, unsigned)
-    # LOAD/STORE
-    MOV   = 21 # MOV Rx, Ry       - Puts the value in Ry into Rx     
-    LDR   = 22 # LDR Rx           - Loads 1 byte at [HL] into Rx 
-    LDI   = 23 # LDI Rx, <value>  - Loads immediate (1 byte) into Rx
-    LDA   = 24 # LDA <addr>       - Loads 1 byte from <addr>/symbol into Ra
-    STR   = 25 # STR Rx           - Stores 1 byte at [HL] from Rx 
-    STA   = 26 # STA <addr>       - Stores 1 byte at <addr> from R
+# ROM 1
+IN_NOTHING = 0b0000000000000000
+AI         = 0b0000000000000001
+HI         = 0b0000000000000010
+LI         = 0b0000000000000011
+RI         = 0b0000000000000100
+TMI        = 0b0000000000000101
+MI         = 0b0000000000000110
+CI         = 0b0000000000000111
+RSE        = 0b0000000000001000
+IR0I       = 0b0000000000001001
+IR1I       = 0b0000000000001010
+IR2I       = 0b0000000000001011
+HLMI       = 0b0000000000001100
+LMI        = 0b0000000000001101
+HMI        = 0b0000000000001110
 
-IR0I - Write enable to instruction reg (byte 0)
-IR1I - Write enable to instruction reg (byte 1)
-IR2I - Write enable to instruction reg (byte 2)
-IR1O - Read instruction reg (byte 1) to bus
-IR2O -  Read instruction reg (byte 2) to bus
+OUT_NOTHING = 0b0000000000000000
+AO          = 0b0000000000010000
+HO          = 0b0000000000100000
+LO          = 0b0000000000110000
+RO          = 0b0000000001000000
+TMO         = 0b0000000001010000
+SO          = 0b0000000001100000
+IR1O        = 0b0000000001110000
+IR2O        = 0b0000000010000000
+MO          = 0b0000000010010000
+CO          = 0b0000000010100000
+HLMO        = 0b0000000010110000
+CLO         = 0b0000000011000000
+CHO         = 0b0000000011010000
 
-AI - Write enable A reg (accumulator)
-AO - Read A reg to bus
-HI - Write enable H reg
-LI - Write enable L reg
-HO - Read H reg to bus
-LO - Read L reg to bus
-RI - Write enable general registers
-RSE - Write enable general reg select latch
-RO - Read general reg to bus, write enable ALU output reg
+# ROM 2
+SS_000 = 0b0000000000000000
+SS_001 = 0b0000000100000000
+SS_010 = 0b0000001000000000
+SS_011 = 0b0000001100000000
+SS_100 = 0b0000010000000000
+SS_101 = 0b0000010100000000
+SS_110 = 0b0000011000000000
+SS_111 = 0b0000011100000000
 
-TMI - Write enable temp reg
-TMO - Read temp reg to bus
+CTRL_NOTHING = 0b0000000000000000
+FI           = 0b0000100000000000
+CE           = 0b0001000000000000
+CA           = 0b0001100000000000
+SPO          = 0b0010000000000000
+SPI          = 0b0010100000000000
+SPD          = 0b0011000000000000
+DONE         = 0b0011100000000000
 
-SS (3 bits) - Select ALU operation
-SO - Read ALU output reg to bus
+HLT = 0b0100000000000000
 
-FI - Write enable flags register
-CA - Read carry flag to ALU
+MICROCODE = [
+    # HALT = 0
+    [CO|HLMI, MO|IR0I|CE, HLT],
+    # NOT = 1 (Ra = ~Ra)
+    [CO|HLMI, MO|IR0I|CE, RO|SS_100, FI|SO|AI, DONE],  # NOT operation
+    # SHL = 2 (Ra = Ra << 1)
+    [CO|HLMI, MO|IR0I|CE, RO|SS_010, FI|SO|AI, DONE],  # Shift left
+    # SHR = 3 (Ra = Ra >> 1)
+    [CO|HLMI, MO|IR0I|CE, RO|SS_011, FI|SO|AI, DONE],  # Shift right
+    # PUSH = 4 (Push Ra onto stack)
+    [
+        CO|HLMI,
+        MO|IR0I|CE,
+        SPD,  # Decrement SP
+        SPO|HLMI,  # SP to MAR
+        AO|MI,  # A to RAM
+        DONE,
+    ],
+    # POP = 5 (Pop from stack into Ra)
+    [
+        CO|HLMI,
+        MO|IR0I|CE,
+        SPO|HLMI,  # SP to MAR
+        MO|AI|SPI,  # RAM to A, inc SP
+        DONE,
+    ],
+    # RET = 6 (Pop address and jump)
+    [
+        CO|HLMI,
+        MO|IR0I|CE,
+        SPO|HLMI,  # SP to MAR (low byte)
+        MO|LI|SPI,  # RAM to L, inc SP
+        SPO|HLMI,  # SP to MAR (high byte)
+        MO|HI|SPI,  # RAM to H, inc SP
+        HLMO|CI,  # MAR to PC and load
+        DONE,
+    ],
+    # ADD = 7 (Ra = Ra + Rx)
+    [
+        CO|HLMI,
+        MO|IR0I|CE,
+        CO|HLMI,
+        MO|IR1I|CE,
+        IR1O|RSE,  # Select register Rx
+        RO|SS_000,  # A + Rx, update flags
+        FI|SO|AI,
+        DONE,
+    ],
+    # ADC = 8 (Ra = Ra + Rx + carry)
+    [
+        CO|HLMI,
+        MO|IR0I|CE,
+        CO|HLMI,
+        MO|IR1I|CE,
+        IR1O|RSE,  # Select register Rx
+        RO|SS_000|CA,  # A + Rx + C
+        FI|SO|AI,
+        DONE,
+    ],
+    # SUB = 9 (Ra = Ra - Rx)
+    [
+        CO|HLMI,
+        MO|IR0I|CE,
+        CO|HLMI,
+        MO|IR1I|CE,
+        IR1O|RSE,
+        RO|SS_001,  # A - Rx
+        FI|SO|AI,
+        DONE,
+    ],
+    # SBC = 10 (Ra = Ra - Rx - carry)
+    [
+        CO|HLMI,
+        MO|IR0I|CE,
+        CO|HLMI,
+        MO|IR1I|CE,
+        IR1O|RSE,
+        RO|SS_001|CA,  # A - Rx - C
+        FI|SO|AI,
+        DONE,
+    ],
+    # CMP = 11 (Ra - Rx, only update flags)
+    [
+        CO|HLMI,
+        MO|IR0I|CE,
+        CO|HLMI,
+        MO|IR1I|CE,
+        IR1O|RSE,
+        RO|SS_001,  # A - Rx, update flags, don't store
+        FI,
+        DONE,
+    ],
+    # AND = 12 (Ra = Ra & Rx)
+    [
+        CO|HLMI,
+        MO|IR0I|CE,
+        CO|HLMI,
+        MO|IR1I|CE,
+        IR1O|RSE,
+        RO|SS_101,  # A & Rx
+        FI|SO|AI,
+        DONE,
+    ],
+    # OR = 13 (Ra = Ra | Rx)
+    [
+        CO|HLMI,
+        MO|IR0I|CE,
+        CO|HLMI,
+        MO|IR1I|CE,
+        IR1O|RSE,
+        RO|SS_110,  # A | Rx
+        FI|SO|AI,
+        DONE,
+    ],
+    # XOR = 14 (Ra = Ra ^ Rx)
+    [
+        CO|HLMI,
+        MO|IR0I|CE,
+        CO|HLMI,
+        MO|IR1I|CE,
+        IR1O|RSE,
+        RO|SS_111,  # A ^ Rx
+        FI|SO|AI,
+        DONE,
+    ],
+    # CALL = 15 (Push PC, jump to address)
+    [
+        CO|HLMI,
+        MO|IR0I|CE,
+        CO|HLMI,
+        MO|IR1I|CE,  # Get low byte of address
+        CO|HLMI,
+        MO|IR2I|CE,  # Get high byte of address
+        # Push PC high byte
+        SPD,  # Decrement SP
+        SPO|HLMI,
+        CHO|MI,  # PC high to RAM
+        # Push PC low byte
+        SPD,  # Decrement SP
+        SPO|HLMI,
+        CLO|MI,  # PC low to RAM
+        # Load new address to MAR then PC
+        IR1O|LMI,
+        IR2O|HMI,
+        HLMO|CI,  # MAR to PC
+        DONE,
+    ],
+    # JMP = 16 (Unconditional jump)
+    [
+        CO|HLMI,
+        MO|IR0I|CE,
+        CO|HLMI,
+        MO|IR1I|CE,
+        CO|HLMI,
+        MO|IR2I|CE,
+        IR1O|LMI,
+        IR2O|HMI,
+        HLMO|CI,  # MAR to PC
+        DONE,
+    ],
+    # JZ = 17 (Jump if zero)
+    [
+        CO|HLMI,
+        MO|IR0I|CE,
+        CO|HLMI,
+        MO|IR1I|CE,
+        CO|HLMI,
+        MO|IR2I|CE,
+        # If Z=1: jump
+        IR1O|LMI,
+        IR2O|HMI,
+        HLMO|CI,
+        # ELSE : these steps are skipped by microcode sequencer
+        DONE,
+    ],
+    # JNZ = 18 (Jump if not zero)
+    [
+        CO|HLMI,
+        MO|IR0I|CE,
+        CO|HLMI,
+        MO|IR1I|CE,
+        CO|HLMI,
+        MO|IR2I|CE,
+        # If Z=0: jump
+        IR1O|LMI,
+        IR2O|HMI,
+        HLMO|CI,
+        # ELSE : these steps are skipped by microcode sequencer
+        DONE,
+    ],
+    # JC = 19 (Jump if carry)
+    [
+        CO|HLMI,
+        MO|IR0I|CE,
+        CO|HLMI,
+        MO|IR1I|CE,
+        CO|HLMI,
+        MO|IR2I|CE,
+        # If C=1: jump
+        IR1O|LMI,
+        IR2O|HMI,
+        HLMO|CI,
+        # ELSE : these steps are skipped by microcode sequencer
+        DONE,
+    ],
+    # JNC = 20 (Jump if no carry)
+    [
+        CO|HLMI,
+        MO|IR0I|CE,
+        CO|HLMI,
+        MO|IR1I|CE,
+        CO|HLMI,
+        MO|IR2I|CE,
+        # If C=0: jump
+        IR1O|LMI,
+        IR2O|HMI,
+        HLMO|CI,
+        # ELSE : these steps are skipped by microcode sequencer
+        DONE,
+    ],
+    # MOV = 21 (Rx = Ry)
+    [
+        CO|HLMI,
+        MO|IR0I|CE,
+        CO|HLMI,
+        MO|IR1I|CE,
+        CO|HLMI,
+        MO|IR2I|CE,
+        IR2O|RSE,  # Select source register
+        RO|TMI,  # Source to temp
+        IR1O|RSE,  # Select dest register
+        TMO|RI,  # Temp to dest
+        DONE,
+    ],
+    # LDR = 22 (Ra = [HL])
+    [
+        CO|HLMI,
+        MO|IR0I|CE,
+        CO|HLMI,
+        MO|IR1I|CE,
+        LO|LMI,
+        HO|HMI,
+        IR1O|RSE,  # Select dest register
+        MO|RI,
+        DONE,
+    ],
+    # LDI = 23 (Ra = immediate)
+    [CO|HLMI, MO|IR0I|CE, CO|HLMI, MO|IR1I|CE, IR1O|RSE, IR2O|RI, DONE],
+    # LDA = 24 (Ra = [addr])
+    [
+        CO|HLMI,
+        MO|IR0I|CE,
+        CO|HLMI,
+        MO|IR1I|CE,
+        CO|HLMI,
+        MO|IR2I|CE,
+        IR1O|LMI,
+        IR2O|HMI,
+        MO|AI,
+        DONE,
+    ],
+    # STR = 25 ([HL] = Ra)
+    [
+        CO|HLMI,
+        MO|IR0I|CE,
+        CO|HLMI,
+        MO|IR1I|CE,
+        LO|LMI,
+        HO|HMI,
+        IR1O|RSE,
+        RO|MI,
+        DONE,
+    ],
+    # STA = 26 ([addr] = Ra)
+    [
+        CO|HLMI,
+        MO|IR0I|CE,
+        CO|HLMI,
+        MO|IR1I|CE,
+        CO|HLMI,
+        MO|IR2I|CE,
+        IR1O|LMI,
+        IR2O|HMI,
+        AO|MI,
+        DONE,
+    ],
+]
 
-CI - Write enable PC
-CE - Increment PC
-CO - Read PC to MAR
-CLO - Read PC_LOW to bus
-CHO - Read PC_HIGH to bus
+# JZ = 17, JN = 18, JC = 19, JNC = 20
+FLAGS_MICROCODE = [ 
+    # JZ = 17 (Jump if zero)
+    [
+        CO|HLMI,
+        MO|IR0I|CE,
+        CO|HLMI,
+        MO|IR1I|CE,
+        CO|HLMI,
+        MO|IR2I|CE,
+        DONE,
+    ],
+    # JNZ = 18 (Jump if not zero)
+    [
+        CO|HLMI,
+        MO|IR0I|CE,
+        CO|HLMI,
+        MO|IR1I|CE,
+        CO|HLMI,
+        MO|IR2I|CE,
+        DONE,
+    ],
+    # JC = 19 (Jump if carry)
+    [
+        CO|HLMI,
+        MO|IR0I|CE,
+        CO|HLMI,
+        MO|IR1I|CE,
+        CO|HLMI,
+        MO|IR2I|CE,
+        DONE,
+    ],
+    # JNC = 20 (Jump if no carry)
+    [
+        CO|HLMI,
+        MO|IR0I|CE,
+        CO|HLMI,
+        MO|IR1I|CE,
+        CO|HLMI,
+        MO|IR2I|CE,
+        DONE,
+    ],
+]
 
-LMI - Write enable LMAR
-HMI - Write enable to HMAR
-HLMI - Write enable both LMAR and HMAR
-HLMO - Read MAR to PC 
+ROM1 = bytearray(4096)
+ROM2 = bytearray(4096)
 
-MI - Write enable RAM
-MO - Read RAM to bus
+for i in range(len(MICROCODE)):
+    MICROCODE[i] = (MICROCODE[i] + [0]*16)[:16] # Extends each array with up to 16 total elements of 0s 
 
-SPI - Increment SP 
-SPD - Decrement SP
-SPO - Read SP to MAR
+for i in range(len(FLAGS_MICROCODE)):
+    FLAGS_MICROCODE[i] = (FLAGS_MICROCODE[i] + [0]*16)[:16] # Extends each array with up to 16 total elements of 0s 
 
-DONE - End of instruction, reset t-state timer
-HLT - Stop program
+for addr in range(4096):
+    opcode     = addr & 0x1F         # bits 0–4
+    t_state    = (addr >> 5) & 0xF   # bits 5–8
+    zero_flag  = (addr >> 9) & 0x1   # bit 9
+    carry_flag = (addr >> 10) & 0x1  # bit 10
 
-ROM 12-bit ADDRESS INPUT
-5 bits for opcode
-4 bits for t-state timer
-1 bit for zero flag
-1 bit for carry flag
-1 bit is always 0
+    
+    if opcode < len(MICROCODE):
+        if opcode == 17 and zero_flag == 0:   
+                val = FLAGS_MICROCODE[0][t_state] & 0xFF
+        elif opcode == 18 and zero_flag == 0:   
+                val = FLAGS_MICROCODE[1][t_state] & 0xFF
+        elif opcode == 19 and carry_flag == 0:   
+                val = FLAGS_MICROCODE[2][t_state] & 0xFF
+        elif opcode == 20 and carry_flag == 0:   
+                val = FLAGS_MICROCODE[3][t_state] & 0xFF
+        else:
+            val = MICROCODE[opcode][t_state]
+        
+        ROM1[addr] = val & 0xFF
+        ROM2[addr] = (val >> 8) & 0xFF
+    
+with open("ROM1.bin", "wb") as f:
+    f.write(ROM1)
 
-ROM_1 8-bit OUTPUT
-0-3 (partial, 1 left):
-0000 (0): Nothing
-0001 (1): AI
-0010 (2): HI
-0011 (3): LI
-0100 (4): RI
-0101 (5): TMI
-0110 (6): MI
-0111 (7): CI
-1000 (8): RSE
-1001 (9): IR0I
-1010 (10): IR1I
-1011 (11): IR2I
-1100 (12): HLMI
-1101 (13): LMI
-1110 (14): HMI
-4-7 bits (partial, 2 left):
-00: Nothing
-0000 (0): Nothing
-0001 (1): AO
-0010 (2): HO
-0011 (3): LO
-0100 (4): RO
-0101 (5): TMO
-0110 (6): SO
-0111 (7): IR1O
-1000 (8): IR2O
-1001 (9): MO
-1010 (10): CO (to MAR)
-1011 (11): HLMO
-1100 (12): CLO (to bus)
-1101 (13): CHO (to bus)
-
-ROM_2 8-bit OUTPUT
-0-2 bits (full): 
-SS [000, 001, 010, 011, 100, 101, 110, 111]
-3-5 bits (full):
-000 (0): Nothing
-001 (1): FI
-010 (2): CE
-011 (3): CA
-100 (4): SPO
-101 (5): SPI
-110 (6): SPD
-111 (7): DONE
-6th bit (full) HLT
-7th bit (empty): Nothing
-"""
+with open("ROM2.bin", "wb") as f:
+    f.write(ROM2)
+            
