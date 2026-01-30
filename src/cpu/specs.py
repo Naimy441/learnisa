@@ -2,35 +2,35 @@
 from enum import Enum
 class Opcode(Enum):
     # Opcode                      - Instruction
-    HALT  = 0  # HALT             - Ends program
-    NOT   = 1  # NOT              - Set Ra = ~Ra
-    SHL   = 2  # SHL              - Set Ra = Ra << 1
-    SHR   = 3  # SHR              - Set Ra = Ra >> 1
-    PUSH  = 4  # PUSH             - Pushes Ra onto the stack
-    POP   = 5  # POP              - Pops from the stack, stores in Ra   
-    RET   = 6  # RET              - Pops <addr> in stack, jumps to <addr+1>
-    ADD   = 7  # ADD Rx           - Set Ra = Ra + Rx
-    ADC   = 8 # ADC Rx           - Set Ra = Ra + Rx + carry_bit
-    SUB   = 9 # SUB Rx           - Set Ra = Ra - Rx into Ra
-    SBC   = 10 # SBC Rx           - Set Ra = Ra - Rx - carry_bit     
-    CMP   = 11 # CMP Rx           - Compute Ra - Rx, update flags
-    AND   = 12 # AND Rx           - Set Ra = Ra & Rx
-    OR    = 13 # OR Rx            - Set Ra = Ra | Rx
-    XOR   = 14 # XOR Rx           - Set Ra = Ra ^ Rx
+    halt  = 0  # halt             - Ends program
+    not   = 1  # not              - Set Ra = ~Ra
+    shl   = 2  # shl              - Set Ra = Ra << 1
+    shr   = 3  # shr              - Set Ra = Ra >> 1
+    push  = 4  # push             - Pushes Ra onto the stack
+    pop   = 5  # pop              - Pops from the stack, stores in Ra   
+    ret   = 6  # ret              - Pops <addr> in stack, jumps to <addr+1>
+    add   = 7  # add rx           - Set Ra = Ra + Rx
+    adc   = 8  # adc rx           - Set Ra = Ra + Rx + carry_bit
+    sub   = 9  # sub rx           - Set Ra = Ra - Rx into Ra
+    sbc   = 10 # sbc rx           - Set Ra = Ra - Rx - carry_bit     
+    cmp   = 11 # cmp rx           - Compute Ra - Rx, update flags
+    and   = 12 # and rx           - Set Ra = Ra & Rx
+    or    = 13 # or rx            - Set Ra = Ra | Rx
+    xor   = 14 # xor rx           - Set Ra = Ra ^ Rx
     # Labels
-    CALL  = 15 # CALL <addr>      - Jumps to <addr>, saves PC to stack   
-    JMP   = 16 # JMP <addr>       - Sets PC to <addr>        
-    JZ    = 17 # JZ <addr>        - Sets PC to <addr> if Z=1      
-    JNZ   = 18 # JNZ <addr>       - Sets PC to <addr> if Z=0
-    JC    = 19 # JC <addr>        - Sets PC to <addr> if C=1 (JLO, unsigned)
-    JNC   = 20 # JNC <addr>       - Sets PC to <addr> if C=0 (JHS, unsigned)
+    call  = 15 # call <addr>      - Jumps to <addr>, saves PC to stack   
+    jmp   = 16 # jmp <addr>       - Sets PC to <addr>        
+    jz    = 17 # jz <addr>        - Sets PC to <addr> if Z=1      
+    jnz   = 18 # jnz <addr>       - Sets PC to <addr> if Z=0
+    jc    = 19 # jc <addr>        - Sets PC to <addr> if C=1 (JLO, unsigned)
+    jnc   = 20 # jnc <addr>       - Sets PC to <addr> if C=0 (JHS, unsigned)
     # LOAD/STORE
-    MOV   = 21 # MOV Rx, Ry       - Puts the value in Ry into Rx     
-    LDR   = 22 # LDR Rx           - Loads 1 byte at [HL] into Rx 
-    LDI   = 23 # LDI Rx, <value>  - Loads immediate (1 byte) into Rx
-    LDA   = 24 # LDA <addr>       - Loads 1 byte from <addr>/symbol into Ra
-    STR   = 25 # STR Rx           - Stores 1 byte at [HL] from Rx 
-    STA   = 26 # STA <addr>       - Stores 1 byte at <addr> from R
+    mov   = 21 # mov rx, ry       - Puts the value in Ry into Rx     
+    ldr   = 22 # ldr rx           - Loads 1 byte at [HL] into Rx 
+    ldi   = 23 # ldi rx, <value>  - Loads immediate (1 byte) into Rx
+    lda   = 24 # lda <addr>       - Loads 1 byte from <addr>/symbol into Ra
+    str   = 25 # str rx           - Stores 1 byte at [HL] from Rx 
+    sta   = 26 # sta <addr>       - Stores 1 byte at <addr> from R
 
 IR0I - Write enable to instruction reg (byte 0)
 IR1I - Write enable to instruction reg (byte 1)
