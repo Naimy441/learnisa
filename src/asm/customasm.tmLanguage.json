@@ -2,12 +2,12 @@
   "scopeName": "source.customasm",
   "patterns": [
     {
-        "name": "entity.name.function.customasm",
-        "match": "^[A-Za-z_][A-Za-z0-9_]*:"
+      "name": "entity.name.function.customasm",
+      "match": "^[A-Za-z_][A-Za-z0-9_]*:"
     },
     {
       "name": "keyword.directive.customasm",
-      "match": "\\.(data|byte|hword|word|dword|asciiz|code)\\b"
+      "match": "\\.(data|text|byte|hword|word|dword|asciiz|code)\\b"
     },
     {
       "name": "string.quoted.single.customasm",
@@ -16,15 +16,19 @@
     },
     {
       "name": "keyword.opcode.customasm",
-      "match": "\\b(NOP|LB|LH|LW|LD|SB|SH|SW|SD|MOV|INC|DEC|ADD|SUB|MUL|DIV|AND|OR|XOR|NOT|CMP|SHL|SHR|JMP|JZ|JNZ|JC|JNC|JL|JLE|JG|JGE|PUSH|POP|SYS|CALL|RET|HALT)\\b"
+      "match": "\\b(NOP|LB|LH|LW|LD|SB|SH|SW|SD|MOV|INC|DEC|ADD|SUB|MUL|DIV|AND|OR|XOR|NOT|CMP|SHL|SHR|JMP|JZ|JNZ|JC|JNC|JL|JLE|JG|JGE|PUSH|POP|SYS|CALL|RET|HALT|halt|not|shl|shr|push|pop|ret|add|adc|sub|sbc|cmp|and|or|xor|call|jmp|jz|jnz|jc|jnc|mov|ldr|ldi|lda|str|sta)\\b"
     },
-    {   
-    "name": "constant.numeric.customasm",
-    "match": "(?<![A-Za-z_])(?:0x[0-9A-Fa-f]+|\\d+)(?![A-Za-z_])"
+    {
+      "name": "constant.numeric.customasm",
+      "match": "(?<![A-Za-z_])(?:0x[0-9A-Fa-f]+|\\d+)(?![A-Za-z_])"
     },
     {
       "name": "variable.register.customasm",
-      "match": "\\bR[0-9]+\\b"
+      "match": "\\b(R[0-9]+|ra|rb|rc|rd|re|rf|rg|rh|rl)\\b"
+    },
+    {
+      "name": "variable.other.customasm",
+      "match": "(?<=\\b(?:lda|sta|call|jmp|jz|jnz|jc|jnc)\\s+)[A-Za-z_][A-Za-z0-9_]*\\b"
     },
     {
       "name": "comment.line.semicolon.customasm",
