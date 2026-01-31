@@ -51,9 +51,9 @@ class Opcode(Enum):
 
 opcodes = ['halt', 'not', 'shl', 'shr', 'push', 'pop', 'ret', 'add', 'adc', 'sub', 'sbc', 'cmp', 'and', 'or', 'xor', 'call', 'jmp', 'jz', 'jnz', 'jc', 'jnc', 'mov', 'ldr', 'ldi', 'lda', 'str', 'sta']
 opcode_one_byte = ['halt', 'not', 'shl', 'shr', 'push', 'pop', 'ret']
-opcode_two_byte = ['add', 'adc' 'sub', 'sbc', 'cmp', 'and', 'or', 'xor', 'ldr', 'str']
+opcode_two_byte = ['add', 'adc', 'sub', 'sbc', 'cmp', 'and', 'or', 'xor', 'ldr', 'str']
 opcode_three_byte = ['call', 'jmp', 'jz', 'jnz', 'jc', 'jnc', 'mov', 'ldi', 'lda', 'sta']
-opcode_one_oper = ['add', 'adc' 'sub', 'sbc', 'cmp', 'and', 'or', 'xor', 'ldr', 'str', 'call', 'jmp', 'jz', 'jnz', 'jc', 'jnc', 'lda']
+opcode_one_oper = ['add', 'adc', 'sub', 'sbc', 'cmp', 'and', 'or', 'xor', 'ldr', 'str', 'call', 'jmp', 'jz', 'jnz', 'jc', 'jnc', 'lda']
 opcode_two_oper = ['mov', 'ldi']
 
 symbols = {}
@@ -98,6 +98,7 @@ def main(fn):
     
     # Create symbol map
     i = 0
+    directives = False
     if d[i] == '.data':
         directives = True
         i += 1

@@ -14,6 +14,7 @@ IR2I       = 0b0000000000001011
 HLMI       = 0b0000000000001100
 LMI        = 0b0000000000001101
 HMI        = 0b0000000000001110
+FI         = 0b0000000000001111
 
 OUT_NOTHING = 0b0000000000000000
 AO          = 0b0000000000010000
@@ -40,14 +41,14 @@ SS_101 = 0b0000010100000000
 SS_110 = 0b0000011000000000
 SS_111 = 0b0000011100000000
 
-CTRL_NOTHING = 0b0000000000000000
-FI           = 0b0000100000000000
-CE           = 0b0001000000000000
-CA           = 0b0001100000000000
-SPO          = 0b0010000000000000
-SPI          = 0b0010100000000000
-SPD          = 0b0011000000000000
-DONE         = 0b0011100000000000
+CTRL_NOTHING  = 0b0000000000000000
+CTRL_NOTHING2 = 0b0000100000000000
+CE            = 0b0001000000000000
+CA            = 0b0001100000000000
+SPO           = 0b0010000000000000
+SPI           = 0b0010100000000000
+SPD           = 0b0011000000000000
+DONE          = 0b0011100000000000
 
 HLT = 0b0100000000000000
 
@@ -55,11 +56,11 @@ MICROCODE = [
     # HALT = 0
     [CO|HLMI, MO|IR0I|CE, HLT],
     # NOT = 1 (Ra = ~Ra)
-    [CO|HLMI, MO|IR0I|CE, RO|SS_100, FI|SO|AI, DONE],  # NOT operation
+    [CO|HLMI, MO|IR0I|CE, FI|RO|SS_100, SO|AI, DONE],  # NOT operation
     # SHL = 2 (Ra = Ra << 1)
-    [CO|HLMI, MO|IR0I|CE, RO|SS_010, FI|SO|AI, DONE],  # Shift left
+    [CO|HLMI, MO|IR0I|CE, FI|RO|SS_010, SO|AI, DONE],  # Shift left
     # SHR = 3 (Ra = Ra >> 1)
-    [CO|HLMI, MO|IR0I|CE, RO|SS_011, FI|SO|AI, DONE],  # Shift right
+    [CO|HLMI, MO|IR0I|CE, FI|RO|SS_011, SO|AI, DONE],  # Shift right
     # PUSH = 4 (Push Ra onto stack)
     [
         CO|HLMI,
@@ -97,8 +98,8 @@ MICROCODE = [
         CO|HLMI,
         MO|IR1I|CE,
         IR1O|RSE,  # Select register Rx
-        RO|SS_000,  # A + Rx, update flags
-        FI|SO|AI,
+        FI|RO|SS_000,  # A + Rx, update flags
+        SO|AI,
         DONE,
     ],
     # ADC = 8 (Ra = Ra + Rx + carry)
@@ -108,8 +109,8 @@ MICROCODE = [
         CO|HLMI,
         MO|IR1I|CE,
         IR1O|RSE,  # Select register Rx
-        RO|SS_000|CA,  # A + Rx + C
-        FI|SO|AI,
+        FI|RO|SS_000|CA,  # A + Rx + C
+        SO|AI,
         DONE,
     ],
     # SUB = 9 (Ra = Ra - Rx)
@@ -119,8 +120,8 @@ MICROCODE = [
         CO|HLMI,
         MO|IR1I|CE,
         IR1O|RSE,
-        RO|SS_001,  # A - Rx
-        FI|SO|AI,
+        FI|RO|SS_001,  # A - Rx
+        SO|AI,
         DONE,
     ],
     # SBC = 10 (Ra = Ra - Rx - carry)
@@ -130,8 +131,8 @@ MICROCODE = [
         CO|HLMI,
         MO|IR1I|CE,
         IR1O|RSE,
-        RO|SS_001|CA,  # A - Rx - C
-        FI|SO|AI,
+        FI|RO|SS_001|CA,  # A - Rx - C
+        SO|AI,
         DONE,
     ],
     # CMP = 11 (Ra - Rx, only update flags)
@@ -141,8 +142,7 @@ MICROCODE = [
         CO|HLMI,
         MO|IR1I|CE,
         IR1O|RSE,
-        RO|SS_001,  # A - Rx, update flags, don't store
-        FI,
+        FI|RO|SS_001,  # A - Rx, update flags, don't store
         DONE,
     ],
     # AND = 12 (Ra = Ra & Rx)
@@ -152,8 +152,8 @@ MICROCODE = [
         CO|HLMI,
         MO|IR1I|CE,
         IR1O|RSE,
-        RO|SS_101,  # A & Rx
-        FI|SO|AI,
+        FI|RO|SS_101,  # A & Rx
+        SO|AI,
         DONE,
     ],
     # OR = 13 (Ra = Ra | Rx)
@@ -163,8 +163,8 @@ MICROCODE = [
         CO|HLMI,
         MO|IR1I|CE,
         IR1O|RSE,
-        RO|SS_110,  # A | Rx
-        FI|SO|AI,
+        FI|RO|SS_110,  # A | Rx
+        SO|AI,
         DONE,
     ],
     # XOR = 14 (Ra = Ra ^ Rx)
@@ -174,8 +174,8 @@ MICROCODE = [
         CO|HLMI,
         MO|IR1I|CE,
         IR1O|RSE,
-        RO|SS_111,  # A ^ Rx
-        FI|SO|AI,
+        FI|RO|SS_111,  # A ^ Rx
+        SO|AI,
         DONE,
     ],
     # CALL = 15 (Push PC, jump to address)
@@ -342,48 +342,16 @@ MICROCODE = [
 ]
 
 # JZ = 17, JN = 18, JC = 19, JNC = 20
-FLAGS_MICROCODE = [ 
-    # JZ = 17 (Jump if zero)
-    [
-        CO|HLMI,
-        MO|IR0I|CE,
-        CO|HLMI,
-        MO|IR1I|CE,
-        CO|HLMI,
-        MO|IR2I|CE,
-        DONE,
-    ],
-    # JNZ = 18 (Jump if not zero)
-    [
-        CO|HLMI,
-        MO|IR0I|CE,
-        CO|HLMI,
-        MO|IR1I|CE,
-        CO|HLMI,
-        MO|IR2I|CE,
-        DONE,
-    ],
-    # JC = 19 (Jump if carry)
-    [
-        CO|HLMI,
-        MO|IR0I|CE,
-        CO|HLMI,
-        MO|IR1I|CE,
-        CO|HLMI,
-        MO|IR2I|CE,
-        DONE,
-    ],
-    # JNC = 20 (Jump if no carry)
-    [
-        CO|HLMI,
-        MO|IR0I|CE,
-        CO|HLMI,
-        MO|IR1I|CE,
-        CO|HLMI,
-        MO|IR2I|CE,
-        DONE,
-    ],
+NO_JUMP = [
+    CO|HLMI,
+    MO|IR0I|CE,
+    CO|HLMI,
+    MO|IR1I|CE,
+    CO|HLMI,
+    MO|IR2I|CE,
+    DONE,
 ]
+
 
 ROM1 = bytearray(4096)
 ROM2 = bytearray(4096)
@@ -391,8 +359,7 @@ ROM2 = bytearray(4096)
 for i in range(len(MICROCODE)):
     MICROCODE[i] = (MICROCODE[i] + [0]*16)[:16] # Extends each array with up to 16 total elements of 0s 
 
-for i in range(len(FLAGS_MICROCODE)):
-    FLAGS_MICROCODE[i] = (FLAGS_MICROCODE[i] + [0]*16)[:16] # Extends each array with up to 16 total elements of 0s 
+NO_JUMP = (NO_JUMP + [0]*16)[:16] # Extends array with up to 16 total elements of 0s 
 
 for addr in range(4096):
     opcode     = addr & 0x1F         # bits 0–4
@@ -402,14 +369,11 @@ for addr in range(4096):
 
     
     if opcode < len(MICROCODE):
-        if opcode == 17 and zero_flag == 0:   
-                val = FLAGS_MICROCODE[0][t_state] & 0xFF
-        elif opcode == 18 and zero_flag == 0:   
-                val = FLAGS_MICROCODE[1][t_state] & 0xFF
-        elif opcode == 19 and carry_flag == 0:   
-                val = FLAGS_MICROCODE[2][t_state] & 0xFF
-        elif opcode == 20 and carry_flag == 0:   
-                val = FLAGS_MICROCODE[3][t_state] & 0xFF
+        if  ((opcode == 17 and zero_flag != 1) or 
+            (opcode == 18 and zero_flag != 0) or 
+            (opcode == 19 and carry_flag != 1) or 
+            (opcode == 20 and carry_flag != 0)):   
+                val = NO_JUMP[t_state] & 0xFF
         else:
             val = MICROCODE[opcode][t_state]
         

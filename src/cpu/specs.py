@@ -86,7 +86,7 @@ ROM 12-bit ADDRESS INPUT
 1 bit is always 0
 
 ROM_1 8-bit OUTPUT
-0-3 (partial, 1 left):
+0-3 (full):
 0000 (0): Nothing
 0001 (1): AI
 0010 (2): HI
@@ -102,6 +102,7 @@ ROM_1 8-bit OUTPUT
 1100 (12): HLMI
 1101 (13): LMI
 1110 (14): HMI
+1111 (15): FI
 4-7 bits (partial, 2 left):
 00: Nothing
 0000 (0): Nothing
@@ -122,9 +123,9 @@ ROM_1 8-bit OUTPUT
 ROM_2 8-bit OUTPUT
 0-2 bits (full): 
 SS [000, 001, 010, 011, 100, 101, 110, 111]
-3-5 bits (full):
+3-5 bits (partial, 1 left):
 000 (0): Nothing
-001 (1): FI
+001 (1): Nothing
 010 (2): CE
 011 (3): CA
 100 (4): SPO
