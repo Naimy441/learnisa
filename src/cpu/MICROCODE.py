@@ -85,6 +85,8 @@ MICROCODE = [
         MO|LI|SPI,  # RAM to L, inc SP
         SPO|HLMI,  # SP to MAR (high byte)
         MO|HI|SPI,  # RAM to H, inc SP
+        LO|LMI,
+        HO|HMI,
         HLMO|CI,  # MAR to PC and load
         DONE,
     ],
@@ -298,7 +300,7 @@ MICROCODE = [
         DONE,
     ],
     # LDI = 23 (Ra = immediate)
-    [CO|HLMI, MO|IR0I|CE, CO|HLMI, MO|IR1I|CE, IR1O|RSE, IR2O|RI, DONE],
+    [CO|HLMI, MO|IR0I|CE, CO|HLMI, MO|IR1I|CE, CO|HLMI, MO|IR2I|CE, IR1O|RSE, IR2O|RI, DONE],
     # LDA = 24 (Ra = [addr])
     [
         CO|HLMI,
