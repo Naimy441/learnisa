@@ -241,7 +241,7 @@ prepare_lexer:
     LD R8, R1         ; Copy as current index
     JMP lexer
 lexer:
-    LD R2, [R1]         ; LB only loads 1 byte (1 char) from HEAP at memory address R1
+    LB R2, [R1]       ; LB only loads 1 byte (1 char) from HEAP at memory address R1
     LD R3, 0          ; Check EOF
     CMP R2, R3
     JNZ lexer_proceed_until_delim
@@ -1293,7 +1293,7 @@ lexer_if_semicolon:
     INC R5
     LD R4, NEWLINE
     LB R3, [R4]
-    LD R2, [R1]         ; LB only loads 1 byte (1 char) from HEAP at memory address R1
+    LB R2, [R1]         ; LB only loads 1 byte (1 char) from HEAP at memory address R1
     CMP R2, R3
     JNZ lexer_if_semicolon
     JZ lexer
@@ -1700,7 +1700,7 @@ else_num_loop:
     LD R2, [R1]
     CALL push_token     ; R2 is the input
     INC R1
-    LD R2, [R1]         ; LB only loads 1 byte (1 char) from HEAP at memory address R1
+    LB R2, [R1]         ; LB only loads 1 byte (1 char) from HEAP at memory address R1
     LD R4, SPACE
     LB R3, [R4]
     CMP R2, R3
@@ -1728,7 +1728,7 @@ parse_symbol_loop:
     CALL push_token
     INC R1
 
-    LD R2, [R1]         ; LB only loads 1 byte (1 char) from HEAP at memory address R1
+    LB R2, [R1]         ; LB only loads 1 byte (1 char) from HEAP at memory address R1
     LD R4, SPACE
     LB R3, [R4]
     CMP R2, R3

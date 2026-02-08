@@ -608,7 +608,7 @@ class Assembler:
                         s.write(f"{symbol} = {symbols[symbol]}\n")
 
 if __name__ == '__main__':
-    ASSEMBLER_DEBUG_MODE = False
+    ASSEMBLER_DEBUG_MODE = True
 
     if (len(sys.argv) > 2):
         input_fn = sys.argv[1]

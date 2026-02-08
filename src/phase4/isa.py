@@ -66,6 +66,7 @@ class ISA:
         self.is_step = True
         self.is_breakpoint = False
         self.breakpoints = []
+        self.debug_symbols = {}
 
     def load_debug_symbols(self, input_fn):
         with open(f"{input_fn}.symbols", "r") as f:
@@ -119,6 +120,7 @@ class ISA:
         # 1    = immediate, symbol          - LH Rx, Val     - 1 + 1 (Addr Byte) + 1 + 2 = 5 bytes
         # 3    = absolute mem addr          - LH Rx, Addr    - 1 + 1 (Addr Byte) + 1 + 2 = 5 bytes
         # 4    = indirect through register  - LH Rx, [Ry]    - 1 + 1 (Addr Byte) + 1 + 1 = 4 bytes
+        # 5    = base pointer + offset      - LH Rx, [Ry+Off] - 1 + 1 (Addr Byte) + 1 + 2 = 5 bytes
         if mode == 0:
             self.reg[rx] = self.reg[operand] & self.HW_MASK
         elif mode == 1:
@@ -1100,7 +1102,7 @@ class ISA:
 
 if __name__ == '__main__':
     RUNNER_DEBUG_MODE = False
-    RUNNER_STEP_MODE = False
+    RUNNER_STEP_MODE = True
 
     if RUNNER_DEBUG_MODE:
         with open('debug_log.txt', 'w') as f:

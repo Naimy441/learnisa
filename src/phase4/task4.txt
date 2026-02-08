@@ -119,3 +119,10 @@ cmp -l asm_compiler.bin asm_compiler2.bin
 hexdump -C asm_compiler.bin > file1.hex
 hexdump -C asm_compiler2.bin > file2.hex
 diff file1.hex file2.hex
+
+Simple step by step testing process:
+1. Test asm_compiler.bin on add.asm
+2. Compare binaries until it works
+3. Then test another mini assembly program until it works
+4. Then fix test_diff.py and make all of the assemblying work
+4. Then test on asm_compiler2.asm to see if that works!

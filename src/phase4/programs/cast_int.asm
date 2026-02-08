@@ -6,17 +6,17 @@ hex2 = .asciiz '0x0200'
 
 .code
 main:
-    LOAD R1, dec1
+    LH R1, dec1
     CALL dec_to_int
     SYS R0, 0x0002
-    LOAD R1, hex1
+    LH R1, hex1
     CALL hex_to_int
     SYS R0, 0x0002
 
-    LOAD R1, dec2
+    LH R1, dec2
     CALL dec_to_int
     SYS R0, 0x0002
-    LOAD R1, hex2
+    LH R1, hex2
     CALL hex_to_int
     SYS R0, 0x0002
     HALT
@@ -27,15 +27,15 @@ dec_to_int:
     ; OUTPUT - R0
     ; INPUT - R1 is the address to start of the decimal string -> Copied into local R2
     PUSH R5
-    LOAD R5, 0
+    LH R5, 0
     PUSH R4
-    LOAD R4, 10
+    LH R4, 10
     PUSH R3
-    LOAD R3, 48
+    LH R3, 48
     PUSH R2
-    LOAD R2, R1 ; Save local copy of R1, aka don't operate on the pointer
+    LH R2, R1 ; Save local copy of R1, aka don't operate on the pointer
     PUSH R1
-    LOAD R0, 0
+    LH R0, 0
 loop_dec_to_int:
     LB R1, [R2] ; R1 contains the ASCII value
     CMP R1, R5  ; Check if we have reached the delimiter
@@ -59,19 +59,19 @@ hex_to_int:
     ; OUTPUT - R0
     ; INPUT - R1 is the address to start of the hex string -> Copied into local R2
     PUSH R7
-    LOAD R7, 57
+    LH R7, 57
     PUSH R6
-    LOAD R6, 55
+    LH R6, 55
     PUSH R5
-    LOAD R5, 0
+    LH R5, 0
     PUSH R4
-    LOAD R4, 16
+    LH R4, 16
     PUSH R3
-    LOAD R3, 48
+    LH R3, 48
     PUSH R2
-    LOAD R2, R1 ; Save local copy of R1 to avoid operating on the pointer
+    LH R2, R1 ; Save local copy of R1 to avoid operating on the pointer
     PUSH R1
-    LOAD R0, 0  ; Initalize the output R0 to 0
+    LH R0, 0  ; Initalize the output R0 to 0
     INC R2      ; Skip 0
     INC R2      ; Skip x
 loop_hex_to_int:
