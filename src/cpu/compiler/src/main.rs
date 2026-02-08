@@ -32,6 +32,110 @@ enum Token {
     Separator(char),
 }
 
+enum Type {
+    Int8,
+    UInt8,
+    Char,
+    Void,
+    // Pointer(Box<Type>),
+}
+
+struct Program {
+    items: Vec<Declaration>,
+}
+
+enum Declaration {
+    Function {
+        name: String,
+        ret_type: Type,
+        params: Vec<Parameter>,
+        body: Box<Statement>,
+    },
+    Variable {
+        name: String,
+        var_type: Type,
+        init: Option<Expression>,
+    },
+}
+
+struct Parameter {
+    name: String,
+    var_type: Type,
+}
+
+enum Statement {
+    Block {
+        items: Vec<BlockItem>,
+    },
+    Expr(Expression),
+    Return(Option<Expression>),
+    If { 
+        // converts else if to nested if (syntatic sugar)
+        cond: Expression,
+        then_branch: Box<Statement>,
+        else_branch: Option<Box<Statement>>,
+    },
+    While {
+        cond: Expression,
+        body: Box<Statement>,
+    },
+    For {
+        // converts to while (syntatic sugar)
+        init: Option<Box<Statement>>,
+        cond: Option<Expression>,
+        inc: Option<Expression>,
+        body: Box<Statement>,
+    },
+}
+
+enum BlockItem {
+    Decl(Declaration),
+    Stmt(Statement),
+}
+
+enum Expression {
+    IntLiteral(i8),
+    CharLiteral(char),
+    Variable(String),
+    Assign {
+        target: Box<Expression>,
+        value: Box<Expression>,
+    },
+    Unary {
+        operator: UnaryOp,
+        operand: Box<Expression>, 
+    },
+    Binary {
+        operator: BinaryOp,
+        left_oper: Box<Expression>,
+        right_oper: Box<Expression>,    
+    },
+    Call {
+        name: String,
+        args: Vec<Expression>,
+    },
+}
+
+enum UnaryOp {
+    Negate,
+    Not,
+}
+
+enum BinaryOp {
+    Add,
+    Sub,
+    Multiply,
+    Divide,
+    And,
+    Or,
+    Equal,
+    NotEqual,
+    LessThan,
+    LessThanOrEqual,
+    GreaterThan,
+    GreaterThanOrEqual,
+}
+
 fn main() {
     let args: Vec<String> = env::args().collect();
     printvec(&args);
@@ -43,13 +147,11 @@ fn main() {
     for x in tokens {
         println!("{:?}", x);
     }
-
-
 }
 
-fn lexer(string: String) -> Vec<Token> {
+fn lexer(s: String) -> Vec<Token> {
     let mut tokens = Vec::new();
-    let mut chars = string.chars().peekable();
+    let mut chars = s.chars().peekable();
 
     while let Some(&c) = chars.peek() { // while PATTERN matches EXPRESSION
         if c.is_whitespace() {
@@ -161,6 +263,35 @@ fn lexer(string: String) -> Vec<Token> {
     }
 
     tokens
+}
+
+struct Parser {
+    tokens: Vec<Token>,
+    pos: usize,
+}
+
+impl Parser {
+    fn new(tokens: Vec<Token>) -> Self {
+        Parser { tokens, pos: 0 }
+    }
+
+    fn peek(&self) -> Option<&Token> {
+        self.tokens.get(self.pos);
+    }
+
+    fn peek_n(&self, n: usize) -> Option<&Token> {
+        self.tokens.get(self.pos + n);
+    }
+
+    fn next(&mut self) -> Option<Token> {
+        let tok = self.tokens.get(self.pos).cloned();
+        self.pos += 1;
+        tok
+    }
+}
+
+fn parser(v: Vec<Token>) {
+
 }
 
 fn printvec(v: &[String]) {
