@@ -32,6 +32,7 @@ enum Token {
     Eof,
 }
 
+#[derive(Debug)]
 enum Type {
     Int,
     Char,
@@ -39,10 +40,12 @@ enum Type {
     // Pointer(Box<Type>),
 }
 
+#[derive(Debug)]
 struct Program {
     items: Vec<Declaration>,
 }
 
+#[derive(Debug)]
 enum Declaration {
     Function {
         name: String,
@@ -57,11 +60,13 @@ enum Declaration {
     },
 }
 
+#[derive(Debug)]
 struct Parameter {
     name: String,
     var_type: Type,
 }
 
+#[derive(Debug)]
 enum Statement {
     Block {
         items: Vec<BlockItem>,
@@ -88,11 +93,13 @@ enum Statement {
     },
 }
 
+#[derive(Debug)]
 enum BlockItem {
     Decl(Declaration),
     Stmt(Statement),
 }
 
+#[derive(Debug)]
 enum Expression {
     IntLiteral(i8),
     CharLiteral(char),
@@ -116,11 +123,13 @@ enum Expression {
     },
 }
 
+#[derive(Debug)]
 enum UnaryOp {
     Negate,
     Not,
 }
 
+#[derive(Debug)]
 enum BinaryOp {
     Add,
     Sub,
@@ -144,9 +153,13 @@ fn main() {
     println!("{}", file_data);
 
     let tokens: Vec<Token> = lexer(file_data);
-    for x in tokens {
-        println!("{:?}", x);
+    for t in &tokens {
+        println!("{:?}", t);
     }
+
+    let mut parser: Parser = Parser::new(tokens);
+    let program: Program = parser.parse_program();
+    println!("{:?}", program);
 }
 
 fn lexer(s: String) -> Vec<Token> {
@@ -559,10 +572,6 @@ impl Parser {
         Expression::Call { name, args }
     }
  }
-
-fn parser(v: Vec<Token>) {
-
-}
 
 fn printvec(v: &[String]) {
     for x in v {
