@@ -307,7 +307,7 @@ impl Parser {
         };
 
         let name = match self.next() {
-            Some(Token::Identifier(x)) => name,
+            Some(Token::Identifier(x)) => x,
             _ => panic!("expected identifier"),
         };
 
@@ -340,24 +340,24 @@ impl Parser {
                     _ => panic!("expected keyword"),
                 };
                 let name = match self.next() {
-                    Some(Token::Identifier(x)) => name,
+                    Some(Token::Identifier(x)) => x,
                     _ => panic!("expected identifier"),
                 };
-                let p = Parameter { name, var_type }
+                let p = Parameter { name, var_type };
                 params.push(p);
 
                 match self.next() {
-                    Some(Token:Separator(',')) => {
+                    Some(Token::Separator(',')) => {
                         continue;
                     },
-                    Some(Token:Separator(')')) => {
+                    Some(Token::Separator(')')) => {
                         break;
                     }
                     _ => panic!("expected comma"),
                 }
             }
         }
-        let body = self.parse_statement();
+        let body = Box::new(self.parse_statement());
         Declaration::Function { name, ret_type, params, body }
     }
 
@@ -369,7 +369,7 @@ impl Parser {
     fn parse_statement(&mut self) -> Statement {
         match self.next() {
             // block statement
-            Some(Token:Separator('{')) => {
+            Some(Token::Separator('{')) => {
                 let mut items: Vec<BlockItem> = Vec::new();
                 while !matches!(self.peek(), Some(Token::Separator('}'))) {                    
                     match self.peek_n(1) {
@@ -395,7 +395,7 @@ impl Parser {
                 Statement::Block { items }
             },
             // expression with assignment
-            Some(Token::Identifier(x)) => {
+            Some(Token::Identifier(_x)) => {
                 Statement::Expr(self.parse_expression(0.0))
             },
             Some(Token::Keyword(x)) => match x.as_str() {
@@ -414,7 +414,7 @@ impl Parser {
                         Some(Box::new(self.parse_statement())) // to the parser, this looks like regular if so it does nesting
                     } else {
                         None
-                    }
+                    };
                     Statement::If {
                         cond, then_branch, else_branch
                     }
@@ -437,7 +437,7 @@ impl Parser {
                                     Box::new(self.parse_statement())
                                 },
                                  _ => panic!("expected close paranthese )"),
-                            }
+                            };
                             Statement::For {
                                 init, cond, inc, body
                             }
@@ -451,7 +451,7 @@ impl Parser {
         }
     }
 
-    fn get_binding_power(&mut self, operator: BinaryOp) -> (f32, f32) {
+    fn get_binding_power(&mut self, operator: &BinaryOp) -> (f32, f32) {
         match operator {
             BinaryOp::Or => (1.0, 1.1),
             BinaryOp::And => (2.0, 2.1),
@@ -462,7 +462,6 @@ impl Parser {
             | BinaryOp::GreaterThanOrEqual => (4.0, 4.1),
             BinaryOp::Add | BinaryOp::Sub => (5.0, 5.1),
             BinaryOp::Multiply | BinaryOp::Divide => (6.0, 6.1),
-            _ => panic!("expected valid binary operator");
         }
     }
     
@@ -477,11 +476,11 @@ impl Parser {
                     Expression::Variable(name)
                 }
             },
-            Some(Token::Operator(operator)) if operator == '-' => Expression::Unary {
+            Some(Token::Operator(operator)) if operator.as_str() == "-" => Expression::Unary {
                 operator: UnaryOp::Negate,
                 oper: Box::new(self.parse_expression(7.0)),
             },
-            Some(Token::Operator(operator)) if operator == '!' => Expression::Unary {
+            Some(Token::Operator(operator)) if operator.as_str() == "!" => Expression::Unary {
                 operator: UnaryOp::Not,
                 oper: Box::new(self.parse_expression(7.0)),
             },
@@ -492,10 +491,10 @@ impl Parser {
         // parse infix
         loop {
             if let Some(Token::Operator(x)) = self.peek_n(1) {
-                if x == '=' {
+                if x.as_str() == "=" {
                     self.next(); // consume assignment =
                     let right_oper = self.parse_expression(0.0);
-                    return Expression:Assign {
+                    return Expression::Assign {
                         target: Box::new(left_oper),
                         value: Box::new(right_oper),
                     }
@@ -503,11 +502,11 @@ impl Parser {
             }
 
             let operator: BinaryOp = match self.peek_n(1) {
-                Some(Token::Operator(x)) => match x {
-                    '+' => BinaryOp::Add,
-                    '-' => BinaryOp::Sub,
-                    '*' => BinaryOp::Multiply,
-                    '/' => BinaryOp::Divide,
+                Some(Token::Operator(x)) => match x.as_str() {
+                    "+" => BinaryOp::Add,
+                    "-" => BinaryOp::Sub,
+                    "*" => BinaryOp::Multiply,
+                    "/" => BinaryOp::Divide,
                     "&&" => BinaryOp::And,
                     "||" => BinaryOp::Or,
                     "==" => BinaryOp::Equal,
@@ -516,12 +515,12 @@ impl Parser {
                     "<=" => BinaryOp::LessThanOrEqual,
                     ">" => BinaryOp::GreaterThan,
                     ">=" => BinaryOp::GreaterThanOrEqual,
-                    _ => panic("invalid operator"),
+                    _ => panic!("invalid operator"),
                 },
                 Some(Token::Separator(')')) | Some(Token::Separator(';')) | Some(Token::Separator(',')) => break,
                 _ => panic!("expected operator")
-            }
-            let (l_bp, r_bp) = self.get_binding_power(operator);
+            };
+            let (l_bp, r_bp) = self.get_binding_power(&operator);
             // if min_bp (previous operator bp) is greater than l_bp (current operator bp)
             // then break and move back to outer expression
             // else check the next operator
