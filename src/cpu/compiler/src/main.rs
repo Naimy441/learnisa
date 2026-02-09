@@ -22,19 +22,18 @@
 use std::env;
 use std::fs;
 
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 enum Token {
     Keyword(String),
     Identifier(String),
     IntLiteral(String),
-    BinaryOperator(String),
-    UnaryOperator(char),
+    Operator(String),
     Separator(char),
+    Eof,
 }
 
 enum Type {
-    Int8,
-    UInt8,
+    Int,
     Char,
     Void,
     // Pointer(Box<Type>),
@@ -54,7 +53,7 @@ enum Declaration {
     Variable {
         name: String,
         var_type: Type,
-        init: Option<Expression>,
+        init: Expression,
     },
 }
 
@@ -103,7 +102,7 @@ enum Expression {
     },
     Unary {
         operator: UnaryOp,
-        operand: Box<Expression>, 
+        oper: Box<Expression>, 
     },
     Binary {
         operator: BinaryOp,
@@ -170,7 +169,7 @@ fn lexer(s: String) -> Vec<Token> {
             
             // check if buf is a keyword or identifier
             let token = match buf.as_str() {
-                "if" | "else" | "for" | "while" | "break" | "continue" | "return" | "int" => Token::Keyword(buf),
+                "if" | "else" | "for" | "while" | "break" | "continue" | "return" | "int" | "char" | "void" => Token::Keyword(buf),
                 _ => Token::Identifier(buf),
             };
             tokens.push(token);
@@ -191,13 +190,9 @@ fn lexer(s: String) -> Vec<Token> {
                     chars.next();
                     Token::Separator(c)
                 },
-                '-' | '~' => {
+                '~' | '+' | '-' | '*'  => {
                     chars.next();
-                    Token::UnaryOperator(c)
-                },
-                '+' | '-' | '*' => {
-                    chars.next();
-                    Token::BinaryOperator(c.to_string())
+                    Token::Operator(c.to_string())
                 },
                 '/' => {
                     // handle comments
@@ -208,7 +203,7 @@ fn lexer(s: String) -> Vec<Token> {
                         continue;
                     } else {
                         chars.next();
-                        Token::BinaryOperator(c.to_string())
+                        Token::Operator(c.to_string())
                     }
                 },
                 '&' => {
@@ -216,7 +211,7 @@ fn lexer(s: String) -> Vec<Token> {
                     chars.next();
                     if matches!(chars.peek(), Some(&'&'))  {
                         chars.next();
-                        Token::BinaryOperator(c.to_string().repeat(2))
+                        Token::Operator(c.to_string().repeat(2))
                     } else {
                         // ignore single &
                         continue;
@@ -227,7 +222,7 @@ fn lexer(s: String) -> Vec<Token> {
                     chars.next();
                     if matches!(chars.peek(), Some(&'|'))  {
                         chars.next();
-                        Token::BinaryOperator(c.to_string().repeat(2))
+                        Token::Operator(c.to_string().repeat(2))
                     } else {
                         // ignore single |
                         continue;
@@ -238,9 +233,9 @@ fn lexer(s: String) -> Vec<Token> {
                     chars.next();
                     if matches!(chars.peek(), Some(&'='))  {
                         chars.next();
-                        Token::BinaryOperator(c.to_string() + "=")
+                        Token::Operator(c.to_string() + "=")
                     } else {
-                        Token::UnaryOperator(c)
+                        Token::Operator(c.to_string())
                     }
                 },
                 '=' | '<' | '>' => {
@@ -248,9 +243,9 @@ fn lexer(s: String) -> Vec<Token> {
                     chars.next();
                     if matches!(chars.peek(), Some(&'='))  {
                         chars.next();
-                        Token::BinaryOperator(c.to_string() + "=")
+                        Token::Operator(c.to_string() + "=")
                     } else {
-                        Token::BinaryOperator(c.to_string())
+                        Token::Operator(c.to_string())
                     }
                 },
                 _ => {
@@ -262,6 +257,7 @@ fn lexer(s: String) -> Vec<Token> {
         }
     }
 
+    tokens.push(Token::Eof);
     tokens
 }
 
@@ -276,11 +272,11 @@ impl Parser {
     }
 
     fn peek(&self) -> Option<&Token> {
-        self.tokens.get(self.pos);
+        self.tokens.get(self.pos)
     }
 
     fn peek_n(&self, n: usize) -> Option<&Token> {
-        self.tokens.get(self.pos + n);
+        self.tokens.get(self.pos + n)
     }
 
     fn next(&mut self) -> Option<Token> {
@@ -288,7 +284,203 @@ impl Parser {
         self.pos += 1;
         tok
     }
-}
+
+    fn parse_program(&mut self) -> Program {
+        let mut items = Vec::new();
+        while self.peek().is_some() {
+            let decl = self.parse_declaration();
+            items.push(decl);
+        }
+        Program { items }
+    }
+
+    fn parse_declaration(&mut self) -> Declaration {
+        let decl_type = match self.next() {
+            Some(Token::Keyword(x)) => match x.as_str() {
+                "int" => Type::Int,
+                "char" => Type::Char,
+                "void" => Type::Void,
+                _ => panic!("invalid type"),
+            }
+            _ => panic!("expected keyword"),
+        };
+
+        let name = match self.next() {
+            Some(Token::Identifier(x)) => name,
+            _ => panic!("expected identifier"),
+        };
+
+        match self.next() {
+            Some(Token::Separator('(')) => {
+                self.parse_function(name, decl_type)
+            },
+            Some(Token::Operator(x)) if x == "=" => {
+                if let Type::Void = decl_type {
+                    panic!("invalid type for variable");
+                }
+                self.parse_variable(name, decl_type)
+            },
+            Some(Token::Separator(';')) => panic!("expected initialized variable"),
+            _ => panic!("expected function or variable"),
+        }
+    }
+
+    fn parse_function(&mut self, name: String, ret_type: Type) -> Declaration {
+        let mut params = Vec::new();
+        if !matches(self.peek(), Some(Token::Separator(')'))) {
+            // Parse parameters
+            loop {
+                let var_type = match self.next() {
+                    Some(Token::Keyword(x)) => match x.as_str() {
+                        "int" => Type::Int,
+                        "char" => Type::Char,
+                        _ => panic!("invalid type"),
+                    }
+                    _ => panic!("expected keyword"),
+                };
+                let name = match self.next() {
+                    Some(Token::Identifier(x)) => name,
+                    _ => panic!("expected identifier"),
+                };
+                let p = Parameter { name, var_type }
+                params.push(p);
+
+                match self.next() {
+                    Some(Token:Separator(',')) => {
+                        continue;
+                    },
+                    Some(Token:Separator(')')) => {
+                        break;
+                    }
+                    _ => panic!("expected comma"),
+                }
+            }
+        }
+        let body = self.parse_block_statement();
+        Declaration::Function { name, ret_type, params, body }
+    }
+
+    fn parse_variable(&mut self, name: String, var_type: Type) -> Declaration {
+        let init = self.parse_expression(0.0);
+        Declaration::Variable { name, var_type, init }
+    }
+
+    fn parse_block_statement(&mut self) -> Statement {
+        let mut items: Vec<BlockItem> = Vec::new();
+        match self.next() {
+            Some(Token:Separator('{')) => {
+                while !matches!(self.peek(), Some(Token::Separator('}'))) {                    
+                    match self.peek_n(1) {
+                        Some(Token::Keyword(x)) => match x.as_str() {
+                            "int" | "char" | "void" => {
+                                let item: Declaration = self.parse_declaration();
+                                items.push(BlockItem::Decl(item));
+                            },
+                            "if" | "while" | "for" | "return" => {
+                                let item: Statement = self.parse_statement();
+                                items.push(BlockItem::Stmt(item));
+                            }
+                            _ => panic!("expected declaration or statement"),
+                        },
+                        _ => {
+                            // Could be an expression, such as foo(bar);
+                            let item: Statement = self.parse_statement();
+                            items.push(BlockItem::Stmt(item));
+                        },
+                    }
+                    self.next();
+                }
+                Block { items }
+            },
+            _ => panic!("expected open bracket {"),
+        }
+    }
+
+    fn parse_statement(&mut self) -> Statement {
+
+    }
+
+    fn get_binding_power(&mut self, operator: BinaryOp) -> (f32, f32) {
+        match operator {
+            BinaryOp::Or => (1.0, 1.1),
+            BinaryOp::And => (2.0, 2.1),
+            BinaryOp::Equal | BinaryOp::NotEqual => (3.0, 3.1),
+            BinaryOp::LessThan 
+            | BinaryOp::LessThanOrEqual 
+            | BinaryOp::GreaterThan 
+            | BinaryOp::GreaterThanOrEqual => (4.0, 4.1),
+            BinaryOp::Add | BinaryOp::Sub => (5.0, 5.1),
+            BinaryOp::Multiply | BinaryOp::Divide => (6.0, 6.1),
+            _ => panic!("expected valid binary operator");
+        }
+    }
+    
+    fn parse_expression(&mut self, min_bp: f32) -> Expression {
+        // parse prefix
+        let mut left_oper = match self.next() {
+            Some(Token::IntLiteral(x)) => Expression::IntLiteral(x.parse().unwrap()),
+            Some(Token::Identifier(name)) => {
+                if matches!(self.peek_n(1), Some(Token::Separator('('))) {
+                    self.parse_call(name);
+                } else {
+                    Expression::Variable(name)
+                }
+            },
+            Some(Token::Operator(operator)) if operator == '-' => Expression::Unary {
+                operator: UnaryOp::Negate,
+                oper: Box::new(self.parse_expression(7.0)),
+            },
+            Some(Token::Operator(operator)) if operator == '!' => Expression::Unary {
+                operator: UnaryOp::Not,
+                oper: Box::new(self.parse_expression(7.0)),
+            },
+            Some(Token::Separator('(')) => self.parse_expression(0.0),
+            _ => panic!("expected integer literal"),
+        };
+
+        // parse infix
+        loop {
+            let operator: BinaryOp = match self.peek_n(1) {
+                Some(Token::Operator(x)) => match x {
+                    '+' => BinaryOp::Add,
+                    '-' => BinaryOp::Sub,
+                    '*' => BinaryOp::Multiply,
+                    '/' => BinaryOp::Divide,
+                    "&&" => BinaryOp::And,
+                    "||" => BinaryOp::Or,
+                    "=" => BinaryOp::Equal,
+                    "!=" => BinaryOp::NotEqual,
+                    "<" => BinaryOp::LessThan,
+                    "<=" => BinaryOp::LessThanOrEqual,
+                    ">" => BinaryOp::GreaterThan,
+                    ">=" => BinaryOp::GreaterThanOrEqual,
+                    _ => panic("invalid operator"),
+                },
+                Some(Token::Separator(')')) | Some(Token::Separator(';')) => break,
+                _ => panic!("expected operator")
+            }
+            let (l_bp, r_bp) = self.get_binding_power(operator);
+            // if min_bp (previous operator bp) is greater than l_bp (current operator bp)
+            // then break and move back to outer expression
+            // else check the next operator
+            if l_bp < min_bp {
+                break;
+            }
+            self.next();
+            let right_oper = self.parse_expression(r_bp);
+            left_oper = Expression::Binary { 
+                operator, 
+                left_oper: Box::new(left_oper), 
+                right_oper: Box::new(right_oper) 
+            };
+        }
+        left_oper
+    }
+
+    fn parse_call() -> Expression {
+        
+    }
+ }
 
 fn parser(v: Vec<Token>) {
 
