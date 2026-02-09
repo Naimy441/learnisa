@@ -80,9 +80,10 @@ enum Statement {
     },
     For {
         // converts to while (syntatic sugar)
-        init: Option<Box<Statement>>,
-        cond: Option<Expression>,
-        inc: Option<Expression>,
+        // init, cond, inc are all required unlike C
+        init: Declaration,
+        cond: Expression,
+        inc: Expression,
         body: Box<Statement>,
     },
 }
@@ -327,8 +328,8 @@ impl Parser {
 
     fn parse_function(&mut self, name: String, ret_type: Type) -> Declaration {
         let mut params = Vec::new();
-        if !matches(self.peek(), Some(Token::Separator(')'))) {
-            // Parse parameters
+        if !matches!(self.peek(), Some(Token::Separator(')'))) {
+            // parse parameters
             loop {
                 let var_type = match self.next() {
                     Some(Token::Keyword(x)) => match x.as_str() {
@@ -356,7 +357,7 @@ impl Parser {
                 }
             }
         }
-        let body = self.parse_block_statement();
+        let body = self.parse_statement();
         Declaration::Function { name, ret_type, params, body }
     }
 
@@ -365,10 +366,11 @@ impl Parser {
         Declaration::Variable { name, var_type, init }
     }
 
-    fn parse_block_statement(&mut self) -> Statement {
-        let mut items: Vec<BlockItem> = Vec::new();
+    fn parse_statement(&mut self) -> Statement {
         match self.next() {
+            // block statement
             Some(Token:Separator('{')) => {
+                let mut items: Vec<BlockItem> = Vec::new();
                 while !matches!(self.peek(), Some(Token::Separator('}'))) {                    
                     match self.peek_n(1) {
                         Some(Token::Keyword(x)) => match x.as_str() {
@@ -383,21 +385,70 @@ impl Parser {
                             _ => panic!("expected declaration or statement"),
                         },
                         _ => {
-                            // Could be an expression, such as foo(bar);
+                            // could be an expression, such as foo(bar);
                             let item: Statement = self.parse_statement();
                             items.push(BlockItem::Stmt(item));
                         },
                     }
                     self.next();
                 }
-                Block { items }
+                Statement::Block { items }
             },
-            _ => panic!("expected open bracket {"),
+            // expression with assignment
+            Some(Token::Identifier(x)) => {
+                Statement::Expr(self.parse_expression(0.0))
+            },
+            Some(Token::Keyword(x)) => match x.as_str() {
+                "return" => {
+                    if let Some(Token::Separator(';')) = self.peek_n(1) {
+                        Statement::Return(None)
+                    } else {
+                        Statement::Return(Some(self.parse_expression(0.0)))
+                    }
+                },
+                "if" => {
+                    let cond = self.parse_expression(0.0);
+                    let then_branch = Box::new(self.parse_statement());
+                    let else_branch = if matches!(self.peek_n(1), Some(Token::Keyword(x)) if x == "else") {
+                        self.next(); // consume else
+                        Some(Box::new(self.parse_statement())) // to the parser, this looks like regular if so it does nesting
+                    } else {
+                        None
+                    }
+                    Statement::If {
+                        cond, then_branch, else_branch
+                    }
+                },
+                "while" => {
+                    let cond = self.parse_expression(0.0);
+                    let body = Box::new(self.parse_statement());
+                    Statement::While {
+                        cond, body
+                    }
+                },
+                "for" => {
+                    match self.next() {
+                        Some(Token::Separator('(')) => {
+                            let init = self.parse_declaration();
+                            let cond = self.parse_expression(0.0);
+                            let inc = self.parse_expression(0.0);
+                            let body = match self.next() {
+                                Some(Token::Separator(')')) => {
+                                    Box::new(self.parse_statement())
+                                },
+                                 _ => panic!("expected close paranthese )"),
+                            }
+                            Statement::For {
+                                init, cond, inc, body
+                            }
+                        },
+                        _ => panic!("expected open paranthese ("),
+                    }
+                },
+                _ => panic!("expected valid keyword"),
+            },
+            _ => panic!("expected statement"),
         }
-    }
-
-    fn parse_statement(&mut self) -> Statement {
-
     }
 
     fn get_binding_power(&mut self, operator: BinaryOp) -> (f32, f32) {
@@ -421,7 +472,7 @@ impl Parser {
             Some(Token::IntLiteral(x)) => Expression::IntLiteral(x.parse().unwrap()),
             Some(Token::Identifier(name)) => {
                 if matches!(self.peek_n(1), Some(Token::Separator('('))) {
-                    self.parse_call(name);
+                    self.parse_call(name)
                 } else {
                     Expression::Variable(name)
                 }
@@ -440,6 +491,17 @@ impl Parser {
 
         // parse infix
         loop {
+            if let Some(Token::Operator(x)) = self.peek_n(1) {
+                if x == '=' {
+                    self.next(); // consume assignment =
+                    let right_oper = self.parse_expression(0.0);
+                    return Expression:Assign {
+                        target: Box::new(left_oper),
+                        value: Box::new(right_oper),
+                    }
+                }
+            }
+
             let operator: BinaryOp = match self.peek_n(1) {
                 Some(Token::Operator(x)) => match x {
                     '+' => BinaryOp::Add,
@@ -448,7 +510,7 @@ impl Parser {
                     '/' => BinaryOp::Divide,
                     "&&" => BinaryOp::And,
                     "||" => BinaryOp::Or,
-                    "=" => BinaryOp::Equal,
+                    "==" => BinaryOp::Equal,
                     "!=" => BinaryOp::NotEqual,
                     "<" => BinaryOp::LessThan,
                     "<=" => BinaryOp::LessThanOrEqual,
@@ -456,7 +518,7 @@ impl Parser {
                     ">=" => BinaryOp::GreaterThanOrEqual,
                     _ => panic("invalid operator"),
                 },
-                Some(Token::Separator(')')) | Some(Token::Separator(';')) => break,
+                Some(Token::Separator(')')) | Some(Token::Separator(';')) | Some(Token::Separator(',')) => break,
                 _ => panic!("expected operator")
             }
             let (l_bp, r_bp) = self.get_binding_power(operator);
@@ -477,8 +539,25 @@ impl Parser {
         left_oper
     }
 
-    fn parse_call() -> Expression {
-        
+    fn parse_call(&mut self, name: String) -> Expression {
+        self.next(); // consume open paranthese (
+
+        let mut args = Vec::new();
+        if !matches!(self.peek(), Some(Token::Separator(')'))) {
+            // parse arguments
+            loop {
+                args.push(self.parse_expression(0.0));
+
+                match self.next() {
+                    Some(Token::Separator(',')) => continue,
+                    Some(Token::Separator(')')) => break,
+                    _ => panic!("expected comma or paranthese"),
+                }
+            }
+        } else {
+            self.next(); // consume close paranthese )
+        }
+        Expression::Call { name, args }
     }
  }
 
