@@ -181,7 +181,7 @@ struct Module {
 struct Glob {
     name: String,
     var_type: Type,
-    init: Value,
+    init: i32,
 }
 
 #[derive(Debug, Clone)]
@@ -241,7 +241,10 @@ fn main() {
     logln!();
     log!("{:#?}", program);
 
-
+    let mut lowerer: Lowerer = Lowerer::new();
+    let module: Module = lowerer.lower_program(&program);
+    logln!();
+    log!("{:#?}", module);
 }
 
 fn lexer(s: String) -> Vec<Token> {
@@ -725,10 +728,11 @@ impl Parser {
 struct Lowerer {
     globals: Vec<Glob>,
     functions: Vec<Fun>,
-    instructions: Vec<Instruction>,
-    temp_count: usize,
     label_count: usize,
+    temp_count: usize,
     loop_stack: Vec<LoopContext>,
+    instructions: Vec<Instruction>,
+    implicit_return: bool,
 }
 
 struct LoopContext {
@@ -737,14 +741,15 @@ struct LoopContext {
 }
 
 impl Lowerer {
-    fn new(program: Program) -> Self {
+    fn new() -> Self {
         Lowerer { 
             globals: Vec::new(),
             functions: Vec::new(),
-            instructions: Vec::new(),
-            temp_count: 0, 
             label_count: 0, 
+            temp_count: 0, 
             loop_stack: Vec::new(),
+            instructions: Vec::new(),
+            implicit_return: true,
         }
     }
 
@@ -752,6 +757,7 @@ impl Lowerer {
         self.temp_count = 0;
         self.loop_stack = Vec::new();
         self.instructions = Vec::new();
+        self.implicit_return = true;
     }
 
     fn emit(&mut self, instr: Instruction) {
@@ -783,6 +789,9 @@ impl Lowerer {
             Declaration::Function { name, ret_type, params, body } => {
                 self.clear_state();
                 self.lower_statement(body);
+                if self.implicit_return {
+                    self.emit(Instruction::Return(None));
+                }
                 self.functions.push(Fun {
                     name: name.clone(),
                     ret_type: ret_type.clone(),
@@ -791,7 +800,7 @@ impl Lowerer {
                 });
             },
             Declaration::InitVariable { name, var_type, init } => {
-                let val = self.lower_expression(init);
+                let val = self.lower_const_expr(init);
                 self.globals.push(Glob {
                     name: name.clone(), 
                     var_type: var_type.clone(), 
@@ -817,9 +826,11 @@ impl Lowerer {
             Statement::Return(Some(expr)) => {
                 let val = self.lower_expression(expr);
                 self.emit(Instruction::Return(Some(val)));
+                self.implicit_return = false;
             },
             Statement::Return(None) => {
                 self.emit(Instruction::Return(None));
+                self.implicit_return = false;
             }
             Statement::Break => {
                 let loop_context = self.loop_stack.last().expect("illegal statement: break used outside loop");
@@ -941,6 +952,47 @@ impl Lowerer {
                 ));
             },
             Declaration::Function { name: _, ret_type: _, params: _, body: _ } => panic!("illegal declaration: nested function"),
+        }
+    }
+
+    fn lower_const_expr(&mut self, expr: &Expression) -> i32 {
+        match expr {
+            Expression::IntLiteral(n) => *n as i32,
+            Expression::Unary { operator, oper } => {
+                let val = self.lower_const_expr(oper);
+                match operator {
+                    UnaryOp::Negate => -val,
+                    UnaryOp::Not => {
+                        if val == 0 { 1 } else { 0 }
+                    },
+                }
+            },
+            Expression::Binary { operator, left_oper, right_oper } => {
+                let lval = self.lower_const_expr(left_oper);
+                let rval = self.lower_const_expr(right_oper);
+                match operator {
+                    BinaryOp::Add => lval + rval,
+                    BinaryOp::Sub => lval - rval,
+                    BinaryOp::Multiply => lval * rval,
+                    BinaryOp::Divide => {
+                        if rval == 0 { panic!("division by zero error"); }
+                        lval / rval
+                    },
+                    BinaryOp::And => {
+                        if lval != 0 && rval != 0 { 1 } else { 0 }
+                    },
+                    BinaryOp::Or => {
+                        if lval != 0 || rval != 0 { 1 } else { 0 }
+                    },
+                    BinaryOp::Equal => (lval == rval) as i32,
+                    BinaryOp::NotEqual => (lval != rval) as i32,
+                    BinaryOp::LessThan => (lval < rval) as i32,
+                    BinaryOp::LessThanOrEqual => (lval <= rval) as i32,
+                    BinaryOp::GreaterThan => (lval > rval) as i32,
+                    BinaryOp::GreaterThanOrEqual => (lval >= rval) as i32,
+                }
+            },
+            _ => panic!("expected constant expression in global var declaration")
         }
     }
 
