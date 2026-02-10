@@ -1,4 +1,4 @@
-int exit_code = 0;
+int exit_code = 0 + 1 * -3;
 
 int random(int a, int b, int c) {
     int sum = 0;

@@ -48,7 +48,7 @@ enum Token {
 }
 
 // Parser
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 enum Type {
     Int,
     Char,
@@ -76,7 +76,7 @@ enum Declaration {
     },
 }
 
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 struct Parameter {
     name: String,
     var_type: Type,
@@ -119,7 +119,7 @@ enum BlockItem {
 
 #[derive(Debug)]
 enum Expression {
-    IntLiteral(i8),
+    IntLiteral(i32),
     CharLiteral(char),
     Variable(String),
     Assign {
@@ -169,6 +169,27 @@ enum Value {
     Temp(usize),
     Var(String),
     Const(i32),
+}
+
+#[derive(Debug, Clone)]
+struct Module {
+    globals: Vec<Glob>,
+    functions: Vec<Fun>,
+}
+
+#[derive(Debug, Clone)]
+struct Glob {
+    name: String,
+    var_type: Type,
+    init: Value,
+}
+
+#[derive(Debug, Clone)]
+struct Fun {
+    name: String,
+    ret_type: Type,
+    params: Vec<Parameter>,
+    body: Vec<Instruction>,
 }
 
 #[derive(Debug, Clone)]
@@ -702,7 +723,9 @@ impl Parser {
  }
 
 struct Lowerer {
-    code: Vec<Instruction>,
+    globals: Vec<Glob>,
+    functions: Vec<Fun>,
+    instructions: Vec<Instruction>,
     temp_count: usize,
     label_count: usize,
     loop_stack: Vec<LoopContext>,
@@ -714,18 +737,26 @@ struct LoopContext {
 }
 
 impl Lowerer {
-    fn new() -> Self {
+    fn new(program: Program) -> Self {
         Lowerer { 
-            code: Vec::new(), 
+            globals: Vec::new(),
+            functions: Vec::new(),
+            instructions: Vec::new(),
             temp_count: 0, 
             label_count: 0, 
-            loop_stack: Vec::new() 
+            loop_stack: Vec::new(),
         }
+    }
+
+    fn clear_state(&mut self) {
+        self.temp_count = 0;
+        self.loop_stack = Vec::new();
+        self.instructions = Vec::new();
     }
 
     fn emit(&mut self, instr: Instruction) {
         log!("{:?}", &instr);
-        self.code.push(instr);
+        self.instructions.push(instr);
     }
 
     fn next_temp(&mut self) -> Value {
@@ -736,9 +767,239 @@ impl Lowerer {
 
     fn next_label(&mut self) -> String {
         let count = self.label_count;
-        self.temp_count += 1;
+        self.label_count += 1;
         format!("L{}", count)
     }
 
+    fn lower_program(&mut self, program: &Program) -> Module {
+        for decl in &program.items {
+            self.lower_declaration(&decl);
+        }
+        Module { globals: self.globals.clone(), functions: self.functions.clone() }
+    }
 
+    fn lower_declaration(&mut self, decl: &Declaration) {
+        match decl {
+            Declaration::Function { name, ret_type, params, body } => {
+                self.clear_state();
+                self.lower_statement(body);
+                self.functions.push(Fun {
+                    name: name.clone(),
+                    ret_type: ret_type.clone(),
+                    params: params.clone(),
+                    body: self.instructions.clone(),
+                });
+            },
+            Declaration::InitVariable { name, var_type, init } => {
+                let val = self.lower_expression(init);
+                self.globals.push(Glob {
+                    name: name.clone(), 
+                    var_type: var_type.clone(), 
+                    init: val,
+                });
+            },
+        }
+    }
+
+    fn lower_statement(&mut self, stmt: &Statement) {
+        match stmt {
+            Statement::Block { items } => {
+                for item in items {
+                    match item {
+                        BlockItem::Decl(decl) => self.lower_inner_declaration(decl),
+                        BlockItem::Stmt(stmt) => self.lower_statement(stmt),
+                    }
+                }
+            },
+            Statement::Expr(expr) => {
+                self.lower_expression(expr); // discard result
+            },
+            Statement::Return(Some(expr)) => {
+                let val = self.lower_expression(expr);
+                self.emit(Instruction::Return(Some(val)));
+            },
+            Statement::Return(None) => {
+                self.emit(Instruction::Return(None));
+            }
+            Statement::Break => {
+                let loop_context = self.loop_stack.last().expect("illegal statement: break used outside loop");
+                self.emit(Instruction::Goto(loop_context.break_label.clone()));
+            },
+            Statement::Continue => {
+                let loop_context = self.loop_stack.last().expect("illegal statement: continue used outside loop");
+                self.emit(Instruction::Goto(loop_context.continue_label.clone()));
+            },
+            Statement::If { cond, then_branch, else_branch } => {
+                let then_label = self.next_label();
+                let else_label = self.next_label();
+                let end_label = self.next_label();
+                let cond_val = self.lower_expression(cond);
+
+                // go to then or else labels
+                self.emit(Instruction::IfGoto {
+                    cond: cond_val,
+                    label: then_label.clone(),
+                });
+                self.emit(Instruction::Goto(else_label.clone()));
+
+                // then_label
+                self.emit(Instruction::Label(then_label.clone()));
+                self.lower_statement(then_branch);
+                self.emit(Instruction::Goto(end_label.clone()));
+
+                // else_label
+                self.emit(Instruction::Label(else_label.clone()));
+                if let Some(stmt) = else_branch {
+                    self.lower_statement(stmt);
+                }
+
+                // end_label
+                self.emit(Instruction::Label(end_label.clone()));
+            },
+            Statement::While { cond, body } => {
+                let cond_label = self.next_label();
+                let loop_label = self.next_label();
+                let end_label = self.next_label();
+
+                self.loop_stack.push(LoopContext {
+                    break_label: end_label.clone(),
+                    continue_label: cond_label.clone(),
+                });
+
+                // go to cond_label
+                self.emit(Instruction::Goto(cond_label.clone()));
+
+                // cond_label
+                // go to loop or end labels
+                self.emit(Instruction::Label(cond_label.clone()));
+                let cond_val = self.lower_expression(cond);
+                self.emit(Instruction::IfGoto {
+                    cond: cond_val,
+                    label: loop_label.clone(),
+                });
+                self.emit(Instruction::Goto(end_label.clone()));
+
+                // loop_label
+                self.emit(Instruction::Label(loop_label.clone()));
+                self.lower_statement(body);
+                self.emit(Instruction::Goto(cond_label.clone()));
+
+                // end_label
+                self.emit(Instruction::Label(end_label.clone()));
+
+                self.loop_stack.pop();
+            },
+            Statement::For {init, cond, inc, body } => {
+                let cond_label = self.next_label();
+                let loop_label = self.next_label();
+                let inc_label = self.next_label();
+                let end_label = self.next_label();
+
+                self.loop_stack.push(LoopContext {
+                    break_label: end_label.clone(),
+                    continue_label: inc_label.clone(),
+                });
+
+                self.lower_inner_declaration(init);
+
+                // go to cond_label
+                self.emit(Instruction::Goto(cond_label.clone()));
+
+                // cond_label
+                // go to loop or end labels
+                self.emit(Instruction::Label(cond_label.clone()));
+                let cond_val = self.lower_expression(cond);
+                self.emit(Instruction::IfGoto {
+                    cond: cond_val,
+                    label: loop_label.clone(),
+                });
+                self.emit(Instruction::Goto(end_label.clone()));
+
+                // loop_label
+                self.emit(Instruction::Label(loop_label.clone()));
+                self.lower_statement(body);
+                // inc_label
+                self.emit(Instruction::Label(inc_label.clone()));
+                self.lower_expression(inc);
+                self.emit(Instruction::Goto(cond_label.clone()));
+
+                // end_label
+                self.emit(Instruction::Label(end_label.clone()));
+
+                self.loop_stack.pop();
+            },
+        }
+    }
+
+    fn lower_inner_declaration(&mut self, decl: &Declaration) {
+        match decl {
+            Declaration::InitVariable { name, var_type, init } => {
+                let expr = self.lower_expression(init);
+                self.emit(Instruction::Assign(
+                    Value::Var(name.to_string()),
+                    expr,
+                ));
+            },
+            Declaration::Function { name: _, ret_type: _, params: _, body: _ } => panic!("illegal declaration: nested function"),
+        }
+    }
+
+    fn lower_expression(&mut self, expr: &Expression) -> Value {
+        match expr {
+            Expression::IntLiteral(n) => Value::Const(*n),
+            Expression::Variable(name) => Value::Var(name.to_string()),
+            Expression::Binary { operator, left_oper, right_oper } => {
+                let dest = self.next_temp();
+                let lval = self.lower_expression(left_oper);
+                let rval = self.lower_expression(right_oper);
+                self.emit(Instruction::Binary {
+                    dest: dest.clone(),
+                    operator: operator.clone(),
+                    left_oper: lval,
+                    right_oper: rval,
+                });
+                dest
+            },
+            Expression::Unary { operator, oper } => {
+                let dest = self.next_temp();
+                let val = self.lower_expression(oper);
+                self.emit(Instruction::Unary {
+                    dest: dest.clone(),
+                    operator: operator.clone(),
+                    oper: val,
+                });
+                dest
+            },
+            Expression::Call { name, args } => {
+                let mut lowered_args = Vec::new();
+                for arg in args {
+                    lowered_args.push(self.lower_expression(arg));
+                }
+                let dest = self.next_temp();
+                self.emit(Instruction::Call {
+                    dest: dest.clone(),
+                    name: name.to_string(),
+                    args: lowered_args,
+                });
+                dest
+            }
+            Expression::Assign { target, value } => {
+                let right_oper = self.lower_expression(value);
+
+                // target is box<expression>, so **target is expression
+                match &**target {
+                    Expression::Variable(name) => {
+                        let left_oper = Value::Var(name.to_string());
+                        self.emit(Instruction::Assign(
+                            left_oper.clone(),
+                            right_oper,
+                        ));
+                        left_oper
+                    }
+                    _ => panic!("illegal assignment: missing variable")
+                }
+            }
+            _ => panic!("char literal not supported")
+        }
+    }
 }
