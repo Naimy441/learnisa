@@ -11,9 +11,9 @@ call add_16_bit
 halt
 
 add_16_bit:
-push
+push ra
 mov ra, rb
-push
+push ra
 
 lda low_x
 mov rb, ra
@@ -27,9 +27,9 @@ lda high_y
 adc rb
 mov rd, ra
 
-pop
+pop ra
 mov rb, ra
-pop
+pop ra
 ret
 
 halt

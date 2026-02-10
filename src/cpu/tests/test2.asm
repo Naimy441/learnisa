@@ -5,7 +5,7 @@ val2: .byte 5
 .text
 main:
     lda val
-    push
+    push ra
 
     ldi rb, val2
     add rb

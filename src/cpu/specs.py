@@ -6,8 +6,8 @@ class Opcode(Enum):
     not   = 1  # not              - Set Ra = ~Ra
     shl   = 2  # shl              - Set Ra = Ra << 1
     shr   = 3  # shr              - Set Ra = Ra >> 1
-    push  = 4  # push             - Pushes Ra onto the stack
-    pop   = 5  # pop              - Pops from the stack, stores in Ra   
+    push  = 4  # push rx          - Pushes Rx onto the stack
+    pop   = 5  # pop rx           - Pops from the stack, stores in Rx   
     ret   = 6  # ret              - Pops <addr> in stack, jumps to <addr+1>
     add   = 7  # add rx           - Set Ra = Ra + Rx
     adc   = 8  # adc rx           - Set Ra = Ra + Rx + carry_bit

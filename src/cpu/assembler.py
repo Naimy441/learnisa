@@ -23,8 +23,8 @@ class Opcode(Enum):
     NOT   = 1  # not              - Set Ra = ~Ra
     SHL   = 2  # shl              - Set Ra = Ra << 1
     SHR   = 3  # shr              - Set Ra = Ra >> 1
-    PUSH  = 4  # push             - Pushes Ra onto the stack
-    POP   = 5  # pop              - Pops from the stack, stores in Ra   
+    PUSH  = 4  # push rx          - Pushes Rx onto the stack
+    POP   = 5  # pop rx           - Pops from the stack, stores in Rx  
     RET   = 6  # ret              - Pops <addr> in stack, jumps to <addr+1>
     ADD   = 7  # add rx           - Set Ra = Ra + Rx
     ADC   = 8  # adc rx           - Set Ra = Ra + Rx + carry_bit
@@ -50,10 +50,10 @@ class Opcode(Enum):
     STA   = 26 # sta <addr>       - Stores 1 byte at <addr> from R
 
 opcodes = ['halt', 'not', 'shl', 'shr', 'push', 'pop', 'ret', 'add', 'adc', 'sub', 'sbc', 'cmp', 'and', 'or', 'xor', 'call', 'jmp', 'jz', 'jnz', 'jc', 'jnc', 'mov', 'ldr', 'ldi', 'lda', 'str', 'sta']
-opcode_one_byte = ['halt', 'not', 'shl', 'shr', 'push', 'pop', 'ret']
-opcode_two_byte = ['add', 'adc', 'sub', 'sbc', 'cmp', 'and', 'or', 'xor', 'ldr', 'str']
+opcode_one_byte = ['halt', 'not', 'shl', 'shr', 'ret']
+opcode_two_byte = ['push', 'pop', 'add', 'adc', 'sub', 'sbc', 'cmp', 'and', 'or', 'xor', 'ldr', 'str']
 opcode_three_byte = ['call', 'jmp', 'jz', 'jnz', 'jc', 'jnc', 'mov', 'ldi', 'lda', 'sta']
-opcode_one_oper = ['add', 'adc', 'sub', 'sbc', 'cmp', 'and', 'or', 'xor', 'ldr', 'str', 'call', 'jmp', 'jz', 'jnz', 'jc', 'jnc', 'lda']
+opcode_one_oper = ['push', 'pop', 'add', 'adc', 'sub', 'sbc', 'cmp', 'and', 'or', 'xor', 'ldr', 'str', 'call', 'jmp', 'jz', 'jnz', 'jc', 'jnc', 'lda']
 opcode_two_oper = ['mov', 'ldi']
 
 symbols = {}
@@ -159,7 +159,7 @@ def main(fn):
             # Write operands
             if opcode_name in opcode_one_oper:
                 oper1 = e[1].strip(',')
-                if (opcode >= 7 and opcode < 15) or (opcode == 22) or (opcode == 25):
+                if (opcode == 4 or opcode == 5) or (opcode >= 7 and opcode < 15) or (opcode == 22) or (opcode == 25):
                     # rx
                     reg = oper1[1]
                     buf.append(parse_reg(reg))

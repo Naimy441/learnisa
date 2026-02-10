@@ -61,21 +61,27 @@ MICROCODE = [
     [CO|HLMI, MO|IR0I|CE, FI|RO|SS_010, SO|AI, DONE],  # Shift left
     # SHR = 3 (Ra = Ra >> 1)
     [CO|HLMI, MO|IR0I|CE, FI|RO|SS_011, SO|AI, DONE],  # Shift right
-    # PUSH = 4 (Push Ra onto stack)
+    # PUSH = 4 (Push Rx onto stack)
     [
         CO|HLMI,
         MO|IR0I|CE,
+        CO|HLMI,
+        MO|IR1I|CE,
         SPD,  # Decrement SP
         SPO|HLMI,  # SP to MAR
-        AO|MI,  # A to RAM
+        IR1O|RSE,
+        RO|MI,  # Rx to RAM
         DONE,
     ],
-    # POP = 5 (Pop from stack into Ra)
+    # POP = 5 (Pop from stack into Rx)
     [
         CO|HLMI,
         MO|IR0I|CE,
+        CO|HLMI,
+        MO|IR1I|CE,
         SPO|HLMI,  # SP to MAR
-        MO|AI|SPI,  # RAM to A, inc SP
+        IR1O|RSE,
+        MO|RI|SPI,  # RAM to Rx, inc SP
         DONE,
     ],
     # RET = 6 (Pop address and jump)
