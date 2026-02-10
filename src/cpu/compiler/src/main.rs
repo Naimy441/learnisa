@@ -87,7 +87,9 @@ enum Statement {
     },
     Expr(Expression),
     Return(Option<Expression>),
-    If { 
+    Break,
+    Continue,
+    If {
         // converts else if to nested if (syntatic sugar)
         cond: Expression,
         then_branch: Box<Statement>,
@@ -178,7 +180,9 @@ fn main() {
     let mut parser: Parser = Parser::new(tokens);
     let program: Program = parser.parse_program();
     logln!();
-    log!("{:?}", program);
+    log!("{:#?}", program);
+
+
 }
 
 fn lexer(s: String) -> Vec<Token> {
@@ -427,7 +431,7 @@ impl Parser {
                                 let item: Declaration = self.parse_declaration();
                                 items.push(BlockItem::Decl(item));
                             },
-                            "if" | "while" | "for" | "return" => {
+                            "if" | "while" | "for" | "return" | "break" | "continue" => {
                                 let item: Statement = self.parse_statement();
                                 items.push(BlockItem::Stmt(item));
                             }
@@ -454,11 +458,28 @@ impl Parser {
                 "return" => {
                     self.next(); // consume return
                     if let Some(Token::Separator(';')) = self.peek() {
+                        self.next(); // consume ;
                         Statement::Return(None)
                     } else {
                         let expr = self.parse_expression(0.0);
-                        self.next();
+                        self.next(); // consume ;
                         Statement::Return(Some(expr))
+                    }
+                },
+                "break" => {
+                    self.next(); // consume break
+                    if let Some(Token::Separator(';')) = self.next() {
+                        Statement::Break
+                    } else {
+                        panic!("expected semicolon");
+                    }
+                },
+                "continue" => {
+                    self.next(); // consume break
+                    if let Some(Token::Separator(';')) = self.next() {
+                        Statement::Continue
+                    } else {
+                        panic!("expected semicolon");
                     }
                 },
                 "if" => {
