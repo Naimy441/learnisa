@@ -53,7 +53,7 @@ enum Declaration {
         params: Vec<Parameter>,
         body: Box<Statement>,
     },
-    Variable {
+    InitVariable {
         name: String,
         var_type: Type,
         init: Expression,
@@ -214,13 +214,13 @@ fn lexer(s: String) -> Vec<Token> {
                 },
                 '/' => {
                     // handle comments
+                    chars.next();
                     if matches!(chars.peek(), Some(&'/')) {
                         while !matches!(chars.peek(), Some(&'\n')) {
                             chars.next();
                         }
                         continue;
                     } else {
-                        chars.next();
                         Token::Operator(c.to_string())
                     }
                 },
@@ -312,7 +312,6 @@ impl Parser {
             println!("parse_program1: {:?}", self.peek());
             let decl = self.parse_declaration();
             items.push(decl);
-            self.next(); 
         }
         Program { items }
     }
@@ -386,6 +385,7 @@ impl Parser {
             self.next(); // consume )
         }
         let body = Box::new(self.parse_statement());
+        println!("parse_function1: {:?}", self.peek());
         Declaration::Function { name, ret_type, params, body }
     }
 
@@ -393,7 +393,8 @@ impl Parser {
         println!("parse_variable: {:?}", self.peek());
 
         let init = self.parse_expression(0.0);
-        Declaration::Variable { name, var_type, init }
+        self.next();
+        Declaration::InitVariable { name, var_type, init }
     }
 
     fn parse_statement(&mut self) -> Statement {
@@ -424,13 +425,15 @@ impl Parser {
                         },
                     }
                     println!("parse_statement1: {:?}", self.peek());
-                    self.next(); // consume semicolon/move to check next tok
                 }
+                self.next(); // consume }
                 Statement::Block { items }
             },
             // expression with assignment
             Some(Token::Identifier(_x)) => {
-                Statement::Expr(self.parse_expression(0.0))
+                let expr = self.parse_expression(0.0);
+                self.next();
+                Statement::Expr(expr)
             },
             Some(Token::Keyword(x)) => match x.as_str() {
                 "return" => {
@@ -438,43 +441,55 @@ impl Parser {
                     if let Some(Token::Separator(';')) = self.peek() {
                         Statement::Return(None)
                     } else {
-                        Statement::Return(Some(self.parse_expression(0.0)))
+                        let expr = self.parse_expression(0.0);
+                        self.next();
+                        Statement::Return(Some(expr))
                     }
                 },
                 "if" => {
                     self.next(); // consume if
-                    let cond = self.parse_expression(0.0);
-                    self.next(); // consume )
-                    let then_branch = Box::new(self.parse_statement());
-                    let else_branch = if matches!(self.peek_n(1), Some(Token::Keyword(x)) if x == "else") {
-                        self.next(); // consume else
-                        Some(Box::new(self.parse_statement())) // to the parser, this looks like regular if so it does nesting
-                    } else {
-                        None
-                    };
-                    Statement::If {
-                        cond, then_branch, else_branch
+                    match self.next() {
+                        Some(Token::Separator('(')) => {
+                            let cond = self.parse_expression(0.0);
+                            self.next(); // consume )
+                            let then_branch = Box::new(self.parse_statement());
+                            let else_branch = if matches!(self.peek(), Some(Token::Keyword(x)) if x == "else") {
+                                self.next(); // consume else
+                                Some(Box::new(self.parse_statement())) // to the parser, this looks like regular if so it does nesting
+                            } else {
+                                None
+                            };
+                            Statement::If {
+                                cond, then_branch, else_branch
+                            }
+                        }
+                        _ => panic!("expected open paranthese ("),
                     }
                 },
                 "while" => {
-                    let cond = self.parse_expression(0.0);
-                    let body = Box::new(self.parse_statement());
-                    Statement::While {
-                        cond, body
+                    self.next(); // consume while
+                    match self.next() {
+                        Some(Token::Separator('(')) => {
+                            let cond = self.parse_expression(0.0);
+                            self.next(); // consume )
+                            let body = Box::new(self.parse_statement());
+                            Statement::While {
+                                cond, body
+                            }
+                        }
+                        _ => panic!("expected open paranthese ("),
                     }
                 },
                 "for" => {
+                    self.next(); // consume for
                     match self.next() {
                         Some(Token::Separator('(')) => {
                             let init = self.parse_declaration();
                             let cond = self.parse_expression(0.0);
+                            self.next(); // consume )
                             let inc = self.parse_expression(0.0);
-                            let body = match self.next() {
-                                Some(Token::Separator(')')) => {
-                                    Box::new(self.parse_statement())
-                                },
-                                 _ => panic!("expected close paranthese )"),
-                            };
+                            self.next(); // consume )
+                            let body = Box::new(self.parse_statement());
                             Statement::For {
                                 init, cond, inc, body
                             }
@@ -525,13 +540,18 @@ impl Parser {
                 operator: UnaryOp::Not,
                 oper: Box::new(self.parse_expression(7.0)),
             },
-            Some(Token::Separator('(')) => self.parse_expression(0.0),
+            Some(Token::Separator('(')) => {
+                let expr = self.parse_expression(0.0);
+                self.next(); // consume )
+                expr
+            },
             _ => panic!("expected integer literal"),
         };
 
         // parse infix
         loop {
-            if let Some(Token::Operator(x)) = self.peek_n(1) {
+            println!("parse_expression_loop: {:?}", self.peek());
+            if let Some(Token::Operator(x)) = self.peek() {
                 if x.as_str() == "=" {
                     self.next(); // consume assignment =
                     let right_oper = self.parse_expression(0.0);
@@ -558,9 +578,12 @@ impl Parser {
                     ">=" => BinaryOp::GreaterThanOrEqual,
                     _ => panic!("invalid operator"),
                 },
-                Some(Token::Separator(')')) | Some(Token::Separator(';')) | Some(Token::Separator(',')) => break,
+                Some(Token::Separator(')'))
+                | Some(Token::Separator(';'))
+                | Some(Token::Separator(',')) => break,
                 _ => panic!("expected operator"),
             };
+            println!("parse_expression_operator: {:?}", operator);
             let (l_bp, r_bp) = self.get_binding_power(&operator);
             // if min_bp (previous operator bp) is greater than l_bp (current operator bp)
             // then break and move back to outer expression
