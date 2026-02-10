@@ -36,6 +36,7 @@ macro_rules! logln {
     };
 }
 
+// Lexer
 #[derive(Debug, Clone)]
 enum Token {
     Keyword(String),
@@ -46,6 +47,7 @@ enum Token {
     Eof,
 }
 
+// Parser
 #[derive(Debug)]
 enum Type {
     Int,
@@ -139,13 +141,13 @@ enum Expression {
     },
 }
 
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 enum UnaryOp {
     Negate,
     Not,
 }
 
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 enum BinaryOp {
     Add,
     Sub,
@@ -159,6 +161,42 @@ enum BinaryOp {
     LessThanOrEqual,
     GreaterThan,
     GreaterThanOrEqual,
+}
+
+// Lowerer
+#[derive(Debug, Clone)]
+enum Value {
+    Temp(usize),
+    Var(String),
+    Const(i32),
+}
+
+#[derive(Debug, Clone)]
+enum Instruction {
+    Assign(Value, Value),
+    Unary {
+        dest: Value,
+        operator: UnaryOp,
+        oper: Value, 
+    },
+    Binary {
+        dest: Value,
+        operator: BinaryOp,
+        left_oper: Value,
+        right_oper: Value,    
+    },
+    Call {
+        dest: Value,
+        name: String,
+        args: Vec<Value>,
+    },
+    Label(String),
+    Goto(String),
+    IfGoto {
+        cond: Value,
+        label: String,
+    },
+    Return(Option<Value>),
 }
 
 fn main() {
@@ -662,3 +700,45 @@ impl Parser {
         Expression::Call { name, args }
     }
  }
+
+struct Lowerer {
+    code: Vec<Instruction>,
+    temp_count: usize,
+    label_count: usize,
+    loop_stack: Vec<LoopContext>,
+}
+
+struct LoopContext {
+    break_label: String,
+    continue_label: String,
+}
+
+impl Lowerer {
+    fn new() -> Self {
+        Lowerer { 
+            code: Vec::new(), 
+            temp_count: 0, 
+            label_count: 0, 
+            loop_stack: Vec::new() 
+        }
+    }
+
+    fn emit(&mut self, instr: Instruction) {
+        log!("{:?}", &instr);
+        self.code.push(instr);
+    }
+
+    fn next_temp(&mut self) -> Value {
+        let count = self.temp_count;
+        self.temp_count += 1;
+        Value::Temp(count)
+    }
+
+    fn next_label(&mut self) -> String {
+        let count = self.label_count;
+        self.temp_count += 1;
+        format!("L{}", count)
+    }
+
+
+}
