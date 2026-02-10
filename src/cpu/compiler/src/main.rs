@@ -22,6 +22,20 @@
 use std::env;
 use std::fs;
 
+macro_rules! log {
+    ($($arg:tt)*) => {
+        #[cfg(debug_assertions)]
+        println!("[line {}] {}", line!(), format!($($arg)*));
+    };
+}
+
+macro_rules! logln {
+    () => {
+        #[cfg(debug_assertions)]
+        println!();
+    };
+}
+
 #[derive(Debug, Clone)]
 enum Token {
     Keyword(String),
@@ -148,22 +162,23 @@ enum BinaryOp {
 fn main() {
     let args: Vec<String> = env::args().collect();
     for a in &args {
-        println!("{}", a);
+        log!("{}", a);
     }
-    println!();
+    logln!();
 
     let file_data: String = fs::read_to_string(&args[1]).expect("failed to read file");
-    println!("{}\n", file_data);
+    log!("{}\n", file_data);
 
     let tokens: Vec<Token> = lexer(file_data);
     for t in &tokens {
-        println!("{:?}", t);
+        log!("{:?}", t);
     }
-    println!();
+    logln!();
 
     let mut parser: Parser = Parser::new(tokens);
     let program: Program = parser.parse_program();
-    println!("\n{:?}", program);
+    logln!();
+    log!("{:?}", program);
 }
 
 fn lexer(s: String) -> Vec<Token> {
@@ -299,17 +314,17 @@ impl Parser {
 
     fn next(&mut self) -> Option<Token> {
         let tok = self.tokens.get(self.pos).cloned();
-        println!("token: {:?}", tok);
+        log!("token: {:?}", tok);
         self.pos += 1;
         tok
     }
 
     fn parse_program(&mut self) -> Program {
-        println!("parse_program: {:?}", self.peek());
+        log!("parse_program: {:?}", self.peek());
 
         let mut items = Vec::new();
         while !matches!(self.peek(), Some(Token::Eof)) {
-            println!("parse_program1: {:?}", self.peek());
+            log!("parse_program1: {:?}", self.peek());
             let decl = self.parse_declaration();
             items.push(decl);
         }
@@ -317,7 +332,7 @@ impl Parser {
     }
 
     fn parse_declaration(&mut self) -> Declaration {
-        println!("parse_declaration: {:?}", self.peek());
+        log!("parse_declaration: {:?}", self.peek());
 
         let decl_type = match self.next() {
             Some(Token::Keyword(x)) => match x.as_str() {
@@ -350,7 +365,7 @@ impl Parser {
     }
 
     fn parse_function(&mut self, name: String, ret_type: Type) -> Declaration {
-        println!("parse_function: {:?}", self.peek());
+        log!("parse_function: {:?}", self.peek());
 
         let mut params = Vec::new();
         if !matches!(self.peek(), Some(Token::Separator(')'))) {
@@ -385,12 +400,12 @@ impl Parser {
             self.next(); // consume )
         }
         let body = Box::new(self.parse_statement());
-        println!("parse_function1: {:?}", self.peek());
+        log!("parse_function1: {:?}", self.peek());
         Declaration::Function { name, ret_type, params, body }
     }
 
     fn parse_variable(&mut self, name: String, var_type: Type) -> Declaration {
-        println!("parse_variable: {:?}", self.peek());
+        log!("parse_variable: {:?}", self.peek());
 
         let init = self.parse_expression(0.0);
         self.next();
@@ -398,7 +413,7 @@ impl Parser {
     }
 
     fn parse_statement(&mut self) -> Statement {
-        println!("parse_statement: {:?}", self.peek());
+        log!("parse_statement: {:?}", self.peek());
 
         match self.peek() {
             // block statement
@@ -424,7 +439,7 @@ impl Parser {
                             items.push(BlockItem::Stmt(item));
                         },
                     }
-                    println!("parse_statement1: {:?}", self.peek());
+                    log!("parse_statement1: {:?}", self.peek());
                 }
                 self.next(); // consume }
                 Statement::Block { items }
@@ -504,7 +519,7 @@ impl Parser {
     }
 
     fn get_binding_power(&mut self, operator: &BinaryOp) -> (f32, f32) {
-        println!("get_binding_power: {:?}", self.peek());
+        log!("get_binding_power: {:?}", self.peek());
 
         match operator {
             BinaryOp::Or => (1.0, 1.1),
@@ -520,7 +535,7 @@ impl Parser {
     }
     
     fn parse_expression(&mut self, min_bp: f32) -> Expression {
-        println!("parse_expression: {:?}", self.peek());
+        log!("parse_expression: {:?}", self.peek());
 
         // parse prefix
         let mut left_oper = match self.next() {
@@ -550,7 +565,7 @@ impl Parser {
 
         // parse infix
         loop {
-            println!("parse_expression_loop: {:?}", self.peek());
+            log!("parse_expression_loop: {:?}", self.peek());
             if let Some(Token::Operator(x)) = self.peek() {
                 if x.as_str() == "=" {
                     self.next(); // consume assignment =
@@ -583,7 +598,7 @@ impl Parser {
                 | Some(Token::Separator(',')) => break,
                 _ => panic!("expected operator"),
             };
-            println!("parse_expression_operator: {:?}", operator);
+            log!("parse_expression_operator: {:?}", operator);
             let (l_bp, r_bp) = self.get_binding_power(&operator);
             // if min_bp (previous operator bp) is greater than l_bp (current operator bp)
             // then break and move back to outer expression
@@ -599,12 +614,12 @@ impl Parser {
                 right_oper: Box::new(right_oper) 
             };
         }
-        println!("parse_expression1: {:?}", self.peek());
+        log!("parse_expression1: {:?}", self.peek());
         left_oper
     }
 
     fn parse_call(&mut self, name: String) -> Expression {
-        println!("parse_call: {:?}", self.peek());
+        log!("parse_call: {:?}", self.peek());
 
         self.next(); // consume open paranthese (
 
