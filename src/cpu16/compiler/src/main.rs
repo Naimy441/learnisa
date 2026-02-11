@@ -19,6 +19,10 @@
 
 // ; WRITE: Write file to .bin
 
+// TODO: Add pointer support
+// TODO: Add char literals
+// TODO: Add string global and string pointer support
+
 use std::env;
 use std::fs;
 
@@ -1055,3 +1059,21 @@ impl Lowerer {
         }
     }
 }
+
+/// so essentially the stack pointer points to the current place in memory where a data value lives on the stack. 
+/// the frame/base pointer points to the start of the frame which would be higher up in memory. 
+/// then when a function is called, we push the return address, then we push the base pointer. 
+/// now we can freely push to the stack and before we return control to previous functions 
+/// we move back the stack pointer as much as we added to it. pop the base pointer and return control
+
+/// in order to use frame pointers, we need to redesign the cpu to have PC_H, PC_L, SP_H, SP_L
+/// connected to the bus and able to increment with carry or decrement with carry
+
+/// or disallow recursion, use a zero page for temps and locals and params, and make stack 1 reg with high byte fixed...
+
+/// the question for me is which is more valuable for learning purposes, 
+/// and that is obviously the redesign, since we are dropping on fpga, 
+/// it's also worth moving to 16 bit registers and 16 bit alu
+
+/// since 16 bit stuff on fpga is trivial, the right move is to redesign as a 16 bit wide everything with 8-bit ram of course
+/// then i can redesign my microcode and opcodes cleaner and finally come back to this

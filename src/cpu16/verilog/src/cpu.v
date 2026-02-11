@@ -3,13 +3,13 @@ module cpu(
     input wire rst,
     input wire irq,
 
-    inout [7:0] data,
+    inout [15:0] data,
     output wire rwb,
 
     output wire [15:0] addr,
 );
 
-reg [7:0] data_bus;
+reg [15:0] data_bus;
 reg [15:0] addr_bus;
 
 wire [2:0] r_sel_q;

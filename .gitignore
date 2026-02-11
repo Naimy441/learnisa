@@ -1,2 +1,3 @@
 __pycache__/
-src/cpu/compiler/target
+src/cpu8/compiler/target
+src/cpu16/compiler/target
