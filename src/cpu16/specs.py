@@ -12,8 +12,8 @@ internal:
     1 instruction register
     1 memory data register
     1 memory address register
-    1 frame pointer register
     1 program counter register
+    2 ALU input registers
     1 ALU output register
 user-accessible:
     8 general purpose registers
@@ -23,9 +23,8 @@ user-accessible:
     - r3
     - r4
     - r5
-    - r6
-    - r7
-    - r8 (stack pointer register)
+    - r6 (frame pointer register)
+    - r7 (stack pointer register)
 
 Instruction:
 Word 0
@@ -74,15 +73,16 @@ class Opcode(Enum):
     # Memory
     mov   = 32 # mov rx, ry        - Set Rx = Ry   
     ld    = 33 # ld rx, ry         - Loads 1 word at [Ry] into Rx
-    ldo   = 34 # ldo rx, ry, <val> - Loads 1 word at [Ry +/- val] into Rx 
+    ldo   = 34 # ldo rx, ry, <val> - Loads 1 word at [Ry +/- val] into Rx (signed, two's complement)
     ldi   = 35 # ldi rx, <val>     - Loads <val> (1 word) into Rx
     lda   = 36 # lda rx, <addr>    - Loads 1 word from <addr>/symbol into Rx
     st    = 37 # st rx, ry         - Stores 1 word at [Rx] from Ry 
-    sto   = 38 # sto rx, ry, <val> - Stores 1 word at [Ry +/- val] into Rx 
+    sto   = 38 # sto rx, ry, <val> - Stores 1 word at [Ry +/- val] into Rx (signed, two's complement)
     sta   = 39 # sta rx, <addr>    - Stores 1 word at <addr> from Rx
 
 IRI - Write enable to instruction reg (word 0)
-IRO - Read instruction reg (word 0) to bus
+IXO - Read instruction reg (word 0 rx bits) to bus
+IYO - Read instruction reg (word 0 ry bits) to bus
 
 RI - Write enable general registers
 RSE - Write enable general reg select latch
@@ -128,10 +128,10 @@ ROM 16-bit OUTPUT
 001 RO
 010 TMO
 011 SO
-100 IRO
-101 MO
-110 CO
-111 SPO
+100 IXO
+101 IYO
+110 MO
+111 CO
 3-6 bits (partial, 5 unused):
 0000 NONE
 0001 AI
@@ -143,7 +143,7 @@ ROM 16-bit OUTPUT
 0111 RSE
 1000 IRI
 1001 SI
-1010 FI
+1010 MI
 1011 UNUSED
 1100 UNUSED
 1101 UNUSED
@@ -166,16 +166,15 @@ ROM 16-bit OUTPUT
 1101 UNUSED
 1110 UNUSED
 1111 UNUSED
-11-12 bits (full):
-00 NONE
-01 CE
-10 DONE
-11 HLT
-13-14 bits (partial, 1 unused)
-00 NONE
-01 SPI
-10 SPD
-11 UNUSED
+11-14 bits (full):
+000 NONE
+001 CE
+010 DONE
+011 HLT
+100 SPI
+101 SPD
+110 SPO
+111 FI
 15th bit (full)
 00 NONE
 01 CA
