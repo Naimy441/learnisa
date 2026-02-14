@@ -1,7 +1,7 @@
 SIM=build/sim
 
 all:
-	iverilog -g2012 -o $(SIM) src/*.v sim/*.v
+	iverilog -g2012 -o $(SIM) src/*.sv sim/*.sv
 	vvp $(SIM)
 
 clean:

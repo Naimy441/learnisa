@@ -1,4 +1,12 @@
 """
+1. Write a test bench that has a ROM with a program, 
+and print ops and result to terminal
+and outputs onto data and reads from addr
+8. Ensure structure of everything being on the same level and
+all running at once whether combinationally or sequentially works
+9. Test everything on the test bench, 
+and write test programs for all opcodes
+
 FPGA's allow configureable block ram width.
 However, our ROM decoding would use too much data. 
 Instead, create a finite state machine (FSM) decoder.
