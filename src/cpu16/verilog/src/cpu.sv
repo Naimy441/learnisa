@@ -1,7 +1,7 @@
 module cpu (
     input wire clk,
     input wire rst,
-    input wire irq,
+    input wire irq
 );
 
     // =========================================================
@@ -438,11 +438,16 @@ module cpu (
     // RAM
     // =========================================================
     wire [15:0] mem_out;
+    // If MAR was set, immediately load RAM
+    wire [15:0] ram_addr =
+        (state == FETCH) ? pc :
+        (state == MICRO && mai_we) ? data :
+        mar;
 
     ram memory (
         .clk  (clk),
         .we   (mi_we),
-        .addr (mar),
+        .addr (ram_addr),
         .din  (data),
         .dout (mem_out)
     );
@@ -464,7 +469,7 @@ module cpu (
     always_ff @(posedge clk or posedge rst) begin
         if (rst) begin
             pc        <= 16'h0000;
-            regfile[7] <= 16'hFFFE;
+            regfile[7] <= 16'd6143;
             for (int i = 0; i < 7; i++)
                 regfile[i] <= 16'h0000;
             alu_a    <= 16'h0000;
@@ -609,7 +614,7 @@ module cpu (
     logic        carry_out;
     logic        overflow_out;
 
-    always_comb begin
+    always @* begin
         carry_out    = 1'b0;
         overflow_out = 1'b0;
         alu_result   = 16'h0000;
@@ -617,12 +622,52 @@ module cpu (
         case (alu_ctrl)
             4'd1: alu_result = ~alu_a;                              // NOT
             4'd2: begin                                             // SHL
-                alu_result = alu_a << alu_b[3:0];
-                carry_out  = alu_b[3:0] ? alu_a[16 - alu_b[3:0]] : 1'b0;
+                logic [3:0] shift_amount;
+                shift_amount      = alu_b[3:0];
+                alu_result = alu_a << shift_amount;
+                case (shift_amount)
+                    4'd0:  carry_out = 1'b0;
+                    4'd1:  carry_out = alu_a[15];
+                    4'd2:  carry_out = alu_a[14];
+                    4'd3:  carry_out = alu_a[13];
+                    4'd4:  carry_out = alu_a[12];
+                    4'd5:  carry_out = alu_a[11];
+                    4'd6:  carry_out = alu_a[10];
+                    4'd7:  carry_out = alu_a[9];
+                    4'd8:  carry_out = alu_a[8];
+                    4'd9:  carry_out = alu_a[7];
+                    4'd10: carry_out = alu_a[6];
+                    4'd11: carry_out = alu_a[5];
+                    4'd12: carry_out = alu_a[4];
+                    4'd13: carry_out = alu_a[3];
+                    4'd14: carry_out = alu_a[2];
+                    4'd15: carry_out = alu_a[1];
+                    default: carry_out = 1'b0;
+                endcase
             end
             4'd3: begin                                             // SHR
-                alu_result = alu_a >> alu_b[3:0];
-                carry_out  = alu_b[3:0] ? alu_a[alu_b[3:0] - 1] : 1'b0;
+                logic [3:0] shift_amount;
+                shift_amount      = alu_b[3:0];
+                alu_result = alu_a >> shift_amount;
+                case (shift_amount)
+                    4'd0:  carry_out = 1'b0;
+                    4'd1:  carry_out = alu_a[0];
+                    4'd2:  carry_out = alu_a[1];
+                    4'd3:  carry_out = alu_a[2];
+                    4'd4:  carry_out = alu_a[3];
+                    4'd5:  carry_out = alu_a[4];
+                    4'd6:  carry_out = alu_a[5];
+                    4'd7:  carry_out = alu_a[6];
+                    4'd8:  carry_out = alu_a[7];
+                    4'd9:  carry_out = alu_a[8];
+                    4'd10: carry_out = alu_a[9];
+                    4'd11: carry_out = alu_a[10];
+                    4'd12: carry_out = alu_a[11];
+                    4'd13: carry_out = alu_a[12];
+                    4'd14: carry_out = alu_a[13];
+                    4'd15: carry_out = alu_a[14];
+                    default: carry_out = 1'b0;
+                endcase
             end
             4'd4: begin                                             // INC
                 {carry_out, alu_result} = alu_a + 16'd1;
@@ -663,7 +708,7 @@ module ram (
     input  wire [15:0] din,
     output reg  [15:0] dout
 );
-    reg [15:0] mem [0:65535];
+    reg [15:0] mem [0:6143];
 
     always_ff @(posedge clk) begin
         if (we)
